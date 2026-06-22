@@ -84,6 +84,15 @@ body {
 }
 #send-btn:hover { background: var(--accent-glow); }
 #send-btn:disabled { opacity: .4; cursor: not-allowed; }
+#dice-btn {
+  padding: 10px 12px; background: #2a2520; color: var(--gold);
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 16px; cursor: pointer; font-family: inherit;
+}
+#dice-btn:hover { background: #3a3028; color: #fff; }
+.msg.roll { background: #1a1c18; align-self: center; border: 1px solid var(--border);
+  font-family: monospace; font-size: 13px; text-align: center; color: var(--gold); }
+.msg.roll .big { font-size: 22px; display: block; }
 
 /* 加点 */
 #stats-panel { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
@@ -151,7 +160,8 @@ body {
       </div>
     </div>
     <div id="input-area">
-      <input id="user-input" placeholder="输入你的行动..." autofocus>
+      <input id="user-input" placeholder="输入行动... /r 3d6 掷骰" autofocus>
+      <button id="dice-btn" onclick="quickRoll()" title="快捷掷骰">🎲</button>
       <button id="send-btn" onclick="sendMessage()">发送</button>
     </div>
   </div>
@@ -282,6 +292,14 @@ async function sendMessage() {
   const msg = input.value.trim();
   if (!msg) return;
   input.value = '';
+
+  // 骰子指令
+  if (/^\/r\s/.test(msg)) {
+    const dice = msg.replace(/^\/r\s*/, '');
+    await doDiceRoll(dice);
+    return;
+  }
+
   state.isLoading = true;
   document.getElementById('send-btn').disabled = true;
   addMsg('user', msg);
@@ -348,6 +366,47 @@ async function adjustStat(key, delta) {
       });
     } catch(e) {}
   }
+}
+
+// ── 骰子 ──
+function addRollMsg(detail, result) {
+  const log = document.getElementById('chat-log');
+  const w = log.querySelector('.welcome'); if (w) w.remove();
+  const div = document.createElement('div');
+  div.className = 'msg roll';
+  div.innerHTML = `${detail}<br><span class="big">${result}</span>`;
+  log.appendChild(div);
+  scrollBottom();
+}
+
+async function doDiceRoll(diceExpr) {
+  try {
+    const res = await fetch('/api/roll', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: diceExpr, session_id: state.session_id}),
+    });
+    const data = await res.json();
+    if (data.result && data.result.startsWith('格式错误')) {
+      addMsg('gm', '🎲 ' + data.result);
+    } else {
+      addRollMsg(data.detail, data.result);
+    }
+  } catch(e) {
+    addMsg('gm', '🎲 骰子崩了: ' + e.message);
+  }
+}
+
+function quickRoll() {
+  const input = document.getElementById('user-input');
+  const current = input.value.trim();
+  if (current) {
+    input.value = '/r ' + current;
+    sendMessage();
+  } else {
+    input.value = '/r 3d6';
+    sendMessage();
+  }
+  input.value = '';
 }
 
 // ── 设置 ──
