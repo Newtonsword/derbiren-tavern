@@ -714,6 +714,15 @@ function renderCharDetail() {
   const c = getActiveChar();
   if (!c) return;
 
+  const st = c.stats;
+  // 衍生值
+  const HP = st.END * 200;
+  const stamina = st.END * 50;
+  const mana = st.MP * 20;
+  const spirit = st.WIL * 10;
+  const defRate = (st.DEF / (st.DEF + 15) * 100).toFixed(1);
+  const speedMod = (st.SPD + st.END * 0.5).toFixed(1);
+
   // 属性
   const statsArea = document.getElementById('char-stats-area');
   statsArea.innerHTML = `
@@ -721,18 +730,28 @@ function renderCharDetail() {
       <h3>🔮 ${c.name} · ${c.species} · Lv.${c.level}</h3>
       <div class="free-pts">剩余点数：<span id="free-pts">${c.free_points}</span></div>
       ${ATTRS.map(({key, name, desc}) => {
-        const val = c.stats[key] || 3;
+        const val = st[key] || 3;
         return `<div class="stat-row">
           <span class="stat-name">${name}</span>
           <span class="stat-desc">${desc}</span>
-          <button class="stat-btn minus" onclick="adjustStat('${key}',-1)" ${val<=0?'disabled':''}>−</button>
           <span class="stat-val">${val}</span>
           <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${c.free_points<=0?'disabled':''}>+</button>
         </div>`;
       }).join('')}
+    </div>
+    <div class="stats-section" style="border-top:1px solid var(--border);padding-top:10px;">
+      <h3>📐 衍生数值</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;line-height:1.8;">
+        <div>❤️ 生命值 <span style="color:var(--accent);">${HP}</span></div>
+        <div>🏃 体力 <span style="color:var(--gold);">${stamina}</span></div>
+        <div>💎 魔法储量 <span style="color:#4b9eef;">${mana}</span></div>
+        <div>🧠 精神条 <span style="color:#8b5cf6;">${spirit}</span></div>
+        <div>🛡️ 减伤率 <span style="color:var(--dim);">${defRate}%</span></div>
+        <div>⚡ 间隔减免 <span style="color:var(--dim);">${speedMod}%</span></div>
+      </div>
     </div>`;
 
-  // 技能
+  // 技能——计算实际伤害
   const skArea = document.getElementById('char-skills-area');
   const skCollapsed = localStorage.getItem('skills_collapsed_' + c.id) === '1';
   skArea.innerHTML = `
@@ -746,16 +765,18 @@ function renderCharDetail() {
         ${(c.skills || []).map(sk => {
           const expanded = localStorage.getItem('skill_expanded_' + sk.id) === '1';
           const typeColors = {斩击:'#c9a050', 刺击:'#5a9e4b', 钝击:'#c44b3c', 精神:'#8b5cf6', 法术:'#4b9eef'};
+          const dmg = evalFormula(sk.formula, st);
           return `<div class="skill-row">
             <div class="skill-summary" onclick="toggleSkillDetail('${sk.id}')">
-              <span class="s-arrow${expanded ? ' open' : ''}" id="sk-det-arrow-${sk.id}">▶</span>
+              <span class="s-arrow${expanded ? ' open' : ''}" id="***${sk.id}">▶</span>
               <span class="s-name">${sk.name}</span>
               <span class="s-type" style="color:${typeColors[sk.type]||'#8a7a6a'}">${sk.type}</span>
+              <span style="color:var(--accent);font-size:12px;margin-left:4px;">${dmg}</span>
               <span class="s-lv">Lv.${sk.level}/${sk.max_level}</span>
             </div>
             <div class="skill-detail${expanded ? ' open' : ''}" id="sk-det-${sk.id}">
               <div>📝 ${sk.description || '无描述'}</div>
-              <div>📐 <span class="s-formula">${sk.formula}</span></div>
+              <div>📐 <span class="s-formula">${sk.formula}</span> = ${dmg} 伤害</div>
               <div>💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
               ${(c.pending_skill_points > 0 && sk.level < sk.max_level)
                 ? `<button class="upgrade-btn" onclick="upgradeSkill('${sk.id}')">⬆ 升级到 Lv.${sk.level+1}</button>`
@@ -786,6 +807,25 @@ function renderCharDetail() {
   } else {
     paArea.innerHTML = '';
   }
+}
+
+// ── 公式求值 ──
+function evalFormula(formula, stats) {
+  if (!formula) return '?';
+  try {
+    let expr = formula
+      .replace(/×/g, '*').replace(/÷/g, '/')
+      .replace(/STR/g, stats.STR).replace(/SPD/g, stats.SPD)
+      .replace(/END/g, stats.END).replace(/DEF/g, stats.DEF)
+      .replace(/INT/g, stats.INT).replace(/MP/g, stats.MP)
+      .replace(/WIL/g, stats.WIL);
+    // 安全求值：只允许数字和运算符
+    if (/^[\d\s+\-*/().]+$/.test(expr)) {
+      const val = Function('"use strict"; return (' + expr + ')')();
+      return Math.round(val);
+    }
+    return formula; // 无法求值就显示原公式
+  } catch(e) { return '?'; }
 }
 
 function toggleSkills(cid) {
