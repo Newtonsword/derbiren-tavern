@@ -480,6 +480,7 @@ SPECIES_STARTER_SKILLS = {
         "skills": [
             {"name":"撕咬","type":"刺击","formula":"15+2.0×STR+1.5×SPD","cost":"耐力12","interval":"2.5s","hit_formula":"75+1.5×STR+1.0×SPD","category":"主动"},
             {"name":"扑击","type":"钝击","formula":"20+1.5×STR+2.0×SPD","cost":"耐力16","interval":"3.5s","hit_formula":"70+2.0×SPD+1.0×STR","category":"主动"},
+            {"name":"影步","type":"防御","formula":"闪避+25(单次)","cost":"耐力15","interval":"6.0s","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"狼群战术","effect":"队友在场时伤害+10%"}],
     },
