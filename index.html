@@ -200,16 +200,17 @@ body {
 
 <script>
 const ATTRS = [
-  {key:"STR", name:"力量", desc:"近战伤害、负重、破门判定"},
-  {key:"AGI", name:"敏捷", desc:"先手、闪避、潜行、开锁判定"},
-  {key:"END", name:"耐力", desc:"HP 上限、中毒/疲劳抵抗"},
-  {key:"INT", name:"智力", desc:"法术伤害、解谜、知识判定"},
-  {key:"WIL", name:"意志", desc:"精神抗性、恐惧/魅惑抵抗"},
+  {key:"END", name:"耐力", desc:"HP=END×200 | 体力=END×50 | 伤害系数 0.8"},
+  {key:"STR", name:"力量", desc:"近战威力主属性 | 伤害系数 2.0"},
+  {key:"SPD", name:"速度", desc:"先手/闪避/间隔 | 伤害系数 1.5"},
+  {key:"DEF", name:"防御", desc:"护甲减伤 DEF/(DEF+15) | 刺/钝/斩交互"},
+  {key:"INT", name:"法强", desc:"法术伤害系数 1.2 | 魔法储量=INT×20"},
+  {key:"WIL", name:"精神", desc:"精神条=WIL×10 | 抗恐惧/魅惑/崩溃"},
 ];
 
 let state = {
   session_id: '',
-  stats: { STR:3, AGI:3, END:3, INT:3, WIL:3, free:10 },
+  stats: { END:3, STR:3, SPD:3, DEF:3, INT:3, WIL:3, free:18 },
   isLoading: false,
 };
 
