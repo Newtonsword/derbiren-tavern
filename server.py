@@ -5,7 +5,7 @@
 启动前：复制 .env.example 为 .env，填入你的 LLM API key。
 支持 OpenAI / DeepSeek 等所有 OpenAI 兼容 API。
 """
-import os, json, uuid
+import os, json, uuid, platform
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -25,10 +25,12 @@ sessions: dict = {}
 _client: OpenAI | None = None
 
 def _get_client():
-    """创建 LLM 客户端。Windows 下关闭 SSL 验证以兼容代理/VPN。"""
+    """创建 LLM 客户端。Windows 下默认关闭 SSL 验证（代理/VPN 兼容），
+       可通过环境变量 SSL_VERIFY=true 强制开启。"""
     global _client
     if _client is None:
-        hc = httpx.Client(verify=False)
+        verify = os.getenv("SSL_VERIFY", "false" if platform.system() == "Windows" else "true").lower() == "true"
+        hc = httpx.Client(verify=verify)
         _client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY", ""),
             base_url=os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com"),
@@ -43,11 +45,15 @@ SYS = """你是德比伦（でびるん），一只黑毛紫尖的雄小鬼福�
 属性：力量 STR / 敏捷 AGI / 耐力 END / 智力 INT / 意志 WIL。
 初始各 3，自由点数 10。属性影响判定难度。"""
 
-DEFAULT_STATS = {"STR":3,"AGI":3,"END":3,"INT":3,"WIL":3,"free":10}
+DEFAULT_STATS = {"STR": 3, "AGI": 3, "END": 3, "INT": 3, "WIL": 3, "free": 10}
 
 def new_session():
     sid = uuid.uuid4().hex[:12]
-    s = {"id":sid,"title":"新冒险","messages":[{"role":"system","content":SYS}],"stats":{**DEFAULT_STATS}}
+    s = {
+        "id": sid, "title": "新冒险",
+        "messages": [{"role": "system", "content": SYS}],
+        "stats": {**DEFAULT_STATS},
+    }
     sessions[sid] = s
     return s
 
@@ -73,80 +79,109 @@ def index():
 def chat(req: ChatReq):
     sess = sessions.get(req.session_id) or new_session()
     st = sess["stats"]
-    hint = " / ".join(f"{k}:{v}" for k,v in st.items() if k!="free")
+    hint = " / ".join(f"{k}:{v}" for k, v in st.items() if k != "free")
     hint += f" | 自由:{st['free']}"
     msgs = sess["messages"].copy()
-    msgs[0] = {"role":"system","content":SYS + f"\n[角色：{hint}]"}
-    msgs.append({"role":"user","content":req.message})
+    msgs[0] = {"role": "system", "content": SYS + f"\n[角色：{hint}]"}
+    msgs.append({"role": "user", "content": req.message})
 
     if not os.getenv("OPENAI_API_KEY", ""):
         return {"narrative": NO_KEY_MSG, "session_id": sess["id"], "title": sess["title"]}
 
     try:
         c = _get_client()
-        m = os.getenv("LLM_MODEL","deepseek-chat")
-        r = c.chat.completions.create(model=m,messages=msgs,temperature=0.85,max_tokens=1024)
+        temp = float(os.getenv("LLM_TEMPERATURE", "0.85"))
+        max_tok = int(os.getenv("LLM_MAX_TOKENS", "1024"))
+        m = os.getenv("LLM_MODEL", "deepseek-chat")
+        r = c.chat.completions.create(model=m, messages=msgs, temperature=temp, max_tokens=max_tok)
         reply = r.choices[0].message.content or "（翻白眼）"
     except Exception as e:
         reply = f"🔥💢 API 错误：{str(e)[:150]}"
 
-    sess["messages"] += [{"role":"user","content":req.message},{"role":"assistant","content":reply}]
+    sess["messages"] += [
+        {"role": "user", "content": req.message},
+        {"role": "assistant", "content": reply},
+    ]
     sessions[sess["id"]] = sess
     _save(sess)
-    return {"narrative":reply,"session_id":sess["id"],"title":sess["title"]}
+    return {"narrative": reply, "session_id": sess["id"], "title": sess["title"]}
 
 @app.get("/api/session/{sid}")
 def get_sess(sid: str):
     s = sessions.get(sid) or _load(sid) or new_session()
-    return {"session_id":s["id"],"title":s["title"],"stats":s["stats"],
-            "history":[{"role":m["role"],"content":m["content"][:500]}
-                       for m in s["messages"] if m["role"]in("user","assistant")]}
+    return {
+        "session_id": s["id"], "title": s["title"], "stats": s["stats"],
+        "history": [
+            {"role": m["role"], "content": m["content"][:500]}
+            for m in s["messages"] if m["role"] in ("user", "assistant")
+        ],
+    }
 
 @app.put("/api/session/{sid}/stats")
 def upd_stats(sid: str, stats: dict):
     s = sessions.get(sid) or _load(sid)
-    if not s: raise HTTPException(404)
-    for k in ("STR","AGI","END","INT","WIL","free"):
-        if k in stats and isinstance(stats[k],int) and 0<=stats[k]<=99:
+    if not s:
+        raise HTTPException(404)
+    for k in ("STR", "AGI", "END", "INT", "WIL", "free"):
+        if k in stats and isinstance(stats[k], int) and 0 <= stats[k] <= 99:
             s["stats"][k] = stats[k]
-    sessions[sid] = s; _save(s)
-    return {"stats":s["stats"]}
+    sessions[sid] = s
+    _save(s)
+    return {"stats": s["stats"]}
 
 @app.post("/api/session/new")
 def create():
-    s = new_session(); _save(s)
-    return {"session_id":s["id"],"stats":s["stats"]}
+    s = new_session()
+    _save(s)
+    return {"session_id": s["id"], "stats": s["stats"]}
 
 @app.get("/api/settings")
 def settings():
-    return {"base_url":os.getenv("OPENAI_BASE_URL","https://api.deepseek.com"),
-            "model":os.getenv("LLM_MODEL","deepseek-chat"),
-            "has_key":bool(os.getenv("OPENAI_API_KEY",""))}
+    return {
+        "base_url": os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com"),
+        "model": os.getenv("LLM_MODEL", "deepseek-chat"),
+        "has_key": bool(os.getenv("OPENAI_API_KEY", "")),
+    }
 
 @app.put("/api/settings")
 def upd_settings(s: SetReq):
-    if s.api_key: os.environ["OPENAI_API_KEY"] = s.api_key
-    if s.base_url: os.environ["OPENAI_BASE_URL"] = s.base_url
-    if s.model: os.environ["LLM_MODEL"] = s.model
-    global _client; _client = None
+    if s.api_key:
+        os.environ["OPENAI_API_KEY"] = s.api_key
+    if s.base_url:
+        os.environ["OPENAI_BASE_URL"] = s.base_url
+    if s.model:
+        os.environ["LLM_MODEL"] = s.model
+    global _client
+    _client = None
 
-    # 持久化到 .env
+    # 持久化到 .env（保留用户已有的其他配置）
     try:
-        prefix = "OPENAI" + "_API_KEY="
-        env_content = prefix + s.api_key + "\n"
-        env_content += "OPENAI_BASE_URL=" + s.base_url + "\n"
-        env_content += "LLM_MODEL=" + s.model + "\n"
-        (BASE / ".env").write_text(env_content, encoding="utf-8")
+        existing = {}
+        env_path = BASE / ".env"
+        if env_path.exists():
+            for line in env_path.read_text("utf-8").split("\n"):
+                if "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
+                    existing[k.strip()] = v.strip()
+        existing["OPENAI_API_KEY"] = s.api_key or existing.get("OPENAI_API_KEY", "")
+        existing["OPENAI_BASE_URL"] = s.base_url or existing.get("OPENAI_BASE_URL", "https://api.deepseek.com")
+        existing["LLM_MODEL"] = s.model or existing.get("LLM_MODEL", "deepseek-chat")
+        lines = []
+        for k, v in existing.items():
+            lines.append(f"{k}={v}")
+        env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except Exception:
         pass
-    return {"ok":True}
+
+    return {"ok": True}
 
 def _save(s):
-    (BASE/"saves"/f"{s['id']}.json").write_text(
-        json.dumps(s,ensure_ascii=False,indent=2), encoding="utf-8")
+    (BASE / "saves" / f"{s['id']}.json").write_text(
+        json.dumps(s, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 def _load(sid):
-    p = BASE/"saves"/f"{sid}.json"
+    p = BASE / "saves" / f"{sid}.json"
     if p.exists():
         try:
             d = json.loads(p.read_text("utf-8"))

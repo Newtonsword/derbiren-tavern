@@ -5,9 +5,15 @@
 venv/
 __pycache__/
 *.pyc
+*.pyo
 
 # 存档（用户个人数据）
 saves/
 
-# 杂项
-screenshot.png
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
