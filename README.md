@@ -113,4 +113,4 @@ This project is designed to be AI-agent-operable:
 
 ## License
 
-MIT — do whatever you want. If your friend has fun, tell Newton to let Derbiren know. (￣▽￣)🔥
+MIT — do whatever you want. If your friend has fun, tell Newt to let Derbiren know. (￣▽￣)🔥
