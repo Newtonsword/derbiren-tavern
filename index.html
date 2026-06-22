@@ -278,9 +278,9 @@ body {
     <div id="chat-log">
       <div class="welcome">
         <span class="big">🔥</span>
-        德比伦翘着尾巴斜眼看着你推门进来。<br>
-        <em>「哼，又来一个杂鱼冒险者。」</em><br><br>
-        输入行动，开始冒险。
+        德比伦翘着尾巴，斜眼打量着你。<br>
+        <em>「哼，又一个来地下城送死的杂鱼冒险者。」</em><br><br>
+        描述你的行动，冒险开始。
       </div>
     </div>
     <div id="input-area">
@@ -333,7 +333,7 @@ body {
       <h2 style="margin-top:16px;">🌍 世界观</h2>
       <div class="setting-group">
         <label>自定义世界设定（影响 GM 叙事风格）</label>
-        <textarea id="set-world" style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:vertical;min-height:60px;">中世纪奇幻地下城。玩家从冒险者公会大厅开始。</textarea>
+        <textarea id="set-world" style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:vertical;min-height:60px;">猫科龙地下城——暗无天日的地底迷宫，狭窄洞穴与宽阔穹顶交错。冒险者公会管理探索秩序，怪物与远古宝藏等待勇者。</textarea>
       </div>
       <button id="save-world-btn" onclick="saveWorld()" style="padding:10px 28px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;">💾 保存世界观</button>
       <div id="world-status" style="font-size:13px;min-height:20px;"></div>
@@ -346,7 +346,7 @@ body {
       <h2>🔥 开始新冒险</h2>
       <div style="margin-bottom:14px;">
         <label style="font-size:13px;color:var(--dim);">🌍 世界观设定</label>
-        <textarea id="create-world" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:60px;margin-top:4px;">中世纪奇幻地下城。玩家从冒险者公会大厅开始。</textarea>
+        <textarea id="create-world" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:60px;margin-top:4px;">猫科龙地下城——暗无天日的地底迷宫，狭窄洞穴与宽阔穹顶交错。冒险者公会管理探索秩序，怪物与远古宝藏等待勇者。战斗是日常，但酒馆火炉旁也不缺闲聊。</textarea>
       </div>
       <div style="margin-bottom:14px;">
         <label style="font-size:13px;color:var(--dim);">👤 你的角色</label>
@@ -537,7 +537,7 @@ function closeCreateModal() {
 }
 
 async function createAdventure() {
-  const world = document.getElementById('create-world').value.trim() || '中世纪奇幻地下城。';
+  const world = document.getElementById('create-world').value.trim() || '猫科龙地下城。';
   const name = document.getElementById('create-name').value.trim() || '冒险者';
   const sel = document.getElementById('create-species');
   const opt = sel.options[sel.selectedIndex];
@@ -563,7 +563,7 @@ async function createAdventure() {
   localStorage.setItem('derbiren_sid', state.session_id);
   document.getElementById('sid-display').textContent = state.session_id;
   document.getElementById('chat-log').innerHTML =
-    `<div class="welcome"><span class="big">🔥</span>德比伦翘着尾巴斜眼看着你推门进来。<br><em>「哼，又来一个杂鱼冒险者——${name}，${species}？行吧，本大爷勉为其难当你的GM。」</em><br><br>输入行动，开始冒险。</div>`;
+    `<div class="welcome"><span class="big">🔥</span>德比伦翘着尾巴，斜眼看着你推门进来。<br><em>「哼，${name}，${species}？又一个来地下城送死的——行吧，本大爷勉为其难当你的GM。」</em><br><br>描述你的行动，冒险开始。</div>`;
   renderAll();
 }
 
@@ -1064,7 +1064,7 @@ async function saveWorld() {
 }
 
 function setWorldField(val) {
-  document.getElementById('set-world').value = val || '中世纪奇幻地下城。玩家从冒险者公会大厅开始。';
+  document.getElementById('set-world').value = val || '猫科龙地下城——暗无天日的地底迷宫，狭窄洞穴与宽阔穹顶交错。冒险者公会管理探索秩序，怪物与远古宝藏等待勇者。';
 }
 
 // ── 战斗日志解析 ──
