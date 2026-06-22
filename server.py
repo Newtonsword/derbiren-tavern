@@ -151,11 +151,17 @@ def _skill_id() -> str:
 
 # ── 会话管理 ──
 
-def new_session(world_setting=None, char_name="冒险者", char_species="人类", char_coeff=1.3):
+def new_session(world_setting=None, char_name="冒险者", char_species="人类", char_coeff=1.3, char_stats=None):
     sid = uuid.uuid4().hex[:12]
     world = world_setting or DEFAULT_WORLD
     sys_content = SYS.replace("{WORLD_SETTING}", world)
     main_char = _make_char(char_name, char_species, char_coeff, 1)
+    if char_stats:
+        for k in ATTR_KEYS:
+            if k in char_stats and isinstance(char_stats[k], (int, float)):
+                main_char["stats"][k] = int(char_stats[k])
+        # 预设角色不减自由点（属性已定好）
+        main_char["free_points"] = 0
     s = {
         "id": sid, "title": "新冒险",
         "world_setting": world,
@@ -414,6 +420,7 @@ class NewSessionReq(BaseModel):
     char_name: str = "冒险者"
     char_species: str = "人类"
     char_coeff: float = 1.3
+    char_stats: dict = {}
 
 @app.post("/api/session/new")
 def create(req: NewSessionReq = None):
@@ -424,6 +431,7 @@ def create(req: NewSessionReq = None):
         char_name=req.char_name or "冒险者",
         char_species=req.char_species or "人类",
         char_coeff=req.char_coeff,
+        char_stats=req.char_stats if req.char_stats else None,
     )
     _save(s)
     return {"session_id": s["id"], "characters": s["characters"], "active_char_id": s["active_char_id"], "world_setting": s["world_setting"]}
