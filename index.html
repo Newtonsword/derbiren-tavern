@@ -241,6 +241,22 @@ body {
 #settings-status { font-size: 13px; min-height: 20px; }
 #settings-status.ok { color: var(--good); }
 #settings-status.err { color: var(--accent); }
+
+/* 战斗日志 */
+.log-entry {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg);
+  padding: 10px 14px; font-size: 13px;
+}
+.log-entry .log-type {
+  display: inline-block; padding: 1px 8px; border-radius: 3px;
+  font-size: 10px; font-weight: bold; margin-right: 8px;
+}
+.log-type.roll { background: #2a2520; color: var(--gold); }
+.log-type.damage { background: #3a1818; color: var(--accent); }
+.log-type.event { background: #1a2a1a; color: var(--good); }
+.log-entry .log-main { line-height: 1.8; color: var(--text); }
+.log-entry .log-detail { font-size: 11px; color: var(--dim); margin-top: 4px; font-family: monospace; }
+.log-entry .log-narr { font-size: 11px; color: var(--dim); margin-top: 2px; font-style: italic; }
 </style>
 </head>
 <body>
@@ -249,6 +265,7 @@ body {
     <span class="logo">🔥 德比伦酒馆</span>
     <button class="tab-btn active" data-tab="adventure">🗡️ 冒险</button>
     <button class="tab-btn" data-tab="chars">👥 角色</button>
+    <button class="tab-btn" data-tab="log">📊 日志</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
   </div>
   <div id="session-bar">
@@ -280,6 +297,17 @@ body {
       <div id="char-stats-area"></div>
       <div id="char-skills-area"></div>
       <div id="char-passives-area"></div>
+    </div>
+  </div>
+
+  <!-- 战斗日志 -->
+  <div class="tab-panel" id="tab-log">
+    <div id="log-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;color:var(--gold);">📊 数值判定日志</h2>
+        <button onclick="refreshLog()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--dim);cursor:pointer;font-size:12px;font-family:inherit;">🔄 刷新</button>
+      </div>
+      <div id="log-entries" style="font-size:13px;color:var(--dim);text-align:center;padding:24px;">冒险开始后，所有骰子和战斗计算会显示在这里。</div>
     </div>
   </div>
 
@@ -565,6 +593,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'log') refreshLog();
   });
 });
 
@@ -1034,6 +1063,65 @@ async function saveWorld() {
 
 function setWorldField(val) {
   document.getElementById('set-world').value = val || '中世纪奇幻地下城。玩家从冒险者公会大厅开始。';
+}
+
+// ── 战斗日志解析 ──
+
+function refreshLog() {
+  const log = document.getElementById('chat-log');
+  const entries = document.getElementById('log-entries');
+  const msgs = log.querySelectorAll('.msg.gm');
+  if (!msgs.length) {
+    entries.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无日志——先去冒险吧！</div>';
+    return;
+  }
+
+  let items = [];
+  msgs.forEach(msg => {
+    const text = msg.textContent || '';
+    // 提取骰子行
+    const diceLines = text.match(/🎲[^\n]*/g);
+    if (diceLines) {
+      diceLines.forEach(line => {
+        const m = line.match(/🎲\s*(.+?)\s*检定\s*DC[=＝](\d+)\s*→\s*3d6\s*([+-]\d+)?\s*=\s*(\d+)\s*→\s*(.+)/);
+        if (m) {
+          items.push({type:'roll', main:`${m[1]} 检定 DC=${m[2]}`, detail:`3d6${m[3]||''} = ${m[4]}`, result:m[5].trim().includes('成功')?'success':'fail'});
+          return;
+        }
+        // 简化骰子
+        const s = line.replace('🎲','').trim();
+        items.push({type:'roll', main:s, detail:'', result:''});
+      });
+    }
+    // 提取伤害行
+    const dmgLines = text.match(/[^🎲]*?(造成|受到|伤害|HP\s*[-−]\s*\d+|护甲\s*[-−]\s*\d+)[^\n]*/g);
+    if (dmgLines) {
+      dmgLines.forEach(line => {
+        const t = line.trim();
+        if (t && t.length > 5 && !t.startsWith('🎲')) {
+          items.push({type:'damage', main:t.substring(0,80), detail:'', result:''});
+        }
+      });
+    }
+    // CHAR_ADD / LEVEL_UP
+    if (text.includes('[CHAR_ADD:') || text.includes('[LEVEL_UP:')) {
+      items.push({type:'event', main:text.includes('CHAR_ADD')?'新角色加入队伍':'角色升级', detail:'', result:''});
+    }
+  });
+
+  if (!items.length) {
+    entries.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dim);">暂未检测到骰子或战斗数据——多打几架再来！</div>';
+    return;
+  }
+
+  const colors = {roll:'var(--gold)',damage:'var(--accent)',event:'var(--good)'};
+  entries.innerHTML = items.map((item,i) => `
+    <div class="log-entry">
+      <span class="log-type ${item.type}">${item.type==='roll'?'🎲 骰子':item.type==='damage'?'⚔️ 伤害':'📌 事件'}</span>
+      <span class="log-main">${item.main}</span>
+      ${item.detail?`<div class="log-detail">${item.detail}</div>`:''}
+    </div>
+  `).join('');
 }
 
 init();
