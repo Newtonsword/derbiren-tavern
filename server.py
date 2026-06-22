@@ -100,6 +100,7 @@ RAID_WAVES = [
 # ── 招募系统 ──
 
 _recruit_pool = json.loads((BASE / "recruits.json").read_text("utf-8")) if (BASE / "recruits.json").exists() else []
+_equipment_pool = json.loads((BASE / "equipment.json").read_text("utf-8")) if (BASE / "equipment.json").exists() else []
 
 RECRUIT_EVENTS = [
     "巡逻时发现一只受伤的{species}，它用可怜巴巴的眼神看着你。带回去养伤吧。",
@@ -421,6 +422,7 @@ CHAR_TEMPLATE = {
     "stats": {"END": 3, "STR": 3, "SPD": 3, "DEF": 3, "INT": 3, "MP": 3, "WIL": 3},
     "free_points": 3, "pending_skill_points": 0,
     "skills": [], "passives": [],
+    "equipment": {"weapon": None, "armor": None, "accessory": None},
 }
 
 ATTR_KEYS = ("END", "STR", "SPD", "DEF", "INT", "MP", "WIL")
@@ -756,7 +758,7 @@ def chat(req: ChatReq):
     hint_parts = []
     for c in chars:
         st = c["stats"]
-        hint_parts.append(
+        line = (
             f"[{c['name']} Lv.{c['level']} {c['species']}] "
             + " / ".join(f"{k}:{v}" for k, v in st.items())
             + f" | 自由:{c['free_points']} | 技能点:{c['pending_skill_points']}"
@@ -770,6 +772,18 @@ def chat(req: ChatReq):
                 for s in c['skills']
             ) if c['skills'] else "")
         )
+        # 装备信息
+        eq = c.get("equipment", {})
+        if eq:
+            eq_names = []
+            for slot_key in ("weapon", "armor", "accessory"):
+                eq_id = eq.get(slot_key)
+                if eq_id:
+                    eq_item = next((e for e in _equipment_pool if e["id"] == eq_id), None)
+                    eq_names.append(f"{slot_key}:{eq_item['name']}" if eq_item else f"{slot_key}:?")
+            if eq_names:
+                line += f"\n  装备:{', '.join(eq_names)}"
+        hint_parts.append(line)
     hint = "\n".join(hint_parts)
 
     msgs = sess["messages"].copy()
@@ -1144,6 +1158,52 @@ def del_char(sid: str, cid: str):
     _save(s)
     sessions[sid] = s
     return {"ok": True}
+
+# ── 装备系统 ──
+
+@app.get("/api/equipment")
+def list_equipment():
+    """返回全部装备池"""
+    return {"equipment": _equipment_pool}
+
+@app.put("/api/session/{sid}/characters/{cid}/equip")
+def equip_item(sid: str, cid: str, data: dict):
+    """给角色装备一件物品。data: {equipment_id: str}"""
+    s = sessions.get(sid) or _load(sid)
+    if not s: raise HTTPException(404)
+    item_id = data.get("equipment_id", "")
+    item = next((e for e in _equipment_pool if e["id"] == item_id), None)
+    if not item:
+        raise HTTPException(400, f"装备不存在: {item_id}")
+    char = next((c for c in s.get("characters", []) if c["id"] == cid), None)
+    if not char:
+        raise HTTPException(404, "角色不存在")
+    slot = item["slot"]
+    char.setdefault("equipment", {"weapon": None, "armor": None, "accessory": None})
+    old = char["equipment"].get(slot)
+    char["equipment"][slot] = item_id
+    _log_event(s, "equip", f'{char["name"]} 装备了 {item["name"]}（{item["type"]}）' + (f'，替换 {old}' if old else ''), {"char": char["name"], "item": item["name"], "slot": slot})
+    _save(s); sessions[sid] = s
+    return {"ok": True, "equipment": char["equipment"]}
+
+@app.delete("/api/session/{sid}/characters/{cid}/equip/{slot}")
+def unequip_item(sid: str, cid: str, slot: str):
+    """卸下角色指定槽位的装备"""
+    s = sessions.get(sid) or _load(sid)
+    if not s: raise HTTPException(404)
+    char = next((c for c in s.get("characters", []) if c["id"] == cid), None)
+    if not char:
+        raise HTTPException(404, "角色不存在")
+    if slot not in ("weapon", "armor", "accessory"):
+        raise HTTPException(400, f"无效槽位: {slot}")
+    char.setdefault("equipment", {"weapon": None, "armor": None, "accessory": None})
+    old = char["equipment"].get(slot)
+    char["equipment"][slot] = None
+    if old:
+        old_item = next((e for e in _equipment_pool if e["id"] == old), None)
+        _log_event(s, "unequip", f'{char["name"]} 卸下了 {old_item["name"] if old_item else old}', {"char": char["name"], "slot": slot})
+    _save(s); sessions[sid] = s
+    return {"ok": True, "equipment": char["equipment"]}
 
 # ── 技能管理 ──
 

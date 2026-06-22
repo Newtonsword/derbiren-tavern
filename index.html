@@ -262,6 +262,60 @@ body {
 .log-entry .log-main { line-height: 1.8; color: var(--text); }
 .log-entry .log-detail { font-size: 11px; color: var(--dim); margin-top: 4px; font-family: monospace; }
 .log-entry .log-narr { font-size: 11px; color: var(--dim); margin-top: 2px; font-style: italic; }
+
+/* 装备页 */
+.eq-slot-card {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; background: var(--input-bg);
+  display: flex; align-items: center; gap: 10px;
+}
+.eq-slot-card .slot-icon { font-size: 22px; }
+.eq-slot-card .slot-label { font-size: 11px; color: var(--dim); width: 44px; flex-shrink: 0; }
+.eq-slot-card .slot-empty { color: var(--dim); font-size: 12px; font-style: italic; }
+.eq-slot-card .slot-name { color: var(--gold); font-weight: bold; font-size: 13px; }
+.eq-slot-card .slot-desc { font-size: 12px; color: var(--dim); flex: 1; }
+.eq-slot-card .unequip-btn {
+  padding: 4px 10px; border: 1px solid var(--accent); border-radius: 3px;
+  background: none; color: var(--accent); cursor: pointer; font-size: 11px; font-family: inherit;
+}
+.eq-slot-card .unequip-btn:hover { background: var(--accent); color: #fff; }
+.eq-item-card {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; background: var(--input-bg);
+  display: flex; align-items: center; gap: 10px; transition: .15s;
+}
+.eq-item-card:hover { border-color: var(--accent); }
+.eq-item-card .rarity-badge {
+  font-size: 10px; padding: 1px 8px; border-radius: 3px;
+  font-weight: bold; flex-shrink: 0;
+}
+.rarity-common { background: #2a2a2a; color: #8a7a6a; }
+.rarity-uncommon { background: #1a2a1a; color: #5a9e4b; }
+.rarity-rare { background: #1a1a3a; color: #4b9eef; }
+.rarity-epic { background: #2a1a2a; color: #8b5cf6; }
+.eq-item-card .slot-tag {
+  font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: #2a2520; color: var(--accent); flex-shrink: 0;
+}
+.eq-item-card .item-name { color: var(--gold); font-weight: bold; font-size: 13px; }
+.eq-item-card .item-bonus { font-size: 11px; color: var(--good); }
+.eq-item-card .item-special { font-size: 11px; color: #8b5cf6; }
+.eq-item-card .equip-btn {
+  padding: 4px 12px; border: 1px solid var(--good); border-radius: 3px;
+  background: none; color: var(--good); cursor: pointer; font-size: 11px;
+  font-family: inherit; margin-left: auto; flex-shrink: 0;
+}
+.eq-item-card .equip-btn:hover { background: var(--good); color: #fff; }
+.eq-item-card .equip-btn.equipped {
+  border-color: var(--accent); color: var(--accent); cursor: not-allowed; opacity: .6;
+}
+.eq-filter-btn {
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input-bg); color: var(--dim); cursor: pointer; font-size: 12px; font-family: inherit;
+}
+.eq-filter-btn:hover { border-color: var(--accent); color: var(--text); }
+.eq-filter-btn.active { border-color: var(--accent); color: var(--gold); background: #2a2018; }
+
 </style>
 </head>
 <body>
@@ -270,6 +324,7 @@ body {
     <span class="logo">🍺 小魔王地下城</span>
     <button class="tab-btn active" data-tab="adventure">🗡️ 冒险</button>
     <button class="tab-btn" data-tab="chars">👥 角色</button>
+    <button class="tab-btn" data-tab="equipment">⚔️ 装备</button>
     <button class="tab-btn" data-tab="library">📚 技能库</button>
     <button class="tab-btn" data-tab="log">📊 日志</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
@@ -332,6 +387,28 @@ body {
         <button onclick="refreshLog()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--dim);cursor:pointer;font-size:12px;font-family:inherit;">🔄 刷新</button>
       </div>
       <div id="log-entries" style="font-size:13px;color:var(--dim);text-align:center;padding:24px;">冒险开始后，所有骰子和战斗计算会显示在这里。</div>
+    </div>
+  </div>
+
+  <!-- 装备 -->
+  <div class="tab-panel" id="tab-equipment">
+    <div id="equipment-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <h2 style="font-size:16px;color:var(--gold);">⚔️ 装备管理</h2>
+        <select id="eq-char-select" onchange="renderEquipment()" style="padding:6px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;"></select>
+      </div>
+      <!-- 当前装备 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;">🛡️ 已装备</div>
+      <div id="eq-slots" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <!-- 装备仓库 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:8px;">📦 装备仓库</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="eq-filter-btn active" onclick="filterEquipment('all',this)">全部</button>
+        <button class="eq-filter-btn" onclick="filterEquipment('weapon',this)">🗡️ 武器</button>
+        <button class="eq-filter-btn" onclick="filterEquipment('armor',this)">🛡️ 防具</button>
+        <button class="eq-filter-btn" onclick="filterEquipment('accessory',this)">💍 饰品</button>
+      </div>
+      <div id="eq-list" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
   </div>
 
@@ -1801,6 +1878,164 @@ async function refreshLog() {
   entries.innerHTML = (eventHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin-bottom:8px;">📋 游戏事件</div>' + eventHtml : '')
     + (dmgHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin:12px 0 8px;">⚔️ 战斗判定</div>' + dmgHtml : '');
 }
+
+// ── 装备系统 ──
+
+let _equipmentCache = null;
+let _eqFilter = 'all';
+
+async function loadEquipmentCache() {
+  if (_equipmentCache) return _equipmentCache;
+  try {
+    const res = await fetch('/api/equipment');
+    const data = await res.json();
+    _equipmentCache = data.equipment || [];
+  } catch(e) { _equipmentCache = []; }
+  return _equipmentCache;
+}
+
+function getEquippedChar() {
+  const sel = document.getElementById('eq-char-select');
+  const cid = sel.value;
+  return state.characters.find(c => c.id === cid) || state.characters[0];
+}
+
+async function renderEquipment() {
+  const allEq = await loadEquipmentCache();
+  const c = getEquippedChar();
+  if (!c) return;
+
+  // 填充角色选择器
+  const sel = document.getElementById('eq-char-select');
+  sel.innerHTML = state.characters.map(ch =>
+    `<option value="${ch.id}" ${ch.id === c.id ? 'selected' : ''}>${ch.name} Lv.${ch.level}</option>`
+  ).join('');
+
+  const eq = c.equipment || {weapon: null, armor: null, accessory: null};
+
+  // 渲染已装备槽位
+  const slotsDiv = document.getElementById('eq-slots');
+  const slotIcons = {weapon: '🗡️', armor: '🛡️', accessory: '💍'};
+  const slotNames = {weapon: '武器', armor: '防具', accessory: '饰品'};
+  slotsDiv.innerHTML = Object.entries(slotNames).map(([slot, name]) => {
+    const eqId = eq[slot];
+    if (!eqId) {
+      return `<div class="eq-slot-card">
+        <span class="slot-icon">${slotIcons[slot]}</span>
+        <span class="slot-label">${name}</span>
+        <span class="slot-empty">空</span>
+      </div>`;
+    }
+    const item = allEq.find(e => e.id === eqId);
+    if (!item) {
+      return `<div class="eq-slot-card">
+        <span class="slot-icon">${slotIcons[slot]}</span>
+        <span class="slot-label">${name}</span>
+        <span class="slot-name">未知装备</span>
+        <button class="unequip-btn" onclick="unequipItem('${c.id}','${slot}')">卸下</button>
+      </div>`;
+    }
+    const rarityClass = 'rarity-' + (item.rarity || 'common');
+    const bonusStr = item.stats_bonus ? Object.entries(item.stats_bonus)
+      .filter(([k,v]) => v !== 0)
+      .map(([k,v]) => `${k}${v>0?'+':''}${v}`).join(' ') : '';
+    return `<div class="eq-slot-card">
+      <span class="slot-icon">${slotIcons[slot]}</span>
+      <span class="slot-label">${name}</span>
+      <span class="rarity-badge ${rarityClass}">${item.rarity||'common'}</span>
+      <span class="slot-name">${item.name}</span>
+      <span class="slot-desc">${item.description||''}</span>
+      ${bonusStr ? `<span class="item-bonus">${bonusStr}</span>` : ''}
+      ${item.special ? `<span class="item-special">✨ ${item.special}</span>` : ''}
+      ${item.skill ? `<span style="font-size:10px;color:var(--accent);">⚡${item.skill.name}(${item.skill.interval})</span>` : ''}
+      <button class="unequip-btn" onclick="unequipItem('${c.id}','${slot}')">卸下</button>
+    </div>`;
+  }).join('');
+
+  // 渲染装备仓库（过滤）
+  const listDiv = document.getElementById('eq-list');
+  const equippedIds = new Set(Object.values(eq).filter(Boolean));
+  let filtered = allEq;
+  if (_eqFilter !== 'all') filtered = allEq.filter(e => e.slot === _eqFilter);
+
+  listDiv.innerHTML = filtered.map(item => {
+    const isEquipped = equippedIds.has(item.id);
+    const rarityClass = 'rarity-' + (item.rarity || 'common');
+    const bonusStr = item.stats_bonus ? Object.entries(item.stats_bonus)
+      .filter(([k,v]) => v !== 0)
+      .map(([k,v]) => `${k}${v>0?'+':''}${v}`).join(' ') : '';
+    const slotTag = {weapon:'🗡️武器', armor:'🛡️防具', accessory:'💍饰品'}[item.slot] || item.slot;
+    let detailHtml = '';
+    if (item.skill) {
+      detailHtml += `<div style="font-size:11px;color:var(--accent);margin-top:4px;">⚡ 技能: ${item.skill.name}「${item.skill.type}」| ${item.skill.formula} | 消耗:${item.skill.cost} | 冷却:${item.skill.interval}${item.skill.special?' | '+item.skill.special:''}</div>`;
+    }
+    if (item.special) {
+      detailHtml += `<div style="font-size:11px;color:#8b5cf6;">✨ ${item.special}</div>`;
+    }
+    return `<div class="eq-item-card" onclick="this.querySelector('.eq-detail-expand')?.classList.toggle('open')">
+      <span class="rarity-badge ${rarityClass}">${item.rarity||'common'}</span>
+      <span class="slot-tag">${slotTag}</span>
+      <span class="item-name">${item.name}</span>
+      <span class="slot-desc" style="flex:1;">${item.description||''}</span>
+      ${bonusStr ? `<span class="item-bonus">${bonusStr}</span>` : ''}
+      <button class="equip-btn ${isEquipped?'equipped':''}"
+        onclick="event.stopPropagation();equipItem('${c.id}','${item.id}')"
+        ${isEquipped?'disabled':''}>${isEquipped?'已装备':'装备'}</button>
+    </div>
+    <div class="eq-detail-expand" style="display:none;padding:6px 14px 8px;margin:-4px 0 6px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--input-bg);font-size:11px;color:var(--dim);">
+      ${detailHtml}
+      <div style="margin-top:4px;">${item.description||''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function equipItem(cid, itemId) {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters/' + cid + '/equip', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({equipment_id: itemId}),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const c = state.characters.find(ch => ch.id === cid);
+      if (c) c.equipment = data.equipment;
+      renderEquipment();
+      renderCharDetail();
+    }
+  } catch(e) { alert('装备失败: ' + e.message); }
+}
+
+async function unequipItem(cid, slot) {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters/' + cid + '/equip/' + slot, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const c = state.characters.find(ch => ch.id === cid);
+      if (c) c.equipment = data.equipment;
+      renderEquipment();
+      renderCharDetail();
+    }
+  } catch(e) { alert('卸下失败: ' + e.message); }
+}
+
+function filterEquipment(type, btn) {
+  _eqFilter = type;
+  document.querySelectorAll('.eq-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEquipment();
+}
+
+/// 更新 tab 切换——加载装备页时刷新
+const _origTabHandler = document.querySelectorAll('.tab-btn')[0]?.onclick;
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.tab === 'equipment') {
+      setTimeout(() => renderEquipment(), 50);
+    }
+  });
+});
 
 init();
 </script>
