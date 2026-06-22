@@ -1,0 +1,13 @@
+# 密钥
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# 存档（用户个人数据）
+saves/
+
+# 杂项
+screenshot.png

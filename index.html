@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>德比伦酒馆 · Derbiren Tavern</title>
+<style>
+:root {
+  --bg: #1a1410;
+  --panel: #231e1a;
+  --border: #3a3028;
+  --text: #d4c5b2;
+  --dim: #8a7a6a;
+  --accent: #c44b3c;
+  --accent-glow: #e85d4a;
+  --gold: #c9a050;
+  --good: #5a9e4b;
+  --derived-color: #7eb8c9;
+  --input-bg: #1e1914;
+  --msg-user: #2a2520;
+  --msg-gm: #1e1c18;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#app {
+  width: 100%; max-width: 760px; height: 100vh;
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+/* ── 顶栏 ── */
+#topbar {
+  display: flex; align-items: center; padding: 0 10px;
+  background: #1c1814; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#topbar .logo { font-size: 18px; font-weight: bold; color: var(--accent); margin-right: 14px; white-space: nowrap; }
+.tab-btn {
+  background: none; border: none; color: var(--dim); font-size: 15px;
+  padding: 12px 14px; cursor: pointer; border-bottom: 2px solid transparent;
+  transition: .15s; font-family: inherit;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent-glow); border-bottom-color: var(--accent); }
+
+.tab-panel { display: none; flex:1; overflow: hidden; flex-direction: column; }
+.tab-panel.active { display: flex; }
+
+/* ── 会话条 ── */
+#session-bar {
+  display: flex; align-items: center; gap: 8px; padding: 5px 14px;
+  font-size: 12px; color: var(--dim); background: #1a1612;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#session-bar .sid { font-family: monospace; opacity: .7; }
+#session-bar button {
+  background: none; border: 1px solid var(--border); color: var(--dim);
+  padding: 2px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; font-family: inherit;
+}
+#session-bar button:hover { color: var(--text); border-color: var(--accent); }
+
+/* ═══ 冒险 ═══ */
+#chat-log {
+  flex: 1; overflow-y: auto; padding: 16px 16px 8px;
+  display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;
+}
+#chat-log::-webkit-scrollbar { width: 6px; }
+#chat-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.msg {
+  max-width: 90%; padding: 10px 14px; border-radius: 8px;
+  line-height: 1.7; font-size: 14px; white-space: pre-wrap; word-break: break-word;
+  animation: fadeIn .25s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+.msg.gm { background: var(--msg-gm); align-self: flex-start; border-left: 3px solid var(--accent); }
+.msg.user { background: var(--msg-user); align-self: flex-end; border-right: 2px solid var(--dim); color: #c8bfb0; }
+.msg.typing { opacity: .6; font-style: italic; }
+.msg.typing::after { content: "▊"; animation: blink .6s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+#input-area {
+  display: flex; padding: 10px 16px; gap: 8px;
+  border-top: 1px solid var(--border); background: #1c1814;
+}
+#input-area input {
+  flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg); color: var(--text); font-size: 14px; font-family: inherit; outline: none;
+}
+#input-area input:focus { border-color: var(--accent); }
+#send-btn {
+  padding: 10px 20px; background: var(--accent); color: #fff;
+  border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+#send-btn:hover { background: var(--accent-glow); }
+#send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.welcome {
+  text-align: center; color: var(--dim); padding: 32px 16px; font-size: 13px; line-height: 1.8;
+}
+.welcome .big { font-size: 32px; display: block; margin-bottom: 8px; }
+
+/* ═══ 加点 ═══ */
+#stats-panel {
+  padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+}
+#stats-panel h2 { font-size: 16px; color: var(--gold); }
+
+/* 物种 + 等级行 */
+.meta-row {
+  display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  padding: 10px 14px; background: #1a1612; border-radius: 6px; border: 1px solid var(--border);
+}
+.meta-row label { font-size: 13px; color: var(--dim); }
+.meta-row select, .meta-row .lvl {
+  padding: 6px 10px; background: var(--input-bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 14px;
+}
+.free-pts-display { margin-left: auto; font-size: 20px; font-weight: bold; color: var(--accent-glow); }
+
+/* 六大属性 */
+.stat-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid rgba(58,48,40,.5);
+}
+.stat-name { width: 50px; font-weight: bold; font-size: 15px; color: var(--gold); }
+.stat-full { font-size: 11px; color: var(--dim); width: 55px; }
+.stat-desc { flex: 1; font-size: 12px; color: var(--dim); }
+.stat-btn {
+  width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input-bg); color: var(--text); font-size: 16px; cursor: pointer;
+  font-family: inherit; line-height: 1;
+}
+.stat-btn:hover { border-color: var(--accent); }
+.stat-btn:disabled { opacity: .25; cursor: not-allowed; }
+.stat-btn.plus:hover { background: var(--good); border-color: var(--good); color: #fff; }
+.stat-btn.minus:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stat-val { font-size: 18px; font-weight: bold; width: 26px; text-align: center; }
+
+/* 派生属性 */
+.derived-section { margin-top: 4px; }
+.derived-section h3 { font-size: 13px; color: var(--derived-color); margin-bottom: 8px; }
+.derived-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.derived-item {
+  display: flex; justify-content: space-between; padding: 6px 10px;
+  background: #1a1816; border-radius: 4px; font-size: 13px;
+}
+.derived-item .label { color: var(--dim); }
+.derived-item .val { color: var(--derived-color); font-weight: bold; font-family: monospace; }
+
+/* ═══ 设置 ═══ */
+#settings-panel {
+  padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+}
+#settings-panel h2 { font-size: 16px; color: var(--gold); }
+.setting-group { display: flex; flex-direction: column; gap: 6px; }
+.setting-group label { font-size: 13px; color: var(--dim); }
+.setting-group input {
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg); color: var(--text); font-size: 14px; font-family: inherit; outline: none;
+}
+.setting-group input:focus { border-color: var(--accent); }
+.setting-group .hint { font-size: 11px; color: var(--dim); }
+#save-settings-btn {
+  padding: 10px 28px; background: var(--accent); color: #fff;
+  border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+#save-settings-btn:hover { background: var(--accent-glow); }
+#settings-status { font-size: 13px; min-height: 20px; }
+#settings-status.ok { color: var(--good); }
+#settings-status.err { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 顶栏 -->
+  <div id="topbar">
+    <span class="logo">🔥 德比伦酒馆</span>
+    <button class="tab-btn active" data-tab="adventure">🗡️ 冒险</button>
+    <button class="tab-btn" data-tab="stats">✨ 加点</button>
+    <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
+  </div>
+
+  <!-- 会话条 -->
+  <div id="session-bar">
+    <span>SID: <span class="sid" id="sid-display">---</span></span>
+    <button onclick="newAdventure()">新冒险</button>
+  </div>
+
+  <!-- ═══ Tab 1: 冒险 ═══ -->
+  <div class="tab-panel active" id="tab-adventure">
+    <div id="chat-log">
+      <div class="welcome">
+        <span class="big">🔥</span>
+        德比伦翘着尾巴斜眼看着你推门进来。<br>
+        <em>「哼，又来一个杂鱼冒险者。」</em><br><br>
+        输入行动，开始冒险。
+      </div>
+    </div>
+    <div id="input-area">
+      <input id="user-input" placeholder="输入你的行动..." autofocus>
+      <button id="send-btn" onclick="sendMessage()">发送</button>
+    </div>
+  </div>
+
+  <!-- ═══ Tab 2: 加点 ═══ -->
+  <div class="tab-panel" id="tab-stats">
+    <div id="stats-panel">
+      <h2>🔮 角色构建</h2>
+
+      <!-- 物种 + 等级 -->
+      <div class="meta-row">
+        <label>物种</label>
+        <select id="species-sel" onchange="changeSpecies()">
+          <option value="杂鱼">杂鱼 ×1.0</option>
+          <option value="普通" selected>普通 ×1.3</option>
+          <option value="精锐">精锐 ×1.8</option>
+          <option value="精英">精英 ×2.5</option>
+          <option value="Boss">Boss ×4.0</option>
+        </select>
+        <label>Lv.</label>
+        <span class="lvl" id="level-display">1</span>
+        <span class="free-pts-display">自由点: <span id="free-pts">20</span></span>
+      </div>
+
+      <!-- 六大属性 -->
+      <div id="stat-list"></div>
+
+      <!-- 派生属性 -->
+      <div class="derived-section">
+        <h3>📊 衍生属性</h3>
+        <div class="derived-grid" id="derived-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Tab 3: 设置 ═══ -->
+  <div class="tab-panel" id="tab-settings">
+    <div id="settings-panel">
+      <h2>⚙️ API 设置</h2>
+      <div class="setting-group">
+        <label>API Key</label>
+        <input id="set-key" type="password" placeholder="sk-...">
+        <span class="hint">DeepSeek / OpenAI 兼容格式</span>
+      </div>
+      <div class="setting-group">
+        <label>Base URL</label>
+        <input id="set-base" placeholder="https://api.deepseek.com">
+      </div>
+      <div class="setting-group">
+        <label>模型名</label>
+        <input id="set-model" placeholder="deepseek-chat">
+      </div>
+      <button id="save-settings-btn" onclick="saveSettings()">💾 保存</button>
+      <div id="settings-status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════ 常量 ═══════════════
+const SPECIES = {
+  "杂鱼": {coef:1.0, desc:"史莱姆、蝙蝠"},
+  "普通": {coef:1.3, desc:"人类、哥布林"},
+  "精锐": {coef:1.8, desc:"兽人、石像鬼"},
+  "精英": {coef:2.5, desc:"幼龙、巨魔"},
+  "Boss":  {coef:4.0, desc:"成年龙、魔王"},
+};
+const ATTRS = [
+  {key:"END", name:"耐力", full:"Endurance", desc:"→ HP=END×200, 体力=END×50"},
+  {key:"STR", name:"力量", full:"Strength", desc:"近战伤害、负重判定"},
+  {key:"SPD", name:"速度", full:"Speed", desc:"先手、闪避、间隔减免"},
+  {key:"DEF", name:"防御", full:"Defense", desc:"减伤率=DEF/(DEF+15)"},
+  {key:"INT", name:"法强", full:"Intelligence", desc:"→ 魔法储量=INT×20, 法术伤害"},
+  {key:"WIL", name:"精神", full:"Willpower", desc:"→ 精神条=WIL×10, 崩盘线=WIL×50"},
+];
+
+// ═══════════════ 状态 ═══════════════
+let state = {
+  session_id: '',
+  stats: { END:3, STR:3, SPD:3, DEF:3, INT:3, WIL:3, free:20, species:"普通", level:1 },
+  isLoading: false,
+};
+
+function derived(stats) {
+  const end = stats.END||3, spd = stats.SPD||3, int_ = stats.INT||3;
+  const wil = stats.WIL||3, def = stats.DEF||3;
+  return {
+    HP: end * 200,
+    "体力": end * 50,
+    "魔法储量": int_ * 20,
+    "精神条": wil * 10,
+    "崩盘线": wil * 50,
+    "防御减伤": Math.round(def/(def+15)*100) + "%",
+    "间隔减免": Math.round(spd + end*0.5) + "%",
+  };
+}
+
+// ═══════════════ 初始化 ═══════════════
+async function init() {
+  try {
+    const res = await fetch('/api/settings');
+    const s = await res.json();
+    document.getElementById('set-base').value = s.base_url || '';
+    document.getElementById('set-model').value = s.model || '';
+    document.getElementById('set-key').placeholder = s.has_key ? '(已设置)' : 'sk-...';
+  } catch(e) {}
+  await loadOrCreateSession();
+}
+
+async function loadOrCreateSession() {
+  const saved = localStorage.getItem('derbiren_sid');
+  if (saved) {
+    try {
+      const res = await fetch('/api/session/' + saved);
+      if (res.ok) {
+        const data = await res.json();
+        state.session_id = data.session_id;
+        state.stats = data.stats;
+        document.getElementById('sid-display').textContent = state.session_id;
+        document.getElementById('species-sel').value = state.stats.species || '普通';
+        document.getElementById('level-display').textContent = state.stats.level || 1;
+        renderStats();
+        updateDerived();
+        restoreHistory(data.history || []);
+        return;
+      }
+    } catch(e) {}
+  }
+  await newAdventure();
+}
+
+function restoreHistory(history) {
+  const log = document.getElementById('chat-log');
+  log.innerHTML = '';
+  for (const m of history) {
+    addMsg(m.role === 'user' ? 'user' : 'gm', m.content);
+  }
+  scrollBottom();
+}
+
+async function newAdventure() {
+  const species = document.getElementById('species-sel')?.value || '普通';
+  const res = await fetch('/api/session/new?species=' + encodeURIComponent(species), { method: 'POST' });
+  const data = await res.json();
+  state.session_id = data.session_id;
+  state.stats = data.stats;
+  localStorage.setItem('derbiren_sid', state.session_id);
+  document.getElementById('sid-display').textContent = state.session_id;
+  document.getElementById('species-sel').value = state.stats.species || '普通';
+  document.getElementById('level-display').textContent = state.stats.level || 1;
+  document.getElementById('chat-log').innerHTML = `
+    <div class="welcome"><span class="big">🔥</span>德比伦翘着尾巴斜眼看着你推门进来。<br><em>「哼，又来一个杂鱼冒险者。」</em><br><br>输入行动，开始冒险。</div>`;
+  renderStats();
+  updateDerived();
+}
+
+// ═══════════════ Tab 切换 ═══════════════
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ═══════════════ 冒险 ═══════════════
+function addMsg(cls, text) {
+  const log = document.getElementById('chat-log');
+  const welcome = log.querySelector('.welcome');
+  if (welcome) welcome.remove();
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.textContent = text;
+  log.appendChild(div);
+}
+function scrollBottom() {
+  const log = document.getElementById('chat-log');
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendMessage() {
+  if (state.isLoading) return;
+  const input = document.getElementById('user-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  state.isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  addMsg('user', msg);
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'msg gm typing';
+  typingDiv.textContent = '德比伦正在翻看剧本';
+  document.getElementById('chat-log').appendChild(typingDiv);
+  scrollBottom();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({message:msg, session_id:state.session_id}),
+    });
+    const data = await res.json();
+    typingDiv.remove();
+    addMsg('gm', data.narrative);
+    scrollBottom();
+    if (data.session_id && data.session_id !== state.session_id) {
+      state.session_id = data.session_id;
+      localStorage.setItem('derbiren_sid', state.session_id);
+      document.getElementById('sid-display').textContent = state.session_id;
+    }
+  } catch(e) {
+    typingDiv.remove();
+    addMsg('gm', '🔥💢 连接切断！检查 API 设置吧杂鱼！(' + e.message + ')');
+    scrollBottom();
+  }
+  state.isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+}
+document.getElementById('user-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+// ═══════════════ 加点 ═══════════════
+function renderStats() {
+  const list = document.getElementById('stat-list');
+  list.innerHTML = ATTRS.map(({key, name, full, desc}) => {
+    const val = state.stats[key] || 3;
+    return `<div class="stat-row">
+      <span class="stat-name">${name}</span>
+      <span class="stat-full">${full}</span>
+      <span class="stat-desc">${desc}</span>
+      <button class="stat-btn minus" onclick="adjustStat('${key}',-1)" ${val<=0?'disabled':''}>−</button>
+      <span class="stat-val">${val}</span>
+      <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${state.stats.free<=0?'disabled':''}>+</button>
+    </div>`;
+  }).join('');
+  document.getElementById('free-pts').textContent = state.stats.free;
+}
+
+function updateDerived() {
+  const d = derived(state.stats);
+  const grid = document.getElementById('derived-grid');
+  grid.innerHTML = Object.entries(d).map(([k,v]) =>
+    `<div class="derived-item"><span class="label">${k}</span><span class="val">${v}</span></div>`
+  ).join('');
+}
+
+async function adjustStat(key, delta) {
+  const newVal = (state.stats[key]||3) + delta;
+  if (newVal < 0 || newVal > 99) return;
+  if (delta > 0 && state.stats.free <= 0) return;
+  state.stats[key] = newVal;
+  state.stats.free -= delta;
+  renderStats();
+  updateDerived();
+  if (state.session_id) {
+    try {
+      await fetch('/api/session/' + state.session_id + '/stats', {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(state.stats),
+      });
+    } catch(e) {}
+  }
+}
+
+async function changeSpecies() {
+  const species = document.getElementById('species-sel').value;
+  const coef = SPECIES[species]?.coef || 1.3;
+  state.stats.species = species;
+  state.stats.free = Math.max(5, Math.round(coef * 15));
+  // Reset attributes to 3
+  for (const a of ATTRS) state.stats[a.key] = 3;
+  renderStats();
+  updateDerived();
+  // Sync
+  if (state.session_id) {
+    await fetch('/api/session/' + state.session_id + '/stats', {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(state.stats),
+    });
+  }
+}
+
+// ═══════════════ 设置 ═══════════════
+async function saveSettings() {
+  const key = document.getElementById('set-key').value.trim();
+  const base = document.getElementById('set-base').value.trim();
+  const model = document.getElementById('set-model').value.trim();
+  const status = document.getElementById('settings-status');
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({api_key:key, base_url:base, model:model}),
+    });
+    if (res.ok) {
+      status.textContent = '✅ 保存成功';
+      status.className = 'ok';
+      document.getElementById('set-key').value = '';
+      document.getElementById('set-key').placeholder = '(已设置)';
+    } else {
+      status.textContent = '❌ 保存失败';
+      status.className = 'err';
+    }
+  } catch(e) {
+    status.textContent = '❌ 网络错误: ' + e.message;
+    status.className = 'err';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
