@@ -445,6 +445,8 @@ SPECIES_STARTER_SKILLS = {
         "skills": [
             {"name":"利爪","type":"斩击","formula":"20+2.0×STR+1.5×SPD","cost":"耐力18","interval":"3.0s","hit_formula":"75+2.0×STR+1.0×SPD","category":"主动"},
             {"name":"扫尾","type":"钝击","formula":"15+1.5×STR+1.0×END","cost":"耐力22","interval":"4.5s","hit_formula":"85+1.5×STR","category":"主动"},
+            {"name":"暗影闪避","type":"防御","formula":"闪避+25(单次)","cost":"耐力15","interval":"6.0s","hit_formula":"","category":"主动"},
+            {"name":"灵巧格挡","type":"防御","formula":"15+2.0×STR+1.0×END/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"黑暗视觉","effect":"黑暗环境不受命中惩罚，命中+10%"}],
     },
@@ -452,6 +454,7 @@ SPECIES_STARTER_SKILLS = {
         "skills": [
             {"name":"龙息","type":"法术","formula":"30+3.0×INT+1.0×MP","cost":"蓝18","interval":"5.0s","hit_formula":"90","category":"主动"},
             {"name":"尾击","type":"钝击","formula":"25+2.5×STR+0.5×END","cost":"耐力20","interval":"3.5s","hit_formula":"75+2.0×STR","category":"主动"},
+            {"name":"龙鳞格挡","type":"防御","formula":"25+2.5×STR+1.5×END/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"鳞甲天生","effect":"DEF等效+1，钝伤减伤+10%"}],
     },
@@ -459,6 +462,7 @@ SPECIES_STARTER_SKILLS = {
         "skills": [
             {"name":"缠绕","type":"钝击","formula":"10+1.5×STR+1.0×SPD","cost":"耐力15","interval":"4.0s","hit_formula":"80+2.0×SPD","category":"主动"},
             {"name":"鞭打","type":"钝击","formula":"15+2.0×STR+0.5×SPD","cost":"耐力12","interval":"2.5s","hit_formula":"75+1.5×STR+1.0×SPD","category":"主动"},
+            {"name":"触须护盾","type":"防御","formula":"10+1.5×STR+1.0×END/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"多触须","effect":"每回合额外一次触须攻击(50%伤害)"}],
     },
@@ -466,6 +470,7 @@ SPECIES_STARTER_SKILLS = {
         "skills": [
             {"name":"俯冲","type":"钝击","formula":"25+2.0×SPD+1.0×STR","cost":"耐力18","interval":"4.0s","hit_formula":"75+3.0×SPD","category":"主动"},
             {"name":"碎石","type":"钝击","formula":"15+1.5×STR+0.5×END","cost":"耐力20","interval":"5.0s","hit_formula":"85+1.0×STR","category":"主动"},
+            {"name":"石翼守护","type":"防御","formula":"25+2.5×END+1.5×DEF/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"石化皮肤","effect":"减伤+8%，受击概率石化攻击者(-3SPD)"}],
     },
@@ -473,6 +478,8 @@ SPECIES_STARTER_SKILLS = {
         "skills": [
             {"name":"撕咬","type":"刺击","formula":"20+3.0×SPD+1.0×STR","cost":"耐力10","interval":"2.0s","hit_formula":"70+3.5×SPD","category":"主动"},
             {"name":"飞踢","type":"钝击","formula":"18+2.5×SPD+0.5×STR","cost":"耐力14","interval":"3.0s","hit_formula":"75+2.5×SPD","category":"主动"},
+            {"name":"幻影步","type":"防御","formula":"闪避+30(单次)","cost":"耐力12","interval":"5.0s","hit_formula":"","category":"主动"},
+            {"name":"轻巧格挡","type":"防御","formula":"8+2.0×SPD+0.5×STR/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"闪避本能","effect":"闪避+10"}],
     },
@@ -495,6 +502,7 @@ SPECIES_STARTER_SKILLS = {
         "skills": [
             {"name":"匕首","type":"刺击","formula":"12+1.5×SPD+1.0×STR","cost":"耐力8","interval":"2.0s","hit_formula":"70+2.0×SPD","category":"主动"},
             {"name":"陷阱","type":"钝击","formula":"15+1.0×INT(固定)","cost":"耐力20","interval":"8.0s","hit_formula":"120","category":"主动"},
+            {"name":"魔法护盾","type":"防御","formula":"8+1.0×INT+0.5×MP/秒","cost":"蓝0.8/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"狡诈","effect":"先手时命中+15%"}],
     },
