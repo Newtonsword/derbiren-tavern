@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>德比伦酒馆 · Derbiren Tavern</title>
+<title>小魔王地下城 · Monster Dungeon Tavern</title>
 <style>
 :root {
   --bg: #1a1410; --panel: #231e1a; --border: #3a3028; --text: #d4c5b2;
@@ -69,6 +69,17 @@ body {
 @keyframes blink { 50% { opacity: 0; } }
 .welcome { text-align: center; color: var(--dim); padding: 32px 16px; font-size: 13px; line-height: 1.8; }
 .welcome .big { font-size: 32px; display: block; margin-bottom: 8px; }
+.big-adventure-btn {
+  padding: 14px 48px; background: linear-gradient(135deg, var(--accent), #d4533c);
+  color: #fff; border: none; border-radius: 8px; font-size: 18px;
+  cursor: pointer; font-family: inherit; margin-top: 12px;
+  letter-spacing: 2px; transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 2px 12px rgba(196,75,60,.3);
+}
+.big-adventure-btn:hover {
+  transform: scale(1.06); box-shadow: 0 4px 20px rgba(196,75,60,.5);
+  background: linear-gradient(135deg, var(--accent-glow), #e85d4a);
+}
 
 #input-area {
   display: flex; padding: 10px 16px; gap: 8px;
@@ -85,12 +96,6 @@ body {
 }
 #send-btn:hover { background: var(--accent-glow); }
 #send-btn:disabled { opacity: .4; cursor: not-allowed; }
-#dice-btn {
-  padding: 10px 12px; background: #2a2520; color: var(--gold);
-  border: 1px solid var(--border); border-radius: 6px;
-  font-size: 16px; cursor: pointer; font-family: inherit;
-}
-#dice-btn:hover { background: #3a3028; color: #fff; }
 .msg.roll { background: #1a1c18; align-self: center; border: 1px solid var(--border);
   font-family: monospace; font-size: 13px; text-align: center; color: var(--gold); }
 .msg.roll .big { font-size: 22px; display: block; }
@@ -262,30 +267,35 @@ body {
 <body>
 <div id="app">
   <div id="topbar">
-    <span class="logo">🔥 德比伦酒馆</span>
+    <span class="logo">🍺 小魔王地下城</span>
     <button class="tab-btn active" data-tab="adventure">🗡️ 冒险</button>
     <button class="tab-btn" data-tab="chars">👥 角色</button>
+    <button class="tab-btn" data-tab="library">📚 技能库</button>
     <button class="tab-btn" data-tab="log">📊 日志</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
   </div>
   <div id="session-bar">
     <span>SID: <span class="sid" id="sid-display">---</span></span>
     <button onclick="newAdventure()">新冒险</button>
+    <button onclick="showSaveModal()">💾 存档</button>
+    <button onclick="showLoadModal()">📂 读档</button>
+    <span id="day-display" style="margin-left:auto;color:var(--gold);font-weight:bold;font-size:12px;display:none;"></span>
   </div>
 
   <!-- 冒险 -->
   <div class="tab-panel active" id="tab-adventure">
     <div id="chat-log">
-      <div class="welcome">
+      <div class="welcome" id="welcome-msg">
         <span class="big">🔥</span>
-        德比伦翘着尾巴，斜眼打量着你。<br>
-        <em>「哼，又一个来地下城送死的杂鱼冒险者。」</em><br><br>
-        描述你的行动，冒险开始。
+        欢迎来到小魔王地下城。<br>
+        <em>「选一只魔物，开始你的地下城之旅吧。」</em><br><br>
+        <button onclick="newAdventure()" class="big-adventure-btn">🔥 开始新冒险</button>
+        <br><span style="font-size:11px;color:var(--dim);margin-top:12px;display:inline-block;">或从下方存档中读取</span>
       </div>
     </div>
     <div id="input-area">
+      <button id="day-btn" onclick="advanceDay()" title="推进天数" style="padding:10px 12px;background:linear-gradient(135deg,#2a2018,#3a2a1a);color:var(--gold);border:1px solid #4a3a28;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.background='linear-gradient(135deg,#3a2a1a,#4a3020)'" onmouseout="this.style.borderColor='#4a3a28';this.style.background='linear-gradient(135deg,#2a2018,#3a2a1a)'">📅 下一天</button>
       <input id="user-input" placeholder="描述你的行动——推开沉重的橡木门，走进昏暗的酒馆..." autofocus>
-      <button id="dice-btn" onclick="quickRoll()" title="快捷掷骰">🎲</button>
       <button id="send-btn" onclick="sendMessage()">发送</button>
     </div>
   </div>
@@ -297,6 +307,20 @@ body {
       <div id="char-stats-area"></div>
       <div id="char-skills-area"></div>
       <div id="char-passives-area"></div>
+    </div>
+  </div>
+
+  <!-- 技能库 -->
+  <div class="tab-panel" id="tab-library">
+    <div id="library-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;color:var(--gold);">📚 技能模板库</h2>
+        <button onclick="loadLibrary()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--dim);cursor:pointer;font-size:12px;font-family:inherit;">🔄 刷新</button>
+      </div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">
+        💡 模板角色提供数值参考——AI 生成技能时以此库的倍率逻辑为准。点击技能展开设计理由。
+      </div>
+      <div id="library-entries" style="font-size:13px;color:var(--dim);text-align:center;padding:24px;">加载中...</div>
     </div>
   </div>
 
@@ -333,10 +357,63 @@ body {
       <h2 style="margin-top:16px;">🌍 世界观</h2>
       <div class="setting-group">
         <label>自定义世界设定（影响 GM 叙事风格）</label>
-        <textarea id="set-world" style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:vertical;min-height:60px;">猫科龙地下城——暗无天日的地底迷宫，狭窄洞穴与宽阔穹顶交错。冒险者公会管理探索秩序，怪物与远古宝藏等待勇者。</textarea>
+        <textarea id="set-world" style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:vertical;min-height:60px;">小魔王地下城——你是一只被赶鸭子上架的小魔王。冒险者公会三天两头派人来砸场子。你的魔物子民等着你带领它们让入侵者有来无回。</textarea>
       </div>
       <button id="save-world-btn" onclick="saveWorld()" style="padding:10px 28px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;">💾 保存世界观</button>
       <div id="world-status" style="font-size:13px;min-height:20px;"></div>
+
+      <h2 style="margin-top:16px;cursor:pointer;user-select:none;" onclick="toggleDevMode()">🔧 开发者模式 <span id="dev-toggle-icon" style="font-size:14px;color:var(--dim);">▶</span></h2>
+      <div id="dev-panel" style="display:none;margin-top:8px;border:1px solid #4a3020;border-radius:8px;padding:14px;background:#1a1410;">
+        <div style="font-size:12px;color:var(--gold);margin-bottom:10px;">⚠️ 开发者工具——直接操作游戏数据</div>
+
+        <!-- 经验 -->
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--dim);">给角色加经验</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <select id="dev-exp-char" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;"></select>
+            <input id="dev-exp-amount" type="number" value="200" min="1" max="99999" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devAddExp()" style="padding:6px 12px;background:var(--good);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">加经验</button>
+          </div>
+        </div>
+
+        <!-- 直接设置等级 -->
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--dim);">设置等级</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <select id="dev-lv-char" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;"></select>
+            <input id="dev-lv-value" type="number" value="5" min="1" max="99" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devSetLevel()" style="padding:6px 12px;background:#c44b3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">设等级</button>
+          </div>
+        </div>
+
+        <!-- 跳转天数 -->
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--dim);">跳转天数/波次</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <span style="font-size:11px;color:var(--dim);align-self:center;">天</span>
+            <input id="dev-day" type="number" value="5" min="1" max="999" style="width:60px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <span style="font-size:11px;color:var(--dim);align-self:center;">波</span>
+            <input id="dev-wave" type="number" value="1" min="1" max="99" style="width:60px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <span style="font-size:11px;color:var(--dim);align-self:center;">倒计时</span>
+            <input id="dev-dta" type="number" value="1" min="0" max="99" style="width:60px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devSetDay()" style="padding:6px 12px;background:#8b5cf6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">跳转</button>
+          </div>
+        </div>
+
+        <!-- 修改属性 -->
+        <div style="margin-bottom:8px;">
+          <label style="font-size:12px;color:var(--dim);">修改属性（选角色→属性→值）</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <select id="dev-stat-char" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;"></select>
+            <select id="dev-stat-key" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+              <option value="END">END</option><option value="STR">STR</option><option value="SPD">SPD</option><option value="DEF">DEF</option><option value="INT">INT</option><option value="MP">MP</option><option value="WIL">WIL</option>
+            </select>
+            <input id="dev-stat-val" type="number" value="10" min="1" max="99" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devSetStat()" style="padding:6px 12px;background:var(--gold);color:#1a1410;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">修改</button>
+          </div>
+        </div>
+        <div id="dev-status" style="font-size:11px;color:var(--good);min-height:16px;margin-top:6px;"></div>
+      </div>
     </div>
   </div>
 
@@ -345,24 +422,32 @@ body {
     <div class="modal-box">
       <h2>🔥 开始新冒险</h2>
       <div style="margin-bottom:14px;">
-        <label style="font-size:13px;color:var(--dim);">🌍 世界观设定</label>
-        <textarea id="create-world" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:60px;margin-top:4px;">猫科龙地下城——暗无天日的地底迷宫，狭窄洞穴与宽阔穹顶交错。冒险者公会管理探索秩序，怪物与远古宝藏等待勇者。战斗是日常，但酒馆火炉旁也不缺闲聊。</textarea>
+        <label style="font-size:13px;color:var(--dim);">😈 你的名字（魔王）</label>
+        <input id="create-player-name" placeholder="给自己取个名字" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;margin-top:4px;">
       </div>
       <div style="margin-bottom:14px;">
-        <label style="font-size:13px;color:var(--dim);">👤 你的角色</label>
+        <label style="font-size:13px;color:var(--dim);">🌍 世界观设定</label>
+        <textarea id="create-world" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:60px;margin-top:4px;">小魔王地下城——你是一只被赶鸭子上架的小魔王，管理着这座破破烂烂的远古迷宫。冒险者公会视你为经验包，三天两头派人来砸场子。你的魔物子民（猫龙、触手怪、石像鬼…）等着你带领它们让入侵者有来无回。</textarea>
+      </div>
+      <div style="font-size:11px;color:#c9a050;margin-bottom:12px;line-height:1.6;background:#1a1410;border:1px solid #3a2a18;border-radius:6px;padding:8px 12px;">
+        ⚠️ 本游戏机制（魔物物种、raid波次、战斗公式、天数系统等）均围绕默认世界观「小魔王地下城」设计。自定义世界观会改变叙事风格，但不会自动匹配对应的敌人/物种/规则——请知悉后再修改。
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;color:var(--dim);">👤 选择初始魔物</label>
         <div style="display:flex;gap:8px;margin-top:4px;">
-          <input id="create-name" placeholder="角色名" value="冒险者" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;">
+          <input id="create-name" placeholder="魔物名字" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;" oninput="this.dataset.manual='1'">
           <select id="create-species" onchange="onSpeciesChange()" style="padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;">
           </select>
         </div>
         <div id="create-species-info" style="font-size:11px;color:var(--dim);margin-top:4px;"></div>
+        <div id="species-lore-panel"></div>
       </div>
       <div style="margin-bottom:12px;">
         <label style="font-size:13px;color:var(--dim);cursor:pointer;user-select:none;" onclick="var el=document.getElementById('preset-list');el.style.display=el.style.display==='none'?'flex':'none'">📚 角色库 <span style="font-size:10px;">(点击展开，选预设角色)</span></label>
-        <div id="preset-list" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        <div id="preset-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
-        初始七属性各3，自由点数21。可在冒险中随时加点。
+        初始七属性各3，自由点数3。可在冒险中随时加点。
       </div>
       <div style="display:flex;gap:8px;">
         <button class="primary" onclick="createAdventure()" style="padding:8px 24px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-family:inherit;">开始冒险</button>
@@ -382,10 +467,38 @@ body {
         <button onclick="showCustomSkill()">✏️ 自定义技能</button>
         <button onclick="closeSkillModal()">关闭</button>
       </div>
-      <textarea id="custom-skill-input" style="display:none;" placeholder="描述你想要的技能，德比伦会帮你转成标准格式...&#10;例：一个快速的二连斩，每次伤害不高但能打断施法"></textarea>
+      <textarea id="custom-skill-input" style="display:none;" placeholder="描述你想要的技能，系统会帮你转成标准格式...&#10;例：一个快速的二连斩，每次伤害不高但能打断施法"></textarea>
       <div class="modal-actions" id="custom-actions" style="display:none;">
         <button class="primary" onclick="submitCustomSkill()">生成技能</button>
         <button onclick="hideCustomInput()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 存档 Modal -->
+  <div class="modal-overlay" id="save-modal">
+    <div class="modal-box">
+      <h2>💾 存档</h2>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:13px;color:var(--dim);">存档名称</label>
+        <input id="save-name" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;margin-top:4px;" placeholder="给存档起个名字...">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="primary" onclick="doSave()" style="padding:8px 24px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-family:inherit;">💾 保存</button>
+        <button onclick="closeSaveModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 读档 Modal -->
+  <div class="modal-overlay" id="load-modal">
+    <div class="modal-box">
+      <h2>📂 读档</h2>
+      <div id="load-list" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <div style="text-align:center;padding:20px;color:var(--dim);">加载中...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button onclick="closeLoadModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
       </div>
     </div>
   </div>
@@ -408,50 +521,119 @@ let state = {
   active_char_id: '',
   isLoading: false,
   modal_char_id: '',
+  draft: null,
+  day: 1,
+  days_until_attack: 5,
+  raid_wave: 1,
 };
 
 const SPECIES_PRESETS = [
-  {name:"人类", coeff:1.3, desc:"普通×1.3 | 适应性最强的种族"},
-  {name:"精灵", coeff:1.3, desc:"普通×1.3 | 敏捷优雅，擅长弓箭"},
-  {name:"矮人", coeff:1.3, desc:"普通×1.3 | 坚韧耐打，锻造大师"},
-  {name:"兽人", coeff:1.8, desc:"精锐×1.8 | 蛮力惊人，战斗民族"},
-  {name:"蜥蜴人", coeff:1.8, desc:"精锐×1.8 | 鳞甲天生，沼泽猎手"},
-  {name:"猫科龙", coeff:2.5, desc:"精英×2.5 | 黑暗视觉，龙族血脉"},
-  {name:"巨魔", coeff:2.5, desc:"精英×2.5 | 再生能力，皮糙肉厚"},
-  {name:"龙裔", coeff:4.0, desc:"Boss×4.0 | 远古龙血，碾压一切"},
-  {name:"哥布林", coeff:1.0, desc:"杂鱼×1.0 | 弱小但狡诈"},
+  {name:"猫龙", coeff:2.5, desc:"精英×2.5 | 龙族血脉+猫科身体，黑暗视觉，可进化龙形/人形 | 最强初始魔物之一"},
+  {name:"幼龙", coeff:2.5, desc:"精英×2.5 | 纯血幼龙，鳞甲天生，龙息威力巨大但成长缓慢"},
+  {name:"触手怪", coeff:1.8, desc:"精锐×1.8 | 多触须同时攻击，控制技丰富，地下城本土魔物"},
+  {name:"石像鬼", coeff:1.8, desc:"精锐×1.8 | 石化皮肤高防御，窄洞飞行无视地形，黑暗主场"},
+  {name:"杀人兔", coeff:1.8, desc:"精锐×1.8 | 体型小速度快，暴击率高，萌外表下是杀戮机器"},
+  {name:"野狼", coeff:1.3, desc:"普通×1.3 | SPD/STR均衡，游击撕咬，狼群战术增伤"},
+  {name:"史莱姆", coeff:1.0, desc:"杂鱼×1.0 | 最弱初始——但进化路线多，凝胶身体钝伤减半"},
+  {name:"哥布林", coeff:1.0, desc:"杂鱼×1.0 | 弱小但狡诈，陷阱专精，后期可转职哥布林王"},
 ];
 
 const CHARACTER_PRESETS = [
   {
-    name:"猫科龙幼崽 CT-001", species:"猫科龙", coeff:2.5,
+    name:"猫龙幼崽「夜牙」", species:"猫龙", coeff:2.5,
     stats:{END:5,STR:6,SPD:8,DEF:3,INT:4,MP:3,WIL:7},
-    desc:"精英×2.5 | 黑暗视觉 | 利爪·扫尾·龙吼·吐息",
+    desc:"一只在月圆之夜从龙蛋中破壳的猫龙幼崽，左粉右绿的异色瞳里藏着未觉醒的龙族血脉。它用猫科的前爪在你腿上踩奶，用龙族的后爪在地上刨出火花——还不知道自己将来能长成什么样的怪物。",
+    skills:[
+      {name:"利爪",type:"斩击",formula:"20+2.0×STR+1.5×SPD",cost:"耐力18",interval:"3.0s",hit_formula:"75+2.0×STR+1.0×SPD",category:"主动"},
+      {name:"扫尾",type:"钝击",formula:"15+1.5×STR+1.0×END",cost:"耐力22",interval:"4.5s",hit_formula:"85+1.5×STR",category:"主动"},
+    ],
+    passives:[
+      {name:"黑暗视觉",effect:"黑暗环境不受命中惩罚，命中+10%"},
+    ],
   },
   {
-    name:"莱托", species:"人类", coeff:1.3,
-    stats:{END:4,STR:4,SPD:5,DEF:2,INT:1,MP:2,WIL:4},
-    desc:"Lv.5 初出茅庐冒险者 | 破皮甲·短剑 | 挥砍·突刺",
+    name:"幼龙「烬」", species:"幼龙", coeff:2.5,
+     stats:{END:7,STR:7,SPD:4,DEF:6,INT:5,MP:4,WIL:6},
+    desc:"从火山灰烬中苏醒的红龙幼崽，鳞片还带着余温。它歪着脑袋打量你，鼻孔冒出的火星点燃了地上的枯草——然后它打了个喷嚏，真正的龙息喷了你一脸。好在你是魔王，不然已经被烤熟了。",
+    skills:[
+      {name:"龙息",type:"法术",formula:"30+3.0×INT+1.0×MP",cost:"蓝18",interval:"5.0s",hit_formula:"90",category:"主动"},
+      {name:"尾击",type:"钝击",formula:"25+2.5×STR+0.5×END",cost:"耐力20",interval:"3.5s",hit_formula:"75+2.0×STR",category:"主动"},
+    ],
+    passives:[
+      {name:"鳞甲天生",effect:"DEF等效+1，钝伤减伤+10%"},
+    ],
   },
   {
-    name:"巴尔德", species:"人类", coeff:1.3,
-    stats:{END:8,STR:7,SPD:3,DEF:8,INT:2,MP:3,WIL:9},
-    desc:"Lv.8 持盾壮汉 | 铁甲钢盾 | 盾猛·锤击·坚守",
+    name:"触手怪「墨墨」", species:"触手怪", coeff:1.8,
+    stats:{END:5,STR:6,SPD:5,DEF:3,INT:3,MP:4,WIL:4},
+    desc:"地下暗河里漂出来的一团暗紫色生物——不，它不能算'一只'，它是'一团'。墨墨不发声音，只用触手轻轻卷住你的手指，吸盘传来的微弱脉搏让你意识到它在听你的心跳。它不需要你说话，它已经知道你是自己人。",
+    skills:[
+      {name:"缠绕",type:"钝击",formula:"10+1.5×STR+1.0×SPD",cost:"耐力15",interval:"4.0s",hit_formula:"80+2.0×SPD",category:"主动"},
+      {name:"鞭打",type:"钝击",formula:"15+2.0×STR+0.5×SPD",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×STR+1.0×SPD",category:"主动"},
+    ],
+    passives:[
+      {name:"多触须",effect:"每回合额外一次触须攻击(50%伤害)"},
+    ],
   },
   {
-    name:"梅里克", species:"人类", coeff:1.3,
-    stats:{END:3,STR:2,SPD:4,DEF:2,INT:8,MP:5,WIL:4},
-    desc:"Lv.7 法杖瘦子 | 布袍 | 奥术飞弹·酸液·法力盾",
+    name:"石像鬼「灰翼」", species:"石像鬼", coeff:1.8,
+    stats:{END:6,STR:5,SPD:6,DEF:7,INT:2,MP:2,WIL:5},
+    desc:"地下城穹顶上蹲了三百年的石雕，在你踏入地下城的那一刻睁开了无瞳的石眼。它选择你作为守护对象——不是因为你的力量，而是因为它已经等了三百年，不想再等了。灰翼不能说话，但它会用石翼替你挡住每一支飞来的箭。",
+    skills:[
+      {name:"俯冲",type:"钝击",formula:"25+2.0×SPD+1.0×STR",cost:"耐力18",interval:"4.0s",hit_formula:"75+3.0×SPD",category:"主动"},
+      {name:"碎石",type:"钝击",formula:"15+1.5×STR+0.5×END",cost:"耐力20",interval:"5.0s",hit_formula:"85+1.0×STR",category:"主动"},
+    ],
+    passives:[
+      {name:"石化皮肤",effect:"减伤+8%，受击概率石化攻击者(-3SPD)"},
+    ],
   },
   {
-    name:"波尔", species:"人类", coeff:1.3,
-    stats:{END:5,STR:5,SPD:7,DEF:3,INT:2,MP:2,WIL:5},
-    desc:"Lv.6 弓手 | 轻皮甲长弓 | 瞄准·速射·断筋箭",
+    name:"杀人兔「雪球」", species:"杀人兔", coeff:1.8,
+    stats:{END:3,STR:8,SPD:9,DEF:1,INT:1,MP:1,WIL:5},
+    desc:"一团毛茸茸的白色小球在你脚边蹭来蹭去——可爱到你想蹲下来摸它。别摸。上一次摸雪球的是个3级的冒险者，现在他的手指还挂在菌菇森林第三棵蘑菇下面。雪球喜欢你，所以它只是蹭你。对不喜欢的人……它笑的时候你会看到的。",
+    skills:[
+      {name:"撕咬",type:"刺击",formula:"20+3.0×SPD+1.0×STR",cost:"耐力10",interval:"2.0s",hit_formula:"70+3.5×SPD",category:"主动"},
+      {name:"飞踢",type:"钝击",formula:"18+2.5×SPD+0.5×STR",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.5×SPD",category:"主动"},
+    ],
+    passives:[
+      {name:"闪避本能",effect:"闪避+10"},
+    ],
   },
   {
-    name:"缇娅", species:"人类", coeff:1.3,
-    stats:{END:5,STR:4,SPD:7,DEF:4,INT:6,MP:4,WIL:7},
-    desc:"Lv.7 斗篷少女 | 双短剑符文布 | 双斩·符文刺·招架反击",
+    name:"野狼「灰牙」", species:"野狼", coeff:1.3,
+    stats:{END:4,STR:5,SPD:6,DEF:2,INT:1,MP:1,WIL:4},
+    desc:"一头被狼群驱逐的年轻公狼——因为在狩猎时犹豫了一秒，被头狼咬掉了半只耳朵。灰牙本来会在冬天的森林里饿死，直到它闻到了地下城飘出的魔力气味。它走进来，看见了你，然后就坐下了。它找了很久的主人——不管那是什么物种。",
+    skills:[
+      {name:"撕咬",type:"刺击",formula:"15+2.0×STR+1.5×SPD",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×STR+1.0×SPD",category:"主动"},
+      {name:"扑击",type:"钝击",formula:"20+1.5×STR+2.0×SPD",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×SPD+1.0×STR",category:"主动"},
+    ],
+    passives:[
+      {name:"狼群战术",effect:"队友在场时伤害+10%"},
+    ],
+  },
+  {
+    name:"史莱姆「啵咕」", species:"史莱姆", coeff:1.0,
+    stats:{END:3,STR:2,SPD:2,DEF:1,INT:1,MP:1,WIL:2},
+    desc:"一坨淡蓝色的果冻，会弹跳，会蠕动，会把你的钥匙吞进肚子里然后又吐出来——上面全是黏糊糊的消化液。啵咕不是废物，它只是一张白纸。喂它火元素变熔岩史莱姆，喂它冰元素变冰晶史莱姆——或者什么也不喂，看它自己在战斗中被揍出抗性来。",
+    skills:[
+      {name:"撞击",type:"钝击",formula:"10+1.5×END+0.5×STR",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.0×END",category:"主动"},
+      {name:"缩壳",type:"防御",formula:"8+1.0×END/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"凝胶身体",effect:"钝伤减半"},
+    ],
+  },
+  {
+    name:"哥布林「吱吱」", species:"哥布林", coeff:1.0,
+    stats:{END:2,STR:2,SPD:5,DEF:1,INT:6,MP:4,WIL:5},
+    desc:"一只瘦小的绿皮哥布林，身上挂着用破布和生锈零件拼凑的工具包。吱吱的部落被冒险者公会剿灭了——它是唯一的幸存者。它跪在你面前时膝盖还在发抖，但那双黄色小眼睛里有一种只有亡命徒才有的狂热：它认定你是能带它报仇的魔王。",
+    skills:[
+      {name:"陷阱",type:"特殊",formula:"20+2.5×INT",cost:"耐力15",interval:"8.0s",hit_formula:"自动命中",category:"主动"},
+      {name:"投毒",type:"法术",formula:"10+2.0×INT+1.0×MP",cost:"蓝12",interval:"4.0s",hit_formula:"75+2.0×INT",category:"主动"},
+    ],
+    passives:[
+      {name:"战术大脑",effect:"每回合额外一次战术行动"},
+    ],
   },
 ];
 
@@ -479,13 +661,15 @@ async function loadOrCreateSession() {
         state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
         document.getElementById('sid-display').textContent = state.session_id;
         setWorldField(data.world_setting);
+        if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
         renderAll();
         restoreHistory(data.history || []);
         return;
       }
     } catch(e) {}
   }
-  await newAdventure();
+  // 无存档 → 保持欢迎页，等用户点按钮
+  // （欢迎页按钮和顶部「新冒险」都会调用 newAdventure()）
 }
 
 async function newAdventure() {
@@ -514,22 +698,55 @@ function renderPresets() {
 
 function selectPreset(idx) {
   const p = CHARACTER_PRESETS[idx];
-  document.getElementById('create-name').value = p.name;
+  const nameInput = document.getElementById('create-name');
+  nameInput.value = p.name;
+  nameInput.dataset.manual = '1';
   const sel = document.getElementById('create-species');
   for (let i = 0; i < sel.options.length; i++) {
     if (sel.options[i].value === p.species) { sel.selectedIndex = i; break; }
   }
   onSpeciesChange();
-  // 存选中的预设数据
-  document.getElementById('create-name').dataset.preset = JSON.stringify(p.stats);
+  // 存选中的预设数据（含技能）
+  nameInput.dataset.preset = JSON.stringify({stats:p.stats, skills:p.skills||[], passives:p.passives||[]});
 }
 
 function onSpeciesChange() {
   const sel = document.getElementById('create-species');
   const opt = sel.options[sel.selectedIndex];
-  const coeff = parseFloat(opt.dataset.coeff || 1.3);
-  const preset = SPECIES_PRESETS.find(s => s.name === opt.value);
+  const species = opt.value;
+  const preset = SPECIES_PRESETS.find(s => s.name === species);
   document.getElementById('create-species-info').textContent = preset ? preset.desc : '';
+  loadSpeciesLore(species);
+  // 自动填充魔物名（可手动改）
+  const nameInput = document.getElementById('create-name');
+  if (!nameInput.dataset.manual) {
+    nameInput.value = opt.value;
+  }
+}
+
+let _speciesLore = null;
+async function loadSpeciesLore(species) {
+  const div = document.getElementById('species-lore-panel');
+  if (!div) return;
+  if (!_speciesLore) {
+    try {
+      const r = await fetch('/api/species');
+      _speciesLore = (await r.json()).species || {};
+    } catch(e) { _speciesLore = {}; }
+  }
+  const lore = _speciesLore[species];
+  if (!lore) { div.innerHTML = ''; return; }
+  div.innerHTML = `
+    <div style="background:var(--msg-gm);border:1px solid var(--border);border-radius:5px;padding:10px;margin-top:8px;font-size:12px;line-height:1.7;max-height:180px;overflow-y:auto;">
+      <div style="color:var(--gold);font-weight:bold;margin-bottom:4px;">📖 ${lore.tag} · ${lore.name}</div>
+      <div style="color:var(--text);margin-bottom:6px;">${lore.lore.split('\\n')[0]}</div>
+      <div style="color:var(--dim);font-size:11px;">
+        <b>战斗风格：</b>${lore.combat_style}<br>
+        <b>进化路线：</b>${(lore.evolution||[]).join(' → ')}<br>
+        <b>技能特色：</b>${(lore.skill_traits||[]).join(' · ')}<br>
+        <b>属性倾向：</b>${lore.base_stats_hint||''}
+      </div>
+    </div>`;
 }
 
 function closeCreateModal() {
@@ -537,20 +754,30 @@ function closeCreateModal() {
 }
 
 async function createAdventure() {
-  const world = document.getElementById('create-world').value.trim() || '猫科龙地下城。';
-  const name = document.getElementById('create-name').value.trim() || '冒险者';
+  const world = document.getElementById('create-world').value.trim() || '小魔王地下城。';
+  const playerName = document.getElementById('create-player-name').value.trim() || '小魔王';
+  const name = document.getElementById('create-name').value.trim() || species;
   const sel = document.getElementById('create-species');
   const opt = sel.options[sel.selectedIndex];
   const species = opt.value;
   const coeff = parseFloat(opt.dataset.coeff || 1.3);
   // 读取预设属性
-  let charStats = null;
-  try { charStats = JSON.parse(document.getElementById('create-name').dataset.preset || 'null'); } catch(e) {}
+  let charStats = null, charSkills = null, charPassives = null;
+  try {
+    const preset = JSON.parse(document.getElementById('create-name').dataset.preset || 'null');
+    if (preset) {
+      charStats = preset.stats || preset;  // 兼容旧格式（直接是stats对象）
+      charSkills = preset.skills || null;
+      charPassives = preset.passives || null;
+    }
+  } catch(e) {}
 
   document.getElementById('create-modal').classList.remove('show');
 
-  const body = {world_setting: world, char_name: name, char_species: species, char_coeff: coeff};
+  const body = {world_setting: world, player_name: playerName, char_name: name, char_species: species, char_coeff: coeff};
   if (charStats) body.char_stats = charStats;
+  if (charSkills) body.char_skills = charSkills;
+  if (charPassives) body.char_passives = charPassives;
 
   const res = await fetch('/api/session/new', {
     method:'POST', headers:{'Content-Type':'application/json'},
@@ -562,16 +789,83 @@ async function createAdventure() {
   state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
   localStorage.setItem('derbiren_sid', state.session_id);
   document.getElementById('sid-display').textContent = state.session_id;
+  if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
   document.getElementById('chat-log').innerHTML =
-    `<div class="welcome"><span class="big">🔥</span>德比伦翘着尾巴，斜眼看着你推门进来。<br><em>「哼，${name}，${species}？又一个来地下城送死的——行吧，本大爷勉为其难当你的GM。」</em><br><br>描述你的行动，冒险开始。</div>`;
+    `<div class="welcome"><span class="big">🔥</span>冒险开始。<br><em>「${playerName}，地下城在等着你。」</em></div>`;
   renderAll();
+  // 自动触发 GM 开场叙述
+  setTimeout(() => autoStart(), 300);
+}
+
+async function autoStart() {
+  if (state.isLoading) return;
+  state.isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'msg gm typing';
+  typingDiv.textContent = 'GM 正在编写剧情...';
+  document.getElementById('chat-log').appendChild(typingDiv);
+  scrollBottom();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:'[START]', session_id:state.session_id}),
+    });
+    const data = await res.json();
+    typingDiv.remove();
+    addMsg('gm', data.narrative);
+    scrollBottom();
+    if (data.characters_updated) {
+      state.characters = data.characters_updated;
+      renderAll();
+    }
+  } catch(e) {
+    typingDiv.remove();
+  }
+  state.isLoading = false;
+  document.getElementById('send-btn').disabled = false;
 }
 
 function restoreHistory(history) {
   const log = document.getElementById('chat-log');
   log.innerHTML = '';
+  if (!history || history.length === 0) {
+    // 空历史 → 显示欢迎页
+    log.innerHTML = `<div class="welcome" id="welcome-msg">
+        <span class="big">🔥</span>
+        欢迎来到小魔王地下城。<br>
+        <em>「选一只魔物，开始你的地下城之旅吧。」</em><br><br>
+        <button onclick="newAdventure()" class="big-adventure-btn">🔥 开始新冒险</button>
+        <br><span style="font-size:11px;color:var(--dim);margin-top:12px;display:inline-block;">或从下方存档中读取</span>
+      </div>`;
+    return;
+  }
   for (const m of history) addMsg(m.role === 'user' ? 'user' : 'gm', m.content);
   scrollBottom();
+}
+
+function updateDayDisplay() {
+  const el = document.getElementById('day-display');
+  if (!el) return;
+  el.style.display = 'inline';
+  const dta = state.days_until_attack;
+  if (dta > 0) {
+    el.textContent = `📅 第${state.day}天 · 第${state.raid_wave}波 ⚔️ ${dta}天后`;
+  } else if (dta === 0) {
+    el.textContent = `📅 第${state.day}天 · 第${state.raid_wave}波 ⚠️ 来袭！`;
+  } else {
+    el.textContent = `📅 第${state.day}天`;
+  }
+}
+
+async function advanceDay() {
+  if (state.isLoading) return;
+  const input = document.getElementById('user-input');
+  const old = input.value;
+  input.value = '/day';
+  await sendMessage();
+  input.value = old;
 }
 
 async function refreshCharacters() {
@@ -593,17 +887,72 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'library') loadLibrary();
     if (btn.dataset.tab === 'log') refreshLog();
   });
 });
 
 // ── 冒险 ──
+function parseChoices(text) {
+  // 检测 "现在你可以：" 后面的 **选项** 列表
+  const marker = /(?:现在你可以[：:]|你可以[：:]|请选择[：:]|行动选项[：:])/;
+  const idx = text.search(marker);
+  if (idx === -1) return { narrative: text, choices: [] };
+
+  const narrative = text.substring(0, idx).trim();
+  const rest = text.substring(idx);
+
+  // 提取 **粗体** 开头的选项行（"**xxx**描述" 或 "- **xxx**描述"）
+  const choiceRegex = /[-•*]?\s*\*\*(.+?)\*\*\s*[，,。.]?\s*(.*?)(?=\n|$)/g;
+  const choices = [];
+  let m;
+  while ((m = choiceRegex.exec(rest)) !== null) {
+    const label = m[1].trim();
+    const desc = m[2].trim();
+    choices.push({ label, desc, full: desc ? `${label}——${desc}` : label });
+  }
+  return { narrative, choices };
+}
+
 function addMsg(cls, text) {
   const log = document.getElementById('chat-log');
   const w = log.querySelector('.welcome'); if (w) w.remove();
   const div = document.createElement('div');
   div.className = 'msg ' + cls;
-  div.textContent = text;
+
+  if (cls === 'gm') {
+    const { narrative, choices } = parseChoices(text);
+    if (choices.length > 0) {
+      // 叙述部分
+      if (narrative) {
+        const p = document.createElement('div');
+        p.style.whiteSpace = 'pre-wrap';
+        p.textContent = narrative;
+        div.appendChild(p);
+      }
+      // 选项按钮
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px;';
+      choices.forEach(c => {
+        const btn = document.createElement('button');
+        btn.textContent = c.label;
+        btn.title = c.full;
+        btn.style.cssText = 'text-align:left;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;';
+        btn.onmouseover = () => { btn.style.borderColor='var(--accent)'; btn.style.background='#2a2018'; };
+        btn.onmouseout = () => { btn.style.borderColor='var(--border)'; btn.style.background='var(--input-bg)'; };
+        btn.onclick = () => {
+          document.getElementById('user-input').value = c.full;
+          sendMessage();
+        };
+        btnRow.appendChild(btn);
+      });
+      div.appendChild(btnRow);
+    } else {
+      div.textContent = text;
+    }
+  } else {
+    div.textContent = text;
+  }
   log.appendChild(div);
 }
 function scrollBottom() {
@@ -623,19 +972,28 @@ async function sendMessage() {
     return;
   }
 
+  // 德比伦模式：/derbiren 或 @德比伦 或 /系统 触发
+  let derb = false;
+  let finalMsg = msg;
+  if (/^\/derbiren\b/i.test(msg) || /^@德比伦/i.test(msg) || /^\/系统/i.test(msg)) {
+    derb = true;
+    finalMsg = msg.replace(/^\/derbiren\s*/i, '').replace(/^@德比伦\s*/i, '').replace(/^\/系统\s*/i, '');
+    if (!finalMsg.trim()) finalMsg = '在呢，杂鱼～有什么事找本大爷？';
+  }
+
   state.isLoading = true;
   document.getElementById('send-btn').disabled = true;
   addMsg('user', msg);
   const typingDiv = document.createElement('div');
   typingDiv.className = 'msg gm typing';
-  typingDiv.textContent = '德比伦正在翻看剧本';
+  typingDiv.textContent = derb ? '德比伦晃了晃尾巴...' : 'GM 正在编写剧情...';
   document.getElementById('chat-log').appendChild(typingDiv);
   scrollBottom();
 
   try {
     const res = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({message:msg, session_id:state.session_id}),
+      body: JSON.stringify({message: derb ? '[DERBIREN] ' + finalMsg : finalMsg, session_id:state.session_id}),
     });
     const data = await res.json();
     typingDiv.remove();
@@ -649,6 +1007,8 @@ async function sendMessage() {
     if (data.characters_updated) {
       await refreshCharacters();
     }
+    // 更新天数显示
+    if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
     // 如果当前在日志tab，自动刷新
     if (document.getElementById('tab-log').classList.contains('active')) refreshLog();
   } catch(e) {
@@ -676,11 +1036,13 @@ function renderCharTabs() {
     const badge = c.pending_skill_points > 0 ? `<span class="badge">${c.pending_skill_points}</span>` : '';
     return `<button class="char-tab${active}" onclick="selectChar('${c.id}')">${c.name} Lv.${c.level}${badge}</button>`;
   }).join('');
-  row.innerHTML = parts + `<button class="char-add-btn" onclick="addCharManually()" title="手动添加角色">+</button>`;
+  row.innerHTML = parts;
 }
 
 function selectChar(cid) {
   state.active_char_id = cid;
+  // 切换角色 → 丢弃当前草稿
+  if (state.draft && state.draft.charId !== cid) state.draft = null;
   // 同步到后端
   fetch('/api/session/' + state.session_id + '/characters/' + cid, {
     method:'PUT', headers:{'Content-Type':'application/json'},
@@ -714,40 +1076,67 @@ function renderCharDetail() {
   const c = getActiveChar();
   if (!c) return;
 
-  const st = c.stats;
-  // 衍生值
+  const isDraft = state.draft && state.draft.charId === c.id;
+  // 草稿模式下用预览属性
+  const st = {...c.stats};
+  if (isDraft) {
+    for (const [k, d] of Object.entries(state.draft.deltas)) {
+      st[k] = (st[k] || 3) + d;
+    }
+  }
+  // 衍生值（仅角色级——技能命中/间隔见各技能详情）
   const HP = st.END * 200;
   const stamina = st.END * 50;
   const mana = st.MP * 20;
   const spirit = st.WIL * 10;
   const defRate = (st.DEF / (st.DEF + 15) * 100).toFixed(1);
-  const speedMod = (st.SPD + st.END * 0.5).toFixed(1);
+  const moveSpd = st.SPD;
+  const dodge = (st.SPD * 2.5 + st.DEF * 0.5).toFixed(1);
+
+  const freeLeft = isDraft ? state.draft.freeLeft : c.free_points;
 
   // 属性
   const statsArea = document.getElementById('char-stats-area');
+  const draftBanner = isDraft
+    ? `<div style="background:#2a2018;border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="color:var(--gold);font-weight:bold;">📝 预览中 — 剩余 <span style="color:var(--accent-glow);">${state.draft.freeLeft}</span> 点</span>
+        <button onclick="applyDraft()" style="padding:4px 14px;background:var(--good);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">✅ 确认应用</button>
+        <button onclick="cancelDraft()" style="padding:4px 14px;background:#444;color:var(--text);border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">❌ 取消</button>
+      </div>`
+    : '';
+
   statsArea.innerHTML = `
+    ${draftBanner}
     <div class="stats-section">
       <h3>🔮 ${c.name} · ${c.species} · Lv.${c.level}</h3>
       <div class="free-pts">剩余点数：<span id="free-pts">${c.free_points}</span></div>
       ${ATTRS.map(({key, name, desc}) => {
-        const val = st[key] || 3;
+        const baseVal = c.stats[key] || 3;
+        const delta = isDraft ? (state.draft.deltas[key] || 0) : 0;
+        const displayVal = baseVal + delta;
+        const deltaStr = delta > 0 ? `<span style="color:var(--good);font-size:11px;margin-left:2px;">+${delta}</span>` : '';
+        const canPlus = freeLeft > 0 && displayVal < 99;
+        const canMinus = isDraft && delta > 0;
         return `<div class="stat-row">
           <span class="stat-name">${name}</span>
           <span class="stat-desc">${desc}</span>
-          <span class="stat-val">${val}</span>
-          <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${c.free_points<=0?'disabled':''}>+</button>
+          <span class="stat-val">${displayVal}${deltaStr}</span>
+          ${canMinus ? `<button class="stat-btn minus" onclick="adjustStat('${key}',-1)">−</button>` : ''}
+          <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${!canPlus?'disabled':''}>+</button>
         </div>`;
       }).join('')}
     </div>
     <div class="stats-section" style="border-top:1px solid var(--border);padding-top:10px;">
-      <h3>📐 衍生数值</h3>
+      <h3>📐 衍生数值${isDraft ? '<span style="color:var(--gold);font-size:11px;"> — 预览</span>' : ''}</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;line-height:1.8;">
         <div>❤️ 生命值 <span style="color:var(--accent);">${HP}</span></div>
         <div>🏃 体力 <span style="color:var(--gold);">${stamina}</span></div>
         <div>💎 魔法储量 <span style="color:#4b9eef;">${mana}</span></div>
         <div>🧠 精神条 <span style="color:#8b5cf6;">${spirit}</span></div>
         <div>🛡️ 减伤率 <span style="color:var(--dim);">${defRate}%</span></div>
-        <div>⚡ 间隔减免 <span style="color:var(--dim);">${speedMod}%</span></div>
+        <div>💨 基础闪避 <span style="color:#5a9e4b;">+${dodge}</span></div>
+        <div style="grid-column:1/-1;font-size:10px;color:var(--dim);margin-top:2px;">
+          💡 命中率/间隔见各技能详情（每技能独立公式）| 闪避含远程距离修正(+1/米,上限+20) | 被近战牵制时闪避-15(高速可减免)</div>
       </div>
     </div>`;
 
@@ -764,7 +1153,7 @@ function renderCharDetail() {
       <div id="sk-list-${c.id}" style="${skCollapsed ? 'display:none' : ''}">
         ${(c.skills || []).map(sk => {
           const expanded = localStorage.getItem('skill_expanded_' + sk.id) === '1';
-          const typeColors = {斩击:'#c9a050', 刺击:'#5a9e4b', 钝击:'#c44b3c', 精神:'#8b5cf6', 法术:'#4b9eef'};
+          const typeColors = {斩击:'#c9a050', 刺击:'#5a9e4b', 钝击:'#c44b3c', 精神:'#8b5cf6', 法术:'#4b9eef', 防御:'#6b8e9e'};
           const dmg = evalFormula(sk.formula, st);
           return `<div class="skill-row">
             <div class="skill-summary" onclick="toggleSkillDetail('${sk.id}')">
@@ -777,6 +1166,7 @@ function renderCharDetail() {
             <div class="skill-detail${expanded ? ' open' : ''}" id="sk-det-${sk.id}">
               <div>📝 ${sk.description || '无描述'}</div>
               <div>📐 <span class="s-formula">${sk.formula}</span> = ${dmg} 伤害</div>
+              ${sk.hit_formula ? `<div>🎯 命中: <span style="color:#5a9e4b;">${sk.hit_formula}</span>${sk.hit_formula.match(/^\d+$/) ? '' : ' = ' + evalHit(sk.hit_formula, st)}</div>` : ''}
               <div>💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
               ${(c.pending_skill_points > 0 && sk.level < sk.max_level)
                 ? `<button class="upgrade-btn" onclick="upgradeSkill('${sk.id}')">⬆ 升级到 Lv.${sk.level+1}</button>`
@@ -801,7 +1191,7 @@ function renderCharDetail() {
           📜 被动
         </h3>
         <div id="pa-list-${c.id}" style="${paCollapsed ? 'display:none' : ''}">
-          ${c.passives.map(p => `<div class="passive-row"><span class="p-name">${p.name}</span> ${p.description}</div>`).join('')}
+          ${c.passives.map(p => `<div class="passive-row"><span class="p-name">${p.name}</span> ${p.effect || p.description}</div>`).join('')}
         </div>
       </div>`;
   } else {
@@ -826,6 +1216,11 @@ function evalFormula(formula, stats) {
     }
     return formula; // 无法求值就显示原公式
   } catch(e) { return '?'; }
+}
+
+// 命中公式求值（与 evalFormula 相同逻辑）
+function evalHit(formula, stats) {
+  return evalFormula(formula, stats);
 }
 
 function toggleSkills(cid) {
@@ -858,11 +1253,40 @@ function togglePassives(cid) {
 async function adjustStat(key, delta) {
   const c = getActiveChar();
   if (!c) return;
-  const newVal = (c.stats[key] || 3) + delta;
-  if (newVal < 0 || newVal > 99) return;
-  if (delta > 0 && c.free_points <= 0) return;
-  c.stats[key] = newVal;
-  c.free_points -= delta;
+
+  if (delta > 0) {
+    // 加点 → 进入/维持草稿模式
+    if (!state.draft || state.draft.charId !== c.id) {
+      state.draft = {
+        charId: c.id,
+        deltas: {END:0, STR:0, SPD:0, DEF:0, INT:0, MP:0, WIL:0},
+        freeLeft: c.free_points,
+      };
+    }
+    if (state.draft.freeLeft <= 0) return;
+    const curVal = c.stats[key] + (state.draft.deltas[key] || 0);
+    if (curVal >= 99) return;
+    state.draft.deltas[key] = (state.draft.deltas[key] || 0) + 1;
+    state.draft.freeLeft--;
+  } else {
+    // 减点 → 只能撤销本次草稿中刚加的点
+    if (!state.draft || state.draft.charId !== c.id) return;
+    if ((state.draft.deltas[key] || 0) <= 0) return;
+    state.draft.deltas[key]--;
+    state.draft.freeLeft++;
+  }
+  renderCharDetail();
+}
+
+async function applyDraft() {
+  if (!state.draft) return;
+  const c = state.characters.find(x => x.id === state.draft.charId);
+  if (!c) return;
+  const deltas = state.draft.deltas;
+  for (const [k, d] of Object.entries(deltas)) {
+    if (d > 0) { c.stats[k] = (c.stats[k] || 3) + d; c.free_points -= d; }
+  }
+  state.draft = null;
   renderCharDetail();
   try {
     await fetch('/api/session/' + state.session_id + '/characters/' + c.id, {
@@ -870,6 +1294,11 @@ async function adjustStat(key, delta) {
       body: JSON.stringify({stats: c.stats, free_points: c.free_points}),
     });
   } catch(e) {}
+}
+
+function cancelDraft() {
+  state.draft = null;
+  renderCharDetail();
 }
 
 // ── 技能 Modal ──
@@ -889,25 +1318,106 @@ function closeSkillModal() {
 
 async function loadSkillOptions() {
   const container = document.getElementById('modal-skills');
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">德比伦正在编技能...</div>';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">正在生成技能...</div>';
   try {
     const res = await fetch(
       '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills/generate',
       { method: 'POST' }
     );
     const data = await res.json();
-    const skills = data.skills || [];
-    container.innerHTML = skills.map(sk => `
+    const actives = data.active || [];
+    const passive = data.passive;
+    let html = '';
+    // 主动技能
+    html += '<div style="font-size:13px;color:var(--gold);margin-bottom:6px;">⚔️ 主动技能</div>';
+    html += actives.map(sk => `
       <div class="skill-option">
         <div class="so-name">${sk.name} <span class="so-type">${sk.type}</span></div>
         <div class="so-desc">${sk.description || ''}</div>
         <div class="so-formula">${sk.formula}</div>
+        ${sk.hit_formula ? `<div class="so-formula" style="color:#5a9e4b;font-size:11px;">🎯 命中: ${sk.hit_formula}</div>` : ''}
         <div class="so-meta">💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
         <button class="pick-btn" onclick='pickSkill(${JSON.stringify(sk).replace(/'/g,"&#39;")})'>选择</button>
       </div>
     `).join('');
+    // 被动技能
+    if (passive) {
+      html += '<div style="font-size:13px;color:#8b5cf6;margin:12px 0 6px;">📜 被动技能</div>';
+      html += `
+        <div class="skill-option" style="border-color:#8b5cf6;">
+          <div class="so-name">${passive.name} <span class="so-type" style="color:#8b5cf6;">被动</span></div>
+          <div class="so-desc">${passive.description || ''}</div>
+          <div class="so-formula" style="color:#8b5cf6;">✨ ${passive.effect || ''}</div>
+          <button class="pick-btn" style="background:#8b5cf6;" onclick='pickSkill(${JSON.stringify(passive).replace(/'/g,"&#39;")})'>选择</button>
+        </div>`;
+    }
+    container.innerHTML = html || '<div style="color:var(--dim);text-align:center;padding:20px;">未能生成技能，请重试</div>';
   } catch(e) {
     container.innerHTML = '<div style="color:var(--accent);">加载失败：' + e.message + '</div>';
+  }
+}
+
+// ── 技能模板库 ──
+async function loadLibrary() {
+  const entries = document.getElementById('library-entries');
+  entries.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">加载中...</div>';
+  try {
+    const res = await fetch('/api/library');
+    const data = await res.json();
+    const templates = data.templates || [];
+    const encountered = data.encountered || [];
+
+    let html = '';
+
+    // 遭遇角色
+    if (encountered.length > 0) {
+      html += '<div style="font-size:13px;color:var(--gold);margin-bottom:4px;">🎭 遭遇角色</div>';
+      html += encountered.map(c => `
+        <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:8px 10px;margin-bottom:6px;font-size:12px;">
+          <strong>${c.name}</strong> <span style="color:var(--dim);">${c.species} Lv.${c.level}</span>
+          <div style="color:var(--dim);margin-top:2px;">${Object.entries(c.stats||{}).map(([k,v])=>`${k}:${v}`).join(' | ')}</div>
+          ${c.skills?.length ? '<div style="color:var(--accent);margin-top:2px;">⚔️ ' + c.skills.map(s=>s.name).join(' · ') + '</div>' : ''}
+          ${c.passives?.length ? '<div style="color:#8b5cf6;margin-top:2px;">📜 ' + c.passives.map(p=>p.name).join(' · ') + '</div>' : ''}
+        </div>
+      `).join('');
+      html += '<hr style="border-color:var(--border);margin:12px 0;">';
+    }
+
+    // 模板角色
+    html += '<div style="font-size:13px;color:var(--gold);margin-bottom:4px;">📚 设计模板</div>';
+    html += templates.map(tpl => `
+      <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:8px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <strong style="color:var(--gold);">${tpl.name}</strong>
+          <span style="color:var(--dim);">${tpl.species} Lv.${tpl.level} · ${tpl.style||''}</span>
+        </div>
+        <div style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+          <div style="color:var(--dim);margin-bottom:4px;">${Object.entries(tpl.stats||{}).map(([k,v])=>`<b>${k}</b>:${v}`).join('  ')}</div>
+          ${tpl.skills?.map(sk => `
+            <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
+              <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⏱${sk.interval||''}</span></div>
+              <div style="color:var(--text);">伤害: ${sk.formula||''}</div>
+              ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${sk.hit_formula}</div>` : ''}
+              ${sk.rationale ? `<div style="color:var(--dim);font-size:11px;margin-top:3px;font-style:italic;">💡 ${sk.rationale}</div>` : ''}
+            </div>
+          `).join('') || ''}
+          ${tpl.passives?.map(p => `
+            <div style="background:#1a1612;border-left:2px solid #8b5cf6;border-radius:0 4px 4px 0;padding:4px 8px;margin:4px 0;">
+              <b style="color:#8b5cf6;">📜 ${p.name}</b> <span style="color:var(--text);">${p.effect||''}</span>
+            </div>
+          `).join('') || ''}
+          ${tpl.design_notes ? `<div style="color:var(--dim);font-size:11px;margin-top:4px;">📝 ${tpl.design_notes}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    if (!templates.length && !encountered.length) {
+      html = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无模板——创建角色并升级后会出现在这里。</div>';
+    }
+
+    entries.innerHTML = html;
+  } catch(e) {
+    entries.innerHTML = '<div style="color:var(--accent);text-align:center;padding:20px;">🔥 加载失败：' + e.message + '</div>';
   }
 }
 
@@ -959,7 +1469,7 @@ async function submitCustomSkill() {
   if (!desc) return;
   const container = document.getElementById('modal-skills');
   container.style.display = '';
-  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">德比伦正在解读你的描述...</div>';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">正在解读描述...</div>';
   hideCustomInput();
   try {
     const res = await fetch(
@@ -1042,19 +1552,6 @@ async function doDiceRoll(diceExpr) {
   }
 }
 
-function quickRoll() {
-  const input = document.getElementById('user-input');
-  const current = input.value.trim();
-  if (current) {
-    input.value = '/r ' + current;
-    sendMessage();
-  } else {
-    input.value = '/r 3d6';
-    sendMessage();
-  }
-  input.value = '';
-}
-
 // ── 设置 ──
 async function saveSettings() {
   const key = document.getElementById('set-key').value.trim();
@@ -1104,89 +1601,206 @@ async function saveWorld() {
 }
 
 function setWorldField(val) {
-  document.getElementById('set-world').value = val || '猫科龙地下城——暗无天日的地底迷宫，狭窄洞穴与宽阔穹顶交错。冒险者公会管理探索秩序，怪物与远古宝藏等待勇者。';
+  document.getElementById('set-world').value = val || '小魔王地下城——你是一只小魔王，冒险者公会三天两头来砸场子。';
+}
+
+// ── 开发者模式 ──
+
+function toggleDevMode() {
+  const panel = document.getElementById('dev-panel');
+  const icon = document.getElementById('dev-toggle-icon');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block'; icon.textContent = '▼'; refreshDevChars();
+  } else {
+    panel.style.display = 'none'; icon.textContent = '▶';
+  }
+}
+
+function refreshDevChars() {
+  ['dev-exp-char','dev-lv-char','dev-stat-char'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = (state.characters || []).map(c =>
+      `<option value="${c.name}">${c.name} Lv.${c.level}</option>`
+    ).join('');
+  });
+}
+
+async function devAddExp() {
+  const target = document.getElementById('dev-exp-char').value;
+  const amount = parseInt(document.getElementById('dev-exp-amount').value) || 200;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'add_exp', char: target, amount}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.characters = d.characters;
+      renderAll();
+      st.textContent = `✅ 给 ${target} 加了 ${amount} 经验`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
+}
+
+async function devSetLevel() {
+  const target = document.getElementById('dev-lv-char').value;
+  const level = parseInt(document.getElementById('dev-lv-value').value) || 5;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'set_level', char: target, level}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.characters = d.characters;
+      renderAll();
+      st.textContent = `✅ ${target} 等级设为 Lv.${level}`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
+}
+
+async function devSetDay() {
+  const day = parseInt(document.getElementById('dev-day').value) || 5;
+  const wave = parseInt(document.getElementById('dev-wave').value) || 1;
+  const dta = parseInt(document.getElementById('dev-dta').value) || 1;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'set_day', day, wave, dta}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.day = d.day; state.days_until_attack = d.days_until_attack; state.raid_wave = d.raid_wave;
+      updateDayDisplay();
+      st.textContent = `✅ 跳转到第${day}天 第${wave}波 倒计时${dta}天`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
+}
+
+async function devSetStat() {
+  const target = document.getElementById('dev-stat-char').value;
+  const stat = document.getElementById('dev-stat-key').value;
+  const value = parseInt(document.getElementById('dev-stat-val').value) || 10;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'set_stat', char: target, stat, value}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.characters = d.characters;
+      renderAll();
+      st.textContent = `✅ ${target} ${stat}=${value}`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
 }
 
 // ── 战斗日志解析 ──
 
-function refreshLog() {
-  const log = document.getElementById('chat-log');
+async function refreshLog() {
   const entries = document.getElementById('log-entries');
-  const msgs = log.querySelectorAll('.msg.gm');
-  if (!msgs.length) {
+  if (!state.session_id) {
     entries.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无日志——先去冒险吧！</div>';
     return;
   }
 
+  // 1. 从 API 读取游戏事件
+  let eventHtml = '';
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/events?limit=100');
+    if (res.ok) {
+      const data = await res.json();
+      const icons = {exp:'⭐', level_up:'📈', stat_change:'📊', system:'🔧', char_add:'🆕'};
+      eventHtml = (data.events || []).map(e => {
+        const icon = icons[e.type] || '📋';
+        const dayTag = e.day ? `[第${e.day}天] ` : '';
+        const devTag = (e.data && e.data.dev) ? ' 🔧' : '';
+        return `<div style="padding:4px 0;border-bottom:1px solid #2a2520;font-size:12px;">
+          <span style="color:var(--dim);">${dayTag}</span>${icon} ${e.msg}${devTag}
+        </div>`;
+      }).join('');
+    }
+  } catch(e) {}
+
+  // 2. 从聊天中提取 DMG 块和命中判定
+  const log = document.getElementById('chat-log');
+  const msgs = log ? log.querySelectorAll('.msg.gm') : [];
+  let dmgHtml = '';
+
   let items = [];
   msgs.forEach(msg => {
     const text = msg.textContent || '';
-
-    // 提取 DMG 块（精确格式）
     const dmgBlocks = text.match(/\[DMG:[^\]]+\]/g);
     if (dmgBlocks) {
       dmgBlocks.forEach(block => {
         const inner = block.replace(/^\[DMG:\s*|\]$/g, '');
-        // 提取关键数值
+        const typeMatch = inner.match(/类型[=＝]([刺钝斩]+)/);
         const rawMatch = inner.match(/原始伤害[=＝](\d+)/);
         const finalMatch = inner.match(/最终伤害[=＝](\d+)/);
         const spiritMatch = inner.match(/精神伤害[=＝](\d+)/);
         const formulaMatch = inner.match(/公式[=＝]([^|]+)/);
-        const reduceMatch = inner.match(/护甲减伤[=＝]([\d.]+%)/);
+        const reduceMatch = inner.match(/减伤[=＝]([\d.]+%)/);
+        const penMatch = inner.match(/穿透[:=]([\d.]+%)/);
+        const bypassMatch = inner.match(/无视[:=]([\d.]+)/);
+        const armorDmgMatch = inner.match(/护甲损伤[=＝]([\d.]+)/);
         const remainMatch = inner.match(/剩余(\d+)/);
 
         let main = '';
-        if (rawMatch) main = `造成 ${rawMatch[1]} 点伤害`;
-        if (spiritMatch) main = `造成 ${spiritMatch[1]} 点精神伤害`;
-        if (finalMatch) main += ` → 实际 ${finalMatch[1]}`;
-        if (remainMatch) main += ` (剩余 ${remainMatch[1]})`;
+        const typeNames = {刺:'🗡️刺击', 钝:'🔨钝击', 斩:'⚔️斩击'};
+        if (typeMatch) main = typeNames[typeMatch[1]] || typeMatch[1];
+        if (rawMatch) main += ` 原始${rawMatch[1]}`;
+        if (spiritMatch) main = `🔮 精神伤害${spiritMatch[1]}`;
+        if (finalMatch) main += ` → 实伤${finalMatch[1]}`;
+        if (remainMatch) main += ` (剩${remainMatch[1]})`;
 
         let detail = [];
         if (formulaMatch) detail.push(formulaMatch[1].trim());
-        if (reduceMatch) detail.push(`护甲减伤 ${reduceMatch[1]}`);
+        if (reduceMatch) detail.push(`减伤${reduceMatch[1]}`);
+        if (penMatch) detail.push(`穿透${penMatch[1]}`);
+        if (bypassMatch) detail.push(`无视${bypassMatch[1]}`);
+        if (armorDmgMatch) detail.push(`削甲${armorDmgMatch[1]}`);
 
         items.push({type:'damage', main: main || inner.substring(0,60), detail: detail.join(' | ')});
       });
     }
 
-    // 提取骰子行
-    const diceLines = text.match(/🎲[^\n]*/g);
-    if (diceLines) {
-      diceLines.forEach(line => {
-        // 跳过已被 DMG 块处理的骰子行
-        if (/DMG/i.test(line)) return;
-        const m = line.match(/🎲\s*(.+?)\s*检定\s*DC[=＝](\d+)\s*→\s*3d6\s*([+-]\d+)?\s*=\s*(\d+)\s*→\s*(.+)/);
+    const hitLines = text.match(/🎯[^\n]*/g);
+    if (hitLines) {
+      hitLines.forEach(line => {
+        const m = line.match(/🎯\s*(.+?)\s*→\s*d100=(\d+)\s*vs\s*命中率([\d.]+)%\s*\((.+?)\)\s*→\s*(.+)/);
         if (m) {
-          items.push({type:'roll', main:`${m[1]} 检定 DC=${m[2]}`, detail:`3d6${m[3]||''} = ${m[4]}`, result:m[5].trim().includes('成功')?'success':'fail'});
+          const hit = m[5].includes('命中');
+          items.push({type: hit ? 'damage' : 'roll', main: `${m[1].trim()} → d100=${m[2]} / ${m[3]}%`, detail: `公式: ${m[4]} | 结果: ${m[5].trim()}`, result: hit ? 'success' : 'fail'});
           return;
         }
-        const s = line.replace('🎲','').trim();
-        if (s && s.length > 2) items.push({type:'roll', main:s, detail:'', result:''});
+        const s = line.replace('🎯', '').trim();
+        if (s && s.length > 2) items.push({type:'roll', main: '⚔️ ' + s, detail:'', result:''});
       });
-    }
-
-    // CHAR_ADD / LEVEL_UP
-    if (text.includes('[CHAR_ADD:') || text.includes('[LEVEL_UP:')) {
-      items.push({type:'event', main:text.includes('CHAR_ADD')?'新角色加入队伍':'角色升级', detail:'', result:''});
     }
   });
 
-  if (!items.length) {
-    entries.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dim);">暂未检测到骰子或战斗数据——多打几架再来！</div>';
-    return;
-  }
-
   const colors = {roll:'var(--gold)',damage:'var(--accent)',event:'var(--good)'};
-  entries.innerHTML = items.map((item,i) => `
+  dmgHtml = items.map(item => `
     <div class="log-entry">
       <span class="log-type ${item.type}">${item.type==='roll'?'🎲 骰子':item.type==='damage'?'⚔️ 伤害':'📌 事件'}</span>
       <span class="log-main">${item.main}</span>
       ${item.detail?`<div class="log-detail">${item.detail}</div>`:''}
     </div>
   `).join('');
+
+  if (!eventHtml && !dmgHtml) {
+    entries.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无日志——开始冒险后事件和战斗判定会显示在这里。</div>';
+    return;
+  }
+
+  entries.innerHTML = (eventHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin-bottom:8px;">📋 游戏事件</div>' + eventHtml : '')
+    + (dmgHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin:12px 0 8px;">⚔️ 战斗判定</div>' + dmgHtml : '');
 }
 
 init();
 </script>
-</body>
-</html>
