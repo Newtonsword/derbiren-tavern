@@ -9,6 +9,7 @@
   --bg: #1a1410; --panel: #231e1a; --border: #3a3028; --text: #d4c5b2;
   --dim: #8a7a6a; --accent: #c44b3c; --accent-glow: #e85d4a; --gold: #c9a050;
   --good: #5a9e4b; --input-bg: #1e1914; --msg-user: #2a2520; --msg-gm: #1e1c18;
+  --badge: #e85d4a;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -17,7 +18,7 @@ body {
   height: 100vh; display: flex; justify-content: center; align-items: center;
 }
 #app {
-  width: 100%; max-width: 700px; height: 100vh;
+  width: 100%; max-width: 750px; height: 100vh;
   display: flex; flex-direction: column; background: var(--panel);
   border-left: 1px solid var(--border); border-right: 1px solid var(--border);
 }
@@ -94,26 +95,132 @@ body {
   font-family: monospace; font-size: 13px; text-align: center; color: var(--gold); }
 .msg.roll .big { font-size: 22px; display: block; }
 
-/* 加点 */
-#stats-panel { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-#stats-panel h2 { font-size: 16px; color: var(--gold); }
-.free-pts-display { font-size: 22px; font-weight: bold; color: var(--accent-glow); margin-bottom: 4px; }
-.stat-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 0; border-bottom: 1px solid rgba(58,48,40,.5);
+/* 角色面板 */
+#chars-panel { padding: 16px 16px 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.char-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
 }
-.stat-name { width: 50px; font-weight: bold; font-size: 15px; color: var(--gold); }
-.stat-desc { flex: 1; font-size: 12px; color: var(--dim); }
+.char-tab {
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 5px;
+  cursor: pointer; font-size: 13px; color: var(--dim); background: var(--input-bg);
+  font-family: inherit; position: relative; transition: .15s;
+}
+.char-tab:hover { border-color: var(--accent); color: var(--text); }
+.char-tab.active { border-color: var(--accent); color: var(--gold); background: #2a2018; }
+.char-tab .badge {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--badge); color: #fff; font-size: 10px; font-weight: bold;
+  width: 18px; height: 18px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+}
+.char-add-btn {
+  padding: 6px 10px; border: 1px dashed var(--border); border-radius: 5px;
+  background: none; color: var(--dim); cursor: pointer; font-size: 16px; font-family: inherit;
+}
+.char-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 属性加点 */
+.stats-section { padding: 4px 0; }
+.stats-section h3 { font-size: 14px; color: var(--gold); margin-bottom: 8px; }
+.free-pts { font-size: 18px; font-weight: bold; color: var(--accent-glow); margin-bottom: 8px; }
+.stat-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid rgba(58,48,40,.4);
+}
+.stat-name { width: 44px; font-weight: bold; font-size: 14px; color: var(--gold); }
+.stat-desc { flex: 1; font-size: 11px; color: var(--dim); }
 .stat-btn {
-  width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 4px;
-  background: var(--input-bg); color: var(--text); font-size: 16px; cursor: pointer;
+  width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input-bg); color: var(--text); font-size: 15px; cursor: pointer;
   font-family: inherit; line-height: 1;
 }
 .stat-btn:hover { border-color: var(--accent); }
 .stat-btn:disabled { opacity: .25; cursor: not-allowed; }
 .stat-btn.plus:hover { background: var(--good); border-color: var(--good); color: #fff; }
 .stat-btn.minus:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
-.stat-val { font-size: 18px; font-weight: bold; width: 26px; text-align: center; }
+.stat-val { font-size: 16px; font-weight: bold; width: 24px; text-align: center; }
+
+/* 技能区 */
+.skills-section { margin-top: 8px; }
+.skills-section h3 { font-size: 14px; color: var(--gold); margin-bottom: 8px; cursor: pointer; user-select: none; }
+.skills-section h3 .arrow { font-size: 11px; margin-right: 4px; transition: .2s; display: inline-block; }
+.skills-section h3 .arrow.open { transform: rotate(90deg); }
+.skill-row {
+  border: 1px solid var(--border); border-radius: 5px; margin-bottom: 6px;
+  background: var(--input-bg); overflow: hidden;
+}
+.skill-summary {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  cursor: pointer; user-select: none;
+}
+.skill-summary:hover { background: #231e1a; }
+.skill-summary .s-name { color: var(--gold); font-weight: bold; font-size: 13px; }
+.skill-summary .s-type { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: #2a2520; color: var(--dim); }
+.skill-summary .s-lv { font-size: 10px; color: var(--accent); margin-left: auto; }
+.skill-summary .s-arrow { font-size: 10px; color: var(--dim); transition: .2s; }
+.skill-summary .s-arrow.open { transform: rotate(90deg); }
+.skill-detail {
+  display: none; padding: 8px 10px 10px; border-top: 1px solid var(--border);
+  font-size: 12px; line-height: 1.7; color: var(--dim);
+}
+.skill-detail.open { display: block; }
+.skill-detail .s-formula { color: var(--gold); font-family: monospace; }
+.skill-detail .upgrade-btn {
+  margin-top: 6px; padding: 3px 12px; background: var(--accent); color: #fff;
+  border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-family: inherit;
+}
+.skill-detail .upgrade-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 被动区 */
+.passives-section { margin-top: 4px; }
+.passives-section h3 { font-size: 13px; color: var(--dim); margin-bottom: 4px; cursor: pointer; }
+.passive-row {
+  font-size: 12px; color: var(--dim); padding: 3px 0;
+  display: flex; gap: 8px;
+}
+.passive-row .p-name { color: var(--text); }
+
+/* 等级提升 Modal */
+.modal-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.7); z-index: 100;
+  justify-content: center; align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  width: 90%; max-width: 520px; max-height: 80vh; overflow-y: auto; padding: 20px;
+}
+.modal-box h2 { font-size: 18px; color: var(--gold); margin-bottom: 12px; }
+.skill-option {
+  border: 1px solid var(--border); border-radius: 6px; padding: 12px;
+  margin-bottom: 8px; background: var(--input-bg);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.skill-option .so-name { color: var(--gold); font-weight: bold; font-size: 14px; }
+.skill-option .so-type { font-size: 11px; color: var(--accent); }
+.skill-option .so-desc { font-size: 12px; color: var(--dim); }
+.skill-option .so-formula { font-size: 12px; color: var(--gold); font-family: monospace; }
+.skill-option .so-meta { font-size: 11px; color: var(--dim); }
+.skill-option .pick-btn {
+  padding: 6px 16px; background: var(--accent); color: #fff;
+  border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+  align-self: flex-end; font-family: inherit;
+}
+.skill-option .pick-btn:hover { background: var(--accent-glow); }
+.modal-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.modal-actions button {
+  padding: 8px 16px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--input-bg); color: var(--text); cursor: pointer; font-size: 13px; font-family: inherit;
+}
+.modal-actions button:hover { border-color: var(--accent); }
+.modal-actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+#custom-skill-input {
+  width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--input-bg); color: var(--text); font-size: 13px; font-family: inherit;
+  margin-top: 8px; resize: vertical; min-height: 60px;
+}
 
 /* 设置 */
 #settings-panel { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
@@ -141,7 +248,7 @@ body {
   <div id="topbar">
     <span class="logo">🔥 德比伦酒馆</span>
     <button class="tab-btn active" data-tab="adventure">🗡️ 冒险</button>
-    <button class="tab-btn" data-tab="stats">✨ 加点</button>
+    <button class="tab-btn" data-tab="chars">👥 角色</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
   </div>
   <div id="session-bar">
@@ -166,12 +273,13 @@ body {
     </div>
   </div>
 
-  <!-- 加点 -->
-  <div class="tab-panel" id="tab-stats">
-    <div id="stats-panel">
-      <h2>🔮 角色属性</h2>
-      <div class="free-pts-display">剩余点数：<span id="free-pts">10</span></div>
-      <div id="stat-list"></div>
+  <!-- 角色 -->
+  <div class="tab-panel" id="tab-chars">
+    <div id="chars-panel">
+      <div id="char-tabs-row" class="char-tabs"></div>
+      <div id="char-stats-area"></div>
+      <div id="char-skills-area"></div>
+      <div id="char-passives-area"></div>
     </div>
   </div>
 
@@ -196,6 +304,25 @@ body {
       <div id="settings-status"></div>
     </div>
   </div>
+
+  <!-- 等级提升 Modal -->
+  <div class="modal-overlay" id="skill-modal">
+    <div class="modal-box">
+      <h2>🎉 获得技能点！</h2>
+      <div id="modal-title" style="font-size:13px;color:var(--dim);margin-bottom:12px;"></div>
+      <div id="modal-skills"></div>
+      <div id="modal-actions" class="modal-actions">
+        <button onclick="refreshSkills()">🔄 换一批</button>
+        <button onclick="showCustomSkill()">✏️ 自定义技能</button>
+        <button onclick="closeSkillModal()">关闭</button>
+      </div>
+      <textarea id="custom-skill-input" style="display:none;" placeholder="描述你想要的技能，德比伦会帮你转成标准格式...&#10;例：一个快速的二连斩，每次伤害不高但能打断施法"></textarea>
+      <div class="modal-actions" id="custom-actions" style="display:none;">
+        <button class="primary" onclick="submitCustomSkill()">生成技能</button>
+        <button onclick="hideCustomInput()">取消</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -203,16 +330,18 @@ const ATTRS = [
   {key:"END", name:"耐力", desc:"HP=END×200 | 体力=END×50 | 伤害系数 0.8"},
   {key:"STR", name:"力量", desc:"近战威力主属性 | 伤害系数 2.0"},
   {key:"SPD", name:"速度", desc:"先手/闪避/间隔 | 伤害系数 1.5"},
-  {key:"DEF", name:"防御", desc:"百分比减伤 DEF/(DEF+15) | 可加点属性"},
+  {key:"DEF", name:"防御", desc:"百分比减伤 DEF/(DEF+15)"},
   {key:"INT", name:"法强", desc:"法术伤害系数 1.2 | 精神攻击"},
-  {key:"MP",  name:"法量", desc:"蓝量资源 MP×20 | 伤害系数 0.5"},
-  {key:"WIL", name:"精神", desc:"精神条=WIL×10 | 抗恐惧/魅惑/崩溃"},
+  {key:"MP",  name:"法量", desc:"蓝量资源 MP×20 | 系数 0.5"},
+  {key:"WIL", name:"精神", desc:"精神条=WIL×10 | 抗崩溃"},
 ];
 
 let state = {
   session_id: '',
-  stats: { END:3, STR:3, SPD:3, DEF:3, INT:3, MP:3, WIL:3, free:21 },
+  characters: [],
+  active_char_id: '',
   isLoading: false,
+  modal_char_id: '',  // 当前技能选择 Modal 对应的角色
 };
 
 // ── 初始化 ──
@@ -235,15 +364,29 @@ async function loadOrCreateSession() {
       if (res.ok) {
         const data = await res.json();
         state.session_id = data.session_id;
-        state.stats = data.stats;
+        state.characters = data.characters || [];
+        state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
         document.getElementById('sid-display').textContent = state.session_id;
-        renderStats();
+        renderAll();
         restoreHistory(data.history || []);
         return;
       }
     } catch(e) {}
   }
   await newAdventure();
+}
+
+async function newAdventure() {
+  const res = await fetch('/api/session/new', { method: 'POST' });
+  const data = await res.json();
+  state.session_id = data.session_id;
+  state.characters = data.characters || [];
+  state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
+  localStorage.setItem('derbiren_sid', state.session_id);
+  document.getElementById('sid-display').textContent = state.session_id;
+  document.getElementById('chat-log').innerHTML =
+    `<div class="welcome"><span class="big">🔥</span>德比伦翘着尾巴斜眼看着你推门进来。<br><em>「哼，又来一个杂鱼冒险者。」</em><br><br>输入行动，开始冒险。</div>`;
+  renderAll();
 }
 
 function restoreHistory(history) {
@@ -253,16 +396,16 @@ function restoreHistory(history) {
   scrollBottom();
 }
 
-async function newAdventure() {
-  const res = await fetch('/api/session/new', { method: 'POST' });
-  const data = await res.json();
-  state.session_id = data.session_id;
-  state.stats = data.stats;
-  localStorage.setItem('derbiren_sid', state.session_id);
-  document.getElementById('sid-display').textContent = state.session_id;
-  document.getElementById('chat-log').innerHTML =
-    `<div class="welcome"><span class="big">🔥</span>德比伦翘着尾巴斜眼看着你推门进来。<br><em>「哼，又来一个杂鱼冒险者。」</em><br><br>输入行动，开始冒险。</div>`;
-  renderStats();
+async function refreshCharacters() {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters');
+    if (res.ok) {
+      const data = await res.json();
+      state.characters = data.characters || [];
+      state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
+      renderAll();
+    }
+  } catch(e) {}
 }
 
 // ── Tab 切换 ──
@@ -295,7 +438,6 @@ async function sendMessage() {
   if (!msg) return;
   input.value = '';
 
-  // 骰子指令
   if (/^\/r\s/.test(msg)) {
     const dice = msg.replace(/^\/r\s*/, '');
     await doDiceRoll(dice);
@@ -325,6 +467,9 @@ async function sendMessage() {
       localStorage.setItem('derbiren_sid', state.session_id);
       document.getElementById('sid-display').textContent = state.session_id;
     }
+    if (data.characters_updated) {
+      await refreshCharacters();
+    }
   } catch(e) {
     typingDiv.remove();
     addMsg('gm', '🔥💢 连接切断！检查 API 设置吧杂鱼！(' + e.message + ')');
@@ -337,37 +482,315 @@ document.getElementById('user-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') sendMessage();
 });
 
-// ── 加点 ──
-function renderStats() {
-  const list = document.getElementById('stat-list');
-  list.innerHTML = ATTRS.map(({key, name, desc}) => {
-    const val = state.stats[key] || 3;
-    return `<div class="stat-row">
-      <span class="stat-name">${name}</span>
-      <span class="stat-desc">${desc}</span>
-      <button class="stat-btn minus" onclick="adjustStat('${key}',-1)" ${val<=0?'disabled':''}>−</button>
-      <span class="stat-val">${val}</span>
-      <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${state.stats.free<=0?'disabled':''}>+</button>
-    </div>`;
+// ── 角色面板 ──
+function renderAll() {
+  renderCharTabs();
+  renderCharDetail();
+}
+
+function renderCharTabs() {
+  const row = document.getElementById('char-tabs-row');
+  const parts = state.characters.map(c => {
+    const active = c.id === state.active_char_id ? ' active' : '';
+    const badge = c.pending_skill_points > 0 ? `<span class="badge">${c.pending_skill_points}</span>` : '';
+    return `<button class="char-tab${active}" onclick="selectChar('${c.id}')">${c.name} Lv.${c.level}${badge}</button>`;
   }).join('');
-  document.getElementById('free-pts').textContent = state.stats.free;
+  row.innerHTML = parts + `<button class="char-add-btn" onclick="addCharManually()" title="手动添加角色">+</button>`;
+}
+
+function selectChar(cid) {
+  state.active_char_id = cid;
+  // 同步到后端
+  fetch('/api/session/' + state.session_id + '/characters/' + cid, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({active: true}),
+  }).catch(() => {});
+  renderAll();
+  // 检查是否有待选技能
+  const c = state.characters.find(x => x.id === cid);
+  if (c && c.pending_skill_points > 0) openSkillModal(c);
+}
+
+function getActiveChar() {
+  return state.characters.find(c => c.id === state.active_char_id)
+      || state.characters[0];
+}
+
+async function addCharManually() {
+  const name = prompt('角色名：');
+  if (!name) return;
+  const species = prompt('物种（默认人类）：', '人类') || '人类';
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, species}),
+    });
+    if (res.ok) await refreshCharacters();
+  } catch(e) { alert('添加失败: ' + e.message); }
+}
+
+function renderCharDetail() {
+  const c = getActiveChar();
+  if (!c) return;
+
+  // 属性
+  const statsArea = document.getElementById('char-stats-area');
+  statsArea.innerHTML = `
+    <div class="stats-section">
+      <h3>🔮 ${c.name} · ${c.species} · Lv.${c.level}</h3>
+      <div class="free-pts">剩余点数：<span id="free-pts">${c.free_points}</span></div>
+      ${ATTRS.map(({key, name, desc}) => {
+        const val = c.stats[key] || 3;
+        return `<div class="stat-row">
+          <span class="stat-name">${name}</span>
+          <span class="stat-desc">${desc}</span>
+          <button class="stat-btn minus" onclick="adjustStat('${key}',-1)" ${val<=0?'disabled':''}>−</button>
+          <span class="stat-val">${val}</span>
+          <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${c.free_points<=0?'disabled':''}>+</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // 技能
+  const skArea = document.getElementById('char-skills-area');
+  const skCollapsed = localStorage.getItem('skills_collapsed_' + c.id) === '1';
+  skArea.innerHTML = `
+    <div class="skills-section">
+      <h3 onclick="toggleSkills('${c.id}')">
+        <span class="arrow${skCollapsed ? '' : ' open'}" id="sk-arrow-${c.id}">▶</span>
+        ⚔️ 技能 (${c.skills ? c.skills.length : 0})
+        ${c.pending_skill_points > 0 ? `<span style="color:var(--accent);font-size:12px;"> — ${c.pending_skill_points}技能点可用</span>` : ''}
+      </h3>
+      <div id="sk-list-${c.id}" style="${skCollapsed ? 'display:none' : ''}">
+        ${(c.skills || []).map(sk => {
+          const expanded = localStorage.getItem('skill_expanded_' + sk.id) === '1';
+          const typeColors = {斩击:'#c9a050', 刺击:'#5a9e4b', 钝击:'#c44b3c', 精神:'#8b5cf6', 法术:'#4b9eef'};
+          return `<div class="skill-row">
+            <div class="skill-summary" onclick="toggleSkillDetail('${sk.id}')">
+              <span class="s-arrow${expanded ? ' open' : ''}" id="sk-det-arrow-${sk.id}">▶</span>
+              <span class="s-name">${sk.name}</span>
+              <span class="s-type" style="color:${typeColors[sk.type]||'#8a7a6a'}">${sk.type}</span>
+              <span class="s-lv">Lv.${sk.level}/${sk.max_level}</span>
+            </div>
+            <div class="skill-detail${expanded ? ' open' : ''}" id="sk-det-${sk.id}">
+              <div>📝 ${sk.description || '无描述'}</div>
+              <div>📐 <span class="s-formula">${sk.formula}</span></div>
+              <div>💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
+              ${(c.pending_skill_points > 0 && sk.level < sk.max_level)
+                ? `<button class="upgrade-btn" onclick="upgradeSkill('${sk.id}')">⬆ 升级到 Lv.${sk.level+1}</button>`
+                : ''}
+            </div>
+          </div>`;
+        }).join('')}
+        ${c.pending_skill_points > 0
+          ? `<button style="margin-top:8px;padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;" onclick="openSkillModal(getActiveChar())">✨ 选择新技能</button>`
+          : ''}
+      </div>
+    </div>`;
+
+  // 被动
+  const paArea = document.getElementById('char-passives-area');
+  if (c.passives && c.passives.length > 0) {
+    const paCollapsed = localStorage.getItem('passives_collapsed_' + c.id) === '1';
+    paArea.innerHTML = `
+      <div class="passives-section">
+        <h3 onclick="togglePassives('${c.id}')">
+          <span class="arrow${paCollapsed ? '' : ' open'}" id="pa-arrow-${c.id}">▶</span>
+          📜 被动
+        </h3>
+        <div id="pa-list-${c.id}" style="${paCollapsed ? 'display:none' : ''}">
+          ${c.passives.map(p => `<div class="passive-row"><span class="p-name">${p.name}</span> ${p.description}</div>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    paArea.innerHTML = '';
+  }
+}
+
+function toggleSkills(cid) {
+  const list = document.getElementById('sk-list-' + cid);
+  const arrow = document.getElementById('sk-arrow-' + cid);
+  const collapsed = list.style.display === 'none';
+  list.style.display = collapsed ? '' : 'none';
+  arrow.classList.toggle('open', collapsed);
+  localStorage.setItem('skills_collapsed_' + cid, collapsed ? '0' : '1');
+}
+
+function toggleSkillDetail(skid) {
+  const det = document.getElementById('sk-det-' + skid);
+  const arrow = document.getElementById('sk-det-arrow-' + skid);
+  const expanded = !det.classList.contains('open');
+  det.classList.toggle('open', expanded);
+  arrow.classList.toggle('open', expanded);
+  localStorage.setItem('skill_expanded_' + skid, expanded ? '1' : '0');
+}
+
+function togglePassives(cid) {
+  const list = document.getElementById('pa-list-' + cid);
+  const arrow = document.getElementById('pa-arrow-' + cid);
+  const collapsed = list.style.display === 'none';
+  list.style.display = collapsed ? '' : 'none';
+  arrow.classList.toggle('open', collapsed);
+  localStorage.setItem('passives_collapsed_' + cid, collapsed ? '0' : '1');
 }
 
 async function adjustStat(key, delta) {
-  const newVal = (state.stats[key]||3) + delta;
+  const c = getActiveChar();
+  if (!c) return;
+  const newVal = (c.stats[key] || 3) + delta;
   if (newVal < 0 || newVal > 99) return;
-  if (delta > 0 && state.stats.free <= 0) return;
-  state.stats[key] = newVal;
-  state.stats.free -= delta;
-  renderStats();
-  if (state.session_id) {
-    try {
-      await fetch('/api/session/' + state.session_id + '/stats', {
-        method:'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(state.stats),
-      });
-    } catch(e) {}
+  if (delta > 0 && c.free_points <= 0) return;
+  c.stats[key] = newVal;
+  c.free_points -= delta;
+  renderCharDetail();
+  try {
+    await fetch('/api/session/' + state.session_id + '/characters/' + c.id, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({stats: c.stats, free_points: c.free_points}),
+    });
+  } catch(e) {}
+}
+
+// ── 技能 Modal ──
+function openSkillModal(char) {
+  state.modal_char_id = char.id;
+  document.getElementById('modal-title').textContent =
+    `${char.name} Lv.${char.level} | 可用技能点：${char.pending_skill_points}`;
+  document.getElementById('skill-modal').classList.add('show');
+  loadSkillOptions();
+}
+
+function closeSkillModal() {
+  document.getElementById('skill-modal').classList.remove('show');
+  state.modal_char_id = '';
+  hideCustomInput();
+}
+
+async function loadSkillOptions() {
+  const container = document.getElementById('modal-skills');
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">德比伦正在编技能...</div>';
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills/generate',
+      { method: 'POST' }
+    );
+    const data = await res.json();
+    const skills = data.skills || [];
+    container.innerHTML = skills.map(sk => `
+      <div class="skill-option">
+        <div class="so-name">${sk.name} <span class="so-type">${sk.type}</span></div>
+        <div class="so-desc">${sk.description || ''}</div>
+        <div class="so-formula">${sk.formula}</div>
+        <div class="so-meta">💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
+        <button class="pick-btn" onclick='pickSkill(${JSON.stringify(sk).replace(/'/g,"&#39;")})'>选择</button>
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--accent);">加载失败：' + e.message + '</div>';
   }
+}
+
+async function refreshSkills() { await loadSkillOptions(); }
+
+async function pickSkill(skill) {
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills',
+      {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({skill}),
+      }
+    );
+    if (res.ok) {
+      await refreshCharacters();
+      const c = state.characters.find(x => x.id === state.modal_char_id);
+      if (c && c.pending_skill_points > 0) {
+        document.getElementById('modal-title').textContent =
+          `${c.name} Lv.${c.level} | 可用技能点：${c.pending_skill_points}`;
+        await loadSkillOptions();
+        renderCharDetail();
+      } else {
+        closeSkillModal();
+      }
+    } else {
+      const err = await res.json();
+      alert(err.detail || '添加失败');
+    }
+  } catch(e) { alert('错误：' + e.message); }
+}
+
+function showCustomSkill() {
+  document.getElementById('custom-skill-input').style.display = '';
+  document.getElementById('custom-actions').style.display = 'flex';
+  document.getElementById('modal-actions').style.display = 'none';
+  document.getElementById('modal-skills').style.display = 'none';
+}
+
+function hideCustomInput() {
+  document.getElementById('custom-skill-input').style.display = 'none';
+  document.getElementById('custom-actions').style.display = 'none';
+  document.getElementById('modal-actions').style.display = 'flex';
+  document.getElementById('modal-skills').style.display = '';
+}
+
+async function submitCustomSkill() {
+  const desc = document.getElementById('custom-skill-input').value.trim();
+  if (!desc) return;
+  const container = document.getElementById('modal-skills');
+  container.style.display = '';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">德比伦正在解读你的描述...</div>';
+  hideCustomInput();
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills/custom',
+      {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({description: desc}),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      // 直接添加
+      await fetch(
+        '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills',
+        {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({skill: data.skill}),
+        }
+      );
+      await refreshCharacters();
+      const c = state.characters.find(x => x.id === state.modal_char_id);
+      if (c && c.pending_skill_points > 0) {
+        document.getElementById('modal-title').textContent =
+          `${c.name} Lv.${c.level} | 可用技能点：${c.pending_skill_points}`;
+        await loadSkillOptions();
+      } else {
+        closeSkillModal();
+      }
+    } else {
+      const err = await res.json();
+      container.innerHTML = '<div style="color:var(--accent);padding:10px;">生成失败：' + (err.detail || '未知错误') + '</div>';
+    }
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--accent);padding:10px;">错误：' + e.message + '</div>';
+  }
+}
+
+async function upgradeSkill(skid) {
+  const c = getActiveChar();
+  if (!c || c.pending_skill_points <= 0) return;
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + c.id + '/skills/' + skid,
+      { method:'PUT' }
+    );
+    if (res.ok) {
+      await refreshCharacters();
+    } else {
+      const err = await res.json();
+      alert(err.detail || '升级失败');
+    }
+  } catch(e) { alert('错误：' + e.message); }
 }
 
 // ── 骰子 ──
