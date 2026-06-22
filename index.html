@@ -325,6 +325,7 @@ body {
     <button class="tab-btn active" data-tab="adventure">🗡️ 冒险</button>
     <button class="tab-btn" data-tab="chars">👥 角色</button>
     <button class="tab-btn" data-tab="equipment">⚔️ 装备</button>
+    <button class="tab-btn" data-tab="engineering">🏗️ 工程</button>
     <button class="tab-btn" data-tab="library">📚 技能库</button>
     <button class="tab-btn" data-tab="log">📊 日志</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
@@ -409,6 +410,25 @@ body {
         <button class="eq-filter-btn" onclick="filterEquipment('accessory',this)">💍 饰品</button>
       </div>
       <div id="eq-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- 工程 -->
+  <div class="tab-panel" id="tab-engineering">
+    <div id="engineering-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+      <h2 style="font-size:16px;color:var(--gold);">🏗️ 地下城工程</h2>
+      <div style="font-size:12px;color:var(--dim);line-height:1.6;">
+        💡 建造防御工事和陷阱来抵御冒险者。<br>
+        城墙让近战敌人必须攀爬才能上来（刺客速度越快爬得越快），远程敌人仰射命中降低，我方远程获得高打低加成。
+      </div>
+      <!-- 已建造 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;">🏰 已建工事</div>
+      <div id="eng-built" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--dim);font-size:12px;font-style:italic;text-align:center;padding:16px;">尚未建造任何工事——去下面选一个吧</div>
+      </div>
+      <!-- 可建造 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:8px;">🔨 工程项目</div>
+      <div id="eng-list" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
   </div>
 
@@ -1888,6 +1908,124 @@ async function refreshLog() {
     + (dmgHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin:12px 0 8px;">⚔️ 战斗判定</div>' + dmgHtml : '');
 }
 
+// ── 工程/陷阱系统 ──
+
+let _engCache = null;
+
+async function loadEngCache() {
+  if (_engCache) return _engCache;
+  try {
+    const res = await fetch('/api/constructions');
+    const data = await res.json();
+    _engCache = data.constructions || [];
+  } catch(e) { _engCache = []; }
+  return _engCache;
+}
+
+async function renderEngineering() {
+  const allCon = await loadEngCache();
+
+  // 已建工事
+  const builtDiv = document.getElementById('eng-built');
+  let built = [];
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/constructions');
+    if (res.ok) {
+      const data = await res.json();
+      built = data.constructions || [];
+    }
+  } catch(e) {}
+
+  if (built.length === 0) {
+    builtDiv.innerHTML = '<div style="color:var(--dim);font-size:12px;font-style:italic;text-align:center;padding:16px;">尚未建造任何工事——去下面选一个吧</div>';
+  } else {
+    builtDiv.innerHTML = built.map(c => {
+      const eff = c.effect || {};
+      const details = [];
+      if (eff.melee_climb_time) details.push(`🧗 近战攀爬: ${eff.melee_climb_time}`);
+      if (eff.enemy_ranged_hit) details.push(`🎯 敌远程: ${eff.enemy_ranged_hit}`);
+      if (eff.ally_ranged_hit) details.push(`🎯 我方远程: ${eff.ally_ranged_hit}`);
+      if (eff.durability) details.push(`🛡️ 耐久: ${eff.durability}`);
+      if (eff.damage) details.push(`💥 ${eff.damage}`);
+      if (eff.slow) details.push(`🐌 ${eff.slow}`);
+      if (eff.immobilize) details.push(`🔒 ${eff.immobilize}`);
+      if (eff.blind) details.push(`👁️ ${eff.blind}`);
+      if (eff.aoe) details.push(`💥 ${eff.aoe}`);
+      if (eff.uses !== undefined && eff.uses < 999) details.push(`🔄 剩余: ${c.uses_left||0}/${eff.uses}`);
+      return `<div class="eq-slot-card">
+        <span style="font-size:22px;">${c.icon||'🏗️'}</span>
+        <span style="font-size:11px;color:var(--dim);width:60px;">${c.type||''}</span>
+        <span class="slot-name">${c.name}</span>
+        <span style="font-size:11px;color:var(--dim);">${details.join(' | ')}</span>
+        <span style="font-size:10px;color:var(--dim);">第${c.built_day}天建</span>
+        <button class="unequip-btn" onclick="demolishCon('${c.instance_id}')">🔨 拆除</button>
+      </div>`;
+    }).join('');
+  }
+
+  // 可建造列表
+  const listDiv = document.getElementById('eng-list');
+  const builtIds = {};
+  built.forEach(c => { builtIds[c.id] = (builtIds[c.id]||0) + 1; });
+
+  listDiv.innerHTML = allCon.map(con => {
+    const builtCount = builtIds[con.id] || 0;
+    const maxed = builtCount >= (con.max_count || 99);
+    const eff = con.effect || {};
+    const effectLines = [];
+    if (eff.melee_climb_time) effectLines.push(`🧗 近战需攀爬 ${eff.melee_climb_time}`);
+    if (eff.enemy_ranged_hit) effectLines.push(`🎯 敌远程命中 ${eff.enemy_ranged_hit}`);
+    if (eff.ally_ranged_hit) effectLines.push(`🎯 我方远程命中 ${eff.ally_ranged_hit}`);
+    if (eff.durability) effectLines.push(`🛡️ 耐久 ${eff.durability}`);
+    if (eff.damage) effectLines.push(`💥 伤害 ${eff.damage}`);
+    if (eff.slow) effectLines.push(`🐌 ${eff.slow}`);
+    if (eff.immobilize) effectLines.push(`🔒 ${eff.immobilize}`);
+    if (eff.blind) effectLines.push(`👁️ ${eff.blind}`);
+    if (eff.aoe) effectLines.push(`💥 ${eff.aoe}`);
+    if (eff.uses) effectLines.push(`🔄 可用 ${eff.uses} 次`);
+    if (eff.assassin_climb_bonus) effectLines.push(`⚡ 刺客 ${eff.assassin_climb_bonus}`);
+
+    return `<div class="eq-item-card">
+      <span style="font-size:22px;">${con.icon||'🏗️'}</span>
+      <span class="slot-tag">${con.type||''}</span>
+      <span class="item-name">${con.name}</span>
+      <span style="font-size:11px;color:var(--dim);flex:1;">${con.description||''}</span>
+      <div style="font-size:10px;color:var(--dim);">${effectLines.join('<br>')}</div>
+      <span style="font-size:10px;color:var(--dim);white-space:nowrap;">${con.build_cost||''} | 上限${con.max_count||1}</span>
+      <button class="equip-btn ${maxed?'equipped':''}"
+        onclick="buildCon('${con.id}')"
+        ${maxed?'disabled':''}>${maxed?'已满':'🔨 建造'}</button>
+    </div>`;
+  }).join('');
+}
+
+async function buildCon(conId) {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/constructions', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({construction_id: conId}),
+    });
+    if (res.ok) {
+      renderEngineering();
+    } else {
+      const err = await res.json();
+      alert('建造失败: ' + (err.detail || '未知错误'));
+    }
+  } catch(e) { alert('建造失败: ' + e.message); }
+}
+
+async function demolishCon(iid) {
+  if (!confirm('确定拆除这个工事吗？拆除后不可恢复。')) return;
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/constructions/' + iid, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      renderEngineering();
+    }
+  } catch(e) { alert('拆除失败: ' + e.message); }
+}
+
 // ── 装备系统 ──
 
 let _equipmentCache = null;
@@ -2042,6 +2180,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (btn.dataset.tab === 'equipment') {
       setTimeout(() => renderEquipment(), 50);
+    }
+    if (btn.dataset.tab === 'engineering') {
+      setTimeout(() => renderEngineering(), 50);
     }
   });
 });
