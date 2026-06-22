@@ -436,6 +436,20 @@ def create(req: NewSessionReq = None):
     _save(s)
     return {"session_id": s["id"], "characters": s["characters"], "active_char_id": s["active_char_id"], "world_setting": s["world_setting"]}
 
+@app.put("/api/session/{sid}/world")
+def upd_world(sid: str, data: dict):
+    """更新世界观设定"""
+    s = sessions.get(sid) or _load(sid)
+    if not s: raise HTTPException(404)
+    world = data.get("world_setting", DEFAULT_WORLD)
+    s["world_setting"] = world
+    # 更新第一条系统消息
+    sys_content = SYS.replace("{WORLD_SETTING}", world)
+    s["messages"][0] = {"role": "system", "content": sys_content}
+    _save(s)
+    sessions[sid] = s
+    return {"world_setting": world}
+
 # ── 角色管理 ──
 
 @app.get("/api/session/{sid}/characters")

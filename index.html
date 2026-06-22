@@ -302,6 +302,13 @@ body {
       </div>
       <button id="save-settings-btn" onclick="saveSettings()">💾 保存</button>
       <div id="settings-status"></div>
+      <h2 style="margin-top:16px;">🌍 世界观</h2>
+      <div class="setting-group">
+        <label>自定义世界设定（影响 GM 叙事风格）</label>
+        <textarea id="set-world" style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:vertical;min-height:60px;">中世纪奇幻地下城。玩家从冒险者公会大厅开始。</textarea>
+      </div>
+      <button id="save-world-btn" onclick="saveWorld()" style="padding:10px 28px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;">💾 保存世界观</button>
+      <div id="world-status" style="font-size:13px;min-height:20px;"></div>
     </div>
   </div>
 
@@ -443,6 +450,7 @@ async function loadOrCreateSession() {
         state.characters = data.characters || [];
         state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
         document.getElementById('sid-display').textContent = state.session_id;
+        setWorldField(data.world_setting);
         renderAll();
         restoreHistory(data.history || []);
         return;
@@ -1000,6 +1008,32 @@ async function saveSettings() {
     status.textContent = '❌ 网络错误: ' + e.message;
     status.className = 'err';
   }
+}
+
+async function saveWorld() {
+  if (!state.session_id) return;
+  const world = document.getElementById('set-world').value.trim();
+  const status = document.getElementById('world-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/world', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({world_setting: world}),
+    });
+    if (res.ok) {
+      status.textContent = '✅ 世界观已更新（下次对话生效）';
+      status.className = 'ok';
+    } else {
+      status.textContent = '❌ 保存失败';
+      status.className = 'err';
+    }
+  } catch(e) {
+    status.textContent = '❌ 网络错误: ' + e.message;
+    status.className = 'err';
+  }
+}
+
+function setWorldField(val) {
+  document.getElementById('set-world').value = val || '中世纪奇幻地下城。玩家从冒险者公会大厅开始。';
 }
 
 init();
