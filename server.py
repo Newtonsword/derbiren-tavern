@@ -96,7 +96,9 @@ EXP需求 = 300 × 1.2^(Lv-1)
 宽阔：无限制
 
 【世界】
-中世纪奇幻地下城。玩家从冒险者公会大厅开始。"""
+{WORLD_SETTING}"""
+
+DEFAULT_WORLD = "中世纪奇幻地下城。玩家从冒险者公会大厅开始。"
 
 SKILL_GEN_SYS = """你是猫科龙地下城世界的技能设计师。根据角色信息设计3个可选技能。
 
@@ -149,12 +151,15 @@ def _skill_id() -> str:
 
 # ── 会话管理 ──
 
-def new_session():
+def new_session(world_setting=None, char_name="冒险者", char_species="人类", char_coeff=1.3):
     sid = uuid.uuid4().hex[:12]
-    main_char = _make_char("冒险者", "人类", 1.3, 1)
+    world = world_setting or DEFAULT_WORLD
+    sys_content = SYS.replace("{WORLD_SETTING}", world)
+    main_char = _make_char(char_name, char_species, char_coeff, 1)
     s = {
         "id": sid, "title": "新冒险",
-        "messages": [{"role": "system", "content": SYS}],
+        "world_setting": world,
+        "messages": [{"role": "system", "content": sys_content}],
         "characters": [main_char],
         "active_char_id": main_char["id"],
     }
@@ -309,7 +314,10 @@ def chat(req: ChatReq):
     hint = "\n".join(hint_parts)
 
     msgs = sess["messages"].copy()
-    msgs[0] = {"role": "system", "content": SYS + f"\n[队伍]\n{hint}\n[当前活跃] {active['name'] if active else '无'}"}
+    # 使用会话保存的世界观重建 system prompt（角色信息动态追加）
+    world = sess.get("world_setting", DEFAULT_WORLD)
+    base_sys = SYS.replace("{WORLD_SETTING}", world)
+    msgs[0] = {"role": "system", "content": base_sys + f"\n[队伍]\n{hint}\n[当前活跃] {active['name'] if active else '无'}"}
     msgs.append({"role": "user", "content": req.message})
 
     if not os.getenv("OPENAI_API_KEY", ""):
@@ -392,6 +400,7 @@ def get_sess(sid: str):
     s = sessions.get(sid) or _load(sid) or new_session()
     return {
         "session_id": s["id"], "title": s["title"],
+        "world_setting": s.get("world_setting", DEFAULT_WORLD),
         "characters": s.get("characters", []),
         "active_char_id": s.get("active_char_id", ""),
         "history": [
@@ -400,11 +409,24 @@ def get_sess(sid: str):
         ],
     }
 
+class NewSessionReq(BaseModel):
+    world_setting: str = ""
+    char_name: str = "冒险者"
+    char_species: str = "人类"
+    char_coeff: float = 1.3
+
 @app.post("/api/session/new")
-def create():
-    s = new_session()
+def create(req: NewSessionReq = None):
+    if req is None:
+        req = NewSessionReq()
+    s = new_session(
+        world_setting=req.world_setting or None,
+        char_name=req.char_name or "冒险者",
+        char_species=req.char_species or "人类",
+        char_coeff=req.char_coeff,
+    )
     _save(s)
-    return {"session_id": s["id"], "characters": s["characters"], "active_char_id": s["active_char_id"]}
+    return {"session_id": s["id"], "characters": s["characters"], "active_char_id": s["active_char_id"], "world_setting": s["world_setting"]}
 
 # ── 角色管理 ──
 
