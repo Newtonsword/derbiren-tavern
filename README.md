@@ -1,89 +1,116 @@
-# 🔥 德比伦酒馆 · Derbiren Tavern v2.9
+# Derbiren Tavern
 
-德比伦当 GM 的文字冒险 Web 应用——一只黑毛紫尖的雄小鬼福瑞恶魔陪你跑团。毒舌、傲娇、护短。
+<!--
+  v2.9 · AGENT-READABLE HEADER
+  Entry: server.py (FastAPI, default port 8099)
+  Dependencies: fastapi, uvicorn, openai, httpx, python-dotenv
+  Python: 3.10+
+  LLM: OpenAI-compatible (default deepseek-chat)
+  State: JSON files in saves/ directory
+  Frontend: index.html (zero-dependency vanilla JS)
+-->
 
-## 快速开始
+AI-powered text adventure web app. A tsundere furry demon GM runs your dungeon — build monsters, fight adventurer raids, and recruit creatures to your cause.
 
-**需要 Python 3.10+。**
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-green)](https://www.python.org/)
+[![Release](https://img.shields.io/badge/release-v2.9.0-purple)](https://github.com/Newtonsword/derbiren-tavern/releases)
+
+## Quick Start
 
 ```bash
 git clone https://github.com/Newtonsword/derbiren-tavern.git
 cd derbiren-tavern
-python -m venv venv
-source venv/Scripts/activate   # Windows
-# 或: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env           # 填入你的 LLM API key
-python server.py               # 打开 http://127.0.0.1:8099
+cp .env.example .env          # add your API key (free: platform.deepseek.com)
+python server.py               # → http://127.0.0.1:8099
 ```
 
-> **免费获取 API Key**: [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) — 新用户送 500 万 token
+## What It Is
 
-## 功能
+You're a fledgling dungeon lord. Adventurers are coming in 5 days. Train your monsters, patrol for recruits, and fight off waves of invaders. The GM — **Derbiren**, a bratty black-furred demon — narrates everything with sarcasm and occasional fire.
 
-| 模块 | 说明 |
-|------|------|
-| 🗡️ **冒险** | GM 实时叙事，主动掷骰判定、推进剧情、战斗演算 |
-| 👥 **角色** | 多角色管理——七属性加点、AI 动态技能生成、等级成长 |
-| 🌍 **世界观** | 开新冒险自定义世界观，默认「小魔王地下城」 |
-| 🧬 **物种** | 8 物种详细设定（猫龙/幼龙/触手怪/石像鬼/杀人兔/野狼/史莱姆/哥布林），不同系数影响成长 |
-| ⚔️ **技能** | 每 3 级 AI 生成全新技能——每物种专属、命中公式独立、被动效果各异 |
-| 📅 **天数系统** | 锻炼/巡逻/休息/研究/配种，推进天数备战冒险者入侵 |
-| 🎯 **招募** | 巡逻 35% 触发——8 种野生魔物加入队伍，每只有独立性格和技能 |
-| 🌊 **Raid 波次** | 预设三波冒险者入侵（Lv.3→Lv.4×5→Lv.10×3），战后自动重置 |
-| ⚙️ **设置** | 配置 API Key / Base URL / 模型名，即时生效 |
-| 📜 **日志** | 开发者模式 + 事件日志（升级/招募/战斗） |
+## Features
 
-## 战斗系统 · 小魔王地下城规则
+- **AI GM** — OpenAI-compatible LLM drives all narrative, combat, and NPC dialogue
+- **8 Playable Species** — Cat-Dragon, Hatchling, Tentacle, Gargoyle, Killer Rabbit, Wolf, Slime, Goblin — each with unique lore and skill themes
+- **Dynamic Skill Generation** — AI creates new skills each time; every species gets distinct active/passive abilities
+- **Day System** — Train, patrol, rest, research, or breed. Days tick toward the next raid
+- **Recruitment** — Patrolling has a 35% chance to find wild monsters (8 unique recruits with personalities)
+- **3-Wave Raid System** — Lv.3 rookie → Lv.4 squad of 5 → Lv.10 warrior-archer-mage trio
+- **Multi-Character Combat** — Up to 4v4 battles with full formula calculation
+- **Detailed Character Panel** — 7 attributes, free point allocation, skill management, level tracking
 
-**七属性**: 耐力(END) / 力量(STR) / 速度(SPD) / 防御(DEF) / 法强(INT) / 法量(MP) / 精神(WIL)
+## Combat System
 
-**命中判定**: d100 ≤ 最终命中率 → 命中。SPD 是命中主属性，力量型战士命中偏低。
-- 近战命中 = 50 + SPD×3.0 + STR×0.8
-- 远程命中 = 50 + SPD×3.5 + INT×0.5
-- 法术命中 = 55 + INT×2.5 + SPD×1.0
+**7 Attributes:** END (HP, stamina) · STR (physical damage) · SPD (accuracy, dodge, interval) · DEF (damage reduction) · INT (magic) · MP (mana pool) · WIL (morale)
 
-**伤害公式**: `物理伤害 = 基伤 + Σ(属性 × 系数)` — 纯公式无随机骰
+**Hit Resolution:** `d100 ≤ final_hit_rate` → hit (no random damage — formulas only)
+- Melee hit: `50 + SPD×3.0 + STR×0.8`
+- Ranged hit: `50 + SPD×3.5 + INT×0.5`
+- Magic hit: `55 + INT×2.5 + SPD×1.0`
 
-**三种伤害类型**: 刺击(穿透45%/削甲×0.4) / 钝击(穿透30%+无视25%) / 斩击(穿透10%/倍率×1.15)
+**Damage:** `base + Σ(attr × coefficient)` — STR×2.0, SPD×1.5, END×0.8, INT×1.2, MP×0.5
 
-**护甲系统**: 防御(DEF) = 百分比减伤 `DEF/(DEF+15)` | 护甲 = 装备额外 HP 层
+**Three Damage Types:** Pierce (45% pen, high armor shred) · Blunt (30% pen + 25% ignore, consistent) · Slash (×1.15 multiplier, scales vs light armor)
 
-**衍生值**: HP=END×200 | 体力=END×50 | 魔法储量=MP×20 | 精神条=WIL×10
+**Defense:** `DEF / (DEF + 15)` percentage reduction · Armor = extra HP layer on equipment
 
-**等级**: EXP=300×1.2^(Lv-1) | 每 3 级 1 技能点 | 5 级物种系数
+**Derived:** HP = END×200 · Stamina = END×50 · Mana = MP×20 · Morale HP = WIL×10
 
-**骰子**: 3d6 + 属性 vs DC | `/r 3d6+STR` 快速掷骰
+**Levels:** `EXP needed = 300 × 1.2^(LV-1)` · 1 skill point per 3 levels · 5 species tiers affect growth
 
-## 配置
+## Configuration (`.env`)
 
-| 变量 | 必填 | 默认值 | 说明 |
-|------|------|--------|------|
-| `OPENAI_API_KEY` | ✅ | - | LLM API key（DeepSeek/OpenAI 兼容） |
-| `OPENAI_BASE_URL` | - | `https://api.deepseek.com` | API 端点 |
-| `LLM_MODEL` | - | `deepseek-chat` | 模型名 |
-| `LLM_TEMPERATURE` | - | `0.85` | 温度 |
-| `LLM_MAX_TOKENS` | - | `1024` | 单次最大 token |
-| `WEB_PORT` | - | `8099` | 端口 |
-| `SSL_VERIFY` | - | Windows: false | SSL 验证 |
+| Variable | Required | Default |
+|----------|----------|---------|
+| `OPENAI_API_KEY` | **Yes** | — |
+| `OPENAI_BASE_URL` | No | `https://api.deepseek.com` |
+| `LLM_MODEL` | No | `deepseek-chat` |
+| `LLM_TEMPERATURE` | No | `0.85` |
+| `LLM_MAX_TOKENS` | No | `1024` |
+| `WEB_PORT` | No | `8099` |
+| `SSL_VERIFY` | No | `false` (Windows) |
 
-## 技术栈
+## API Endpoints
 
-- **后端**: FastAPI + OpenAI 兼容 API（httpx 客户端）
-- **前端**: 原生 HTML/CSS/JS，零框架依赖
-- **存档**: JSON 文件（`saves/`），兼容旧版自动迁移
-- **AI 模型**: 默认 deepseek-chat，支持任意 OpenAI 兼容接口
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/session/new` | Create game session (params: `player_name`, `char_species`, `char_name`) |
+| `POST` | `/api/chat` | Send player input → returns AI narrative |
+| `GET` | `/api/session/{id}` | Full session state (characters, day, raid status) |
+| `POST` | `/api/session/{id}/characters/{cid}/skills/generate` | AI-generate 3 active + 1 passive skills |
+| `PUT` | `/api/settings` | Update API key/model at runtime |
+| `GET` | `/api/species` | Species lore and stat templates |
+| `GET` | `/api/library` | Encountered characters + skill templates |
 
-## 给朋友的话
+## File Structure
 
-1. 装 Python 3.10+ → 克隆 → `pip install -r requirements.txt`
-2. 去 [platform.deepseek.com](https://platform.deepseek.com/api_keys) 注册拿免费 key
-3. 复制 `.env.example` 为 `.env`，把 key 填进去
-4. `python server.py` → 浏览器打开 `http://127.0.0.1:8099`
-5. 选物种→起名→开玩。输入框里敲 `/day 巡逻` 推进天数，第五天冒险者就来了 🔥
+```
+derbiren-tavern/
+├── server.py              # FastAPI backend — all game logic
+├── index.html             # Single-page frontend (vanilla JS, zero deps)
+├── recruits.json          # Pool of 8 recruitable monsters
+├── species_lore.json      # Detailed lore for 8 playable species
+├── skill_library.json     # Skill template reference
+├── derbiren_persona.md    # GM personality definition
+├── requirements.txt       # Python dependencies
+├── .env.example           # Configuration template
+├── saves/                 # JSON session files (auto-created)
+└── README.md
+```
 
-有问题去 GitHub 提 Issue，或者让牛顿转告本大爷 (￣▽￣)
+## For Hermes Agents
+
+This project is designed to be AI-agent-operable:
+
+- **Single-file backend** — `server.py` contains all logic; modify with `patch` or `write_file`
+- **Stateless API** — Every endpoint is RESTful; session state in `saves/{session_id}.json`
+- **Hot reload** — Kill + restart `python server.py` to pick up code changes
+- **Port** — Default 8099; check `netstat -ano | findstr :8099` if occupied
+- **Model** — Set `LLM_MODEL=deepseek-chat` in `.env` (v4-pro doesn't support structured output)
+- **Testing** — `combat_test.py` in `output/` simulates full raid waves with attribute math
 
 ## License
 
-MIT
+MIT — do whatever you want. If your friend has fun, tell Newton to let Derbiren know. (￣▽￣)🔥
