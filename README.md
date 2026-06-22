@@ -38,7 +38,7 @@ You're a fledgling dungeon lord. Adventurers are coming in 5 days. Train your mo
 - **Day System** — Train, patrol, rest, research, or breed. Days tick toward the next raid
 - **Recruitment** — Patrolling has a 35% chance to find wild monsters (8 unique recruits with personalities)
 - **3-Wave Raid System** — Lv.3 rookie → Lv.4 squad of 5 → Lv.10 warrior-archer-mage trio
-- **Multi-Character Combat** — Up to 4v4 battles with full formula calculation
+- **Multi-Character Combat** — Any number of allies vs enemies with full formula calculation
 - **Detailed Character Panel** — 7 attributes, free point allocation, skill management, level tracking
 
 ## Combat System
