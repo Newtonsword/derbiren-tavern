@@ -351,6 +351,7 @@ body {
     </div>
     <div id="input-area">
       <button id="day-btn" onclick="advanceDay()" title="推进天数" style="padding:10px 12px;background:linear-gradient(135deg,#2a2018,#3a2a1a);color:var(--gold);border:1px solid #4a3a28;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.background='linear-gradient(135deg,#3a2a1a,#4a3020)'" onmouseout="this.style.borderColor='#4a3a28';this.style.background='linear-gradient(135deg,#2a2018,#3a2a1a)'">📅 下一天</button>
+      <button id="explore-btn" onclick="showExploreModal()" title="派魔物探索地下城" style="padding:10px 12px;background:linear-gradient(135deg,#1a2a2a,#1a2a20);color:#5a9e4b;border:1px solid #3a5a3a;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.15s;" onmouseover="this.style.borderColor='var(--good)';this.style.background='linear-gradient(135deg,#2a3a2a,#2a3a20)'" onmouseout="this.style.borderColor='#3a5a3a';this.style.background='linear-gradient(135deg,#1a2a2a,#1a2a20)'">🔍 探索</button>
       <input id="user-input" placeholder="描述你的行动——推开沉重的橡木门，走进昏暗的酒馆..." autofocus>
       <button id="send-btn" onclick="sendMessage()">发送</button>
     </div>
@@ -605,6 +606,23 @@ body {
       </div>
     </div>
   </div>
+
+  <!-- 探索 Modal -->
+  <div class="modal-overlay" id="explore-modal">
+    <div class="modal-box">
+      <h2>🔍 派遣魔物探索</h2>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
+        💡 每只魔物每天只能探索一次。探索可能发现装备或遇到野生魔物。
+      </div>
+      <div id="explore-chars" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;">
+        <div style="text-align:center;padding:20px;color:var(--dim);">没有可派遣的魔物</div>
+      </div>
+      <div id="explore-result" style="margin-top:12px;padding:10px;border-radius:5px;display:none;"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button onclick="closeExploreModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -775,6 +793,8 @@ async function loadOrCreateSession() {
         document.getElementById('sid-display').textContent = state.session_id;
         setWorldField(data.world_setting);
         if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
+        state._exploredToday = (data.explored_today || []).join(',');
+        state._unlockedEquipment = data.unlocked_equipment || [];
         renderAll();
         restoreHistory(data.history || []);
         return;
@@ -2158,11 +2178,17 @@ async function demolishCon(iid) {
 
 let _equipmentCache = null;
 let _eqFilter = 'all';
+const STAT_NAMES = {END:'耐力', STR:'力量', SPD:'速度', DEF:'防御', INT:'智力', MP:'法力', WIL:'意志'};
+const STAT_DESCS = {END:'HP+200/点 体力+50/点', STR:'物理伤害主属性', SPD:'命中/闪避主属性', DEF:'减伤率', INT:'法术伤害主属性', MP:'蓝量+20/点', WIL:'精神条+10/点'};
+const RARITY_NAMES = {common:'普通', uncommon:'精良', rare:'稀有', epic:'史诗'};
+const SLOT_NAMES = {weapon:'武器', armor:'防具', accessory:'饰品'};
 
 async function loadEquipmentCache() {
   if (_equipmentCache) return _equipmentCache;
   try {
-    const res = await fetch('/api/equipment');
+    const sid = state.session_id || '';
+    const url = '/api/equipment' + (sid ? '?sid=' + encodeURIComponent(sid) : '');
+    const res = await fetch(url);
     const data = await res.json();
     _equipmentCache = data.equipment || [];
   } catch(e) { _equipmentCache = []; }
@@ -2213,17 +2239,29 @@ async function renderEquipment() {
     const rarityClass = 'rarity-' + (item.rarity || 'common');
     const bonusStr = item.stats_bonus ? Object.entries(item.stats_bonus)
       .filter(([k,v]) => v !== 0)
-      .map(([k,v]) => `${k}${v>0?'+':''}${v}`).join(' ') : '';
-    return `<div class="eq-slot-card">
+      .map(([k,v]) => `${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ') : '';
+    let skillHtml = '';
+    if (item.skill) {
+      const sk = item.skill;
+      skillHtml = `<div style="font-size:11px;color:var(--accent);margin-top:2px;">⚡ ${sk.name}「${sk.type}」| 公式:${sk.formula} | 命中:${sk.hit_formula} | 消耗:${sk.cost} | 冷却:${sk.interval}${sk.special?' | '+sk.special:''}${sk.description?'<br>📝 '+sk.description:''}</div>`;
+    }
+    let detailHtml = `<div style="font-size:12px;color:var(--good);margin-top:2px;">📊 ${bonusStr}</div>`;
+    if (item.secondary_bonus && Object.values(item.secondary_bonus).some(v=>v!==0)) {
+      const secStr = Object.entries(item.secondary_bonus).filter(([k,v])=>v!==0).map(([k,v])=>`${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ');
+      detailHtml += `<div style="font-size:11px;color:var(--gold);">🔸 副属性: ${secStr}</div>`;
+    }
+    detailHtml += skillHtml;
+    if (item.special) detailHtml += `<div style="font-size:11px;color:#8b5cf6;">✨ ${item.special}</div>`;
+    detailHtml += `<div style="font-size:11px;color:var(--dim);margin-top:2px;">📦 来源: ${item.source==='starting'?'开局':item.source==='exploration'?'探索':item.source==='wave'?'波次奖励':'未知'} | 品级: ${RARITY_NAMES[item.rarity]||item.rarity}</div>`;
+    return `<div class="eq-slot-card" style="cursor:pointer;" onclick="this.querySelector('.eq-slot-detail-expand')?.classList.toggle('open')">
       <span class="slot-icon">${slotIcons[slot]}</span>
       <span class="slot-label">${name}</span>
-      <span class="rarity-badge ${rarityClass}">${item.rarity||'common'}</span>
+      <span class="rarity-badge ${rarityClass}">${RARITY_NAMES[item.rarity]||item.rarity}</span>
       <span class="slot-name">${item.name}</span>
       <span class="slot-desc">${item.description||''}</span>
-      ${bonusStr ? `<span class="item-bonus">${bonusStr}</span>` : ''}
-      ${item.special ? `<span class="item-special">✨ ${item.special}</span>` : ''}
-      ${item.skill ? `<span style="font-size:10px;color:var(--accent);">⚡${item.skill.name}(${item.skill.interval})</span>` : ''}
-      <button class="unequip-btn" onclick="unequipItem('${c.id}','${slot}')">卸下</button>
+      <span style="font-size:10px;color:var(--dim);">▼</span>
+      <button class="unequip-btn" onclick="event.stopPropagation();unequipItem('${c.id}','${slot}')">卸下</button>
+      <div class="eq-slot-detail-expand" style="display:none;width:100%;padding:6px 0 0 32px;border-top:1px dashed var(--border);margin-top:4px;">${detailHtml}</div>
     </div>`;
   }).join('');
 
@@ -2238,17 +2276,23 @@ async function renderEquipment() {
     const rarityClass = 'rarity-' + (item.rarity || 'common');
     const bonusStr = item.stats_bonus ? Object.entries(item.stats_bonus)
       .filter(([k,v]) => v !== 0)
-      .map(([k,v]) => `${k}${v>0?'+':''}${v}`).join(' ') : '';
-    const slotTag = {weapon:'🗡️武器', armor:'🛡️防具', accessory:'💍饰品'}[item.slot] || item.slot;
-    let detailHtml = '';
+      .map(([k,v]) => `${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ') : '';
+    const slotTag = SLOT_NAMES[item.slot] ? ({weapon:'🗡️', armor:'🛡️', accessory:'💍'}[item.slot]+SLOT_NAMES[item.slot]) : item.slot;
+    let detailHtml = `<div style="font-size:12px;color:var(--good);">📊 ${bonusStr || '无属性加成'}</div>`;
+    if (item.secondary_bonus && Object.values(item.secondary_bonus).some(v=>v!==0)) {
+      const secStr = Object.entries(item.secondary_bonus).filter(([k,v])=>v!==0).map(([k,v])=>`${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ');
+      detailHtml += `<div style="font-size:11px;color:var(--gold);">🔸 副属性: ${secStr}</div>`;
+    }
     if (item.skill) {
-      detailHtml += `<div style="font-size:11px;color:var(--accent);margin-top:4px;">⚡ 技能: ${item.skill.name}「${item.skill.type}」| ${item.skill.formula} | 消耗:${item.skill.cost} | 冷却:${item.skill.interval}${item.skill.special?' | '+item.skill.special:''}</div>`;
+      const sk = item.skill;
+      detailHtml += `<div style="font-size:11px;color:var(--accent);margin-top:4px;">⚡ 技能: ${sk.name}「${sk.type}」<br>　 伤害公式: ${sk.formula}<br>　 命中公式: ${sk.hit_formula}<br>　 消耗: ${sk.cost} | 冷却: ${sk.interval}${sk.special?'<br>　 特殊: '+sk.special:''}${sk.description?'<br>　 📝 '+sk.description:''}</div>`;
     }
     if (item.special) {
-      detailHtml += `<div style="font-size:11px;color:#8b5cf6;">✨ ${item.special}</div>`;
+      detailHtml += `<div style="font-size:11px;color:#8b5cf6;margin-top:4px;">✨ ${item.special}</div>`;
     }
+    detailHtml += `<div style="font-size:11px;color:var(--dim);margin-top:4px;">📦 来源: ${item.source==='starting'?'开局赠送':item.source==='exploration'?'探索发现':item.source==='wave'?'波次奖励':'未知'} | 品级: ${RARITY_NAMES[item.rarity]||item.rarity}</div>`;
     return `<div class="eq-item-card" onclick="this.querySelector('.eq-detail-expand')?.classList.toggle('open')">
-      <span class="rarity-badge ${rarityClass}">${item.rarity||'common'}</span>
+      <span class="rarity-badge ${rarityClass}">${RARITY_NAMES[item.rarity]||item.rarity}</span>
       <span class="slot-tag">${slotTag}</span>
       <span class="item-name">${item.name}</span>
       <span class="slot-desc" style="flex:1;">${item.description||''}</span>
@@ -2257,9 +2301,8 @@ async function renderEquipment() {
         onclick="event.stopPropagation();equipItem('${c.id}','${item.id}')"
         ${isEquipped?'disabled':''}>${isEquipped?'已装备':'装备'}</button>
     </div>
-    <div class="eq-detail-expand" style="display:none;padding:6px 14px 8px;margin:-4px 0 6px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--input-bg);font-size:11px;color:var(--dim);">
+    <div class="eq-detail-expand" style="display:none;padding:8px 14px;margin:-4px 0 6px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--input-bg);font-size:12px;color:var(--dim);line-height:1.7;">
       ${detailHtml}
-      <div style="margin-top:4px;">${item.description||''}</div>
     </div>`;
   }).join('');
 }
@@ -2300,6 +2343,93 @@ function filterEquipment(type, btn) {
   document.querySelectorAll('.eq-filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderEquipment();
+}
+
+// ── 探索系统 ──
+
+function showExploreModal() {
+  if (!state.session_id) { alert('请先开始冒险'); return; }
+  const chars = state.characters || [];
+  const explored = (state._exploredToday) ? state._exploredToday.split(',') : [];
+  const container = document.getElementById('explore-chars');
+  if (chars.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">没有可派遣的魔物</div>';
+  } else {
+    container.innerHTML = chars.map(c => {
+      const done = explored.includes(c.id);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);${done?'opacity:.5':''}">
+        <span style="font-size:18px;">🐾</span>
+        <span style="font-weight:bold;color:var(--gold);">${c.name}</span>
+        <span style="font-size:12px;color:var(--dim);">Lv.${c.level} ${c.species}</span>
+        ${done
+          ? '<span style="margin-left:auto;font-size:12px;color:var(--accent);">今日已探索</span>'
+          : `<button onclick="exploreMonster('${c.id}')" style="margin-left:auto;padding:6px 16px;background:var(--good);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">🔍 探索</button>`
+        }
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('explore-result').style.display = 'none';
+  document.getElementById('explore-modal').classList.add('show');
+}
+
+function closeExploreModal() {
+  document.getElementById('explore-modal').classList.remove('show');
+}
+
+async function exploreMonster(charId) {
+  const resultDiv = document.getElementById('explore-result');
+  resultDiv.style.display = 'block';
+  resultDiv.style.background = '#1a1c18';
+  resultDiv.style.color = 'var(--dim)';
+  resultDiv.innerHTML = '🔍 探索中...';
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/explore', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({char_id: charId}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultDiv.style.background = '#3a1818';
+      resultDiv.style.color = 'var(--accent)';
+      resultDiv.innerHTML = '❌ ' + (data.detail || '探索失败');
+      return;
+    }
+    if (data.result === 'nothing') {
+      resultDiv.style.background = '#2a2a20';
+      resultDiv.style.color = '#c9a050';
+      resultDiv.innerHTML = '😕 ' + data.msg;
+    } else if (data.result === 'equipment') {
+      resultDiv.style.background = '#1a2a1a';
+      resultDiv.style.color = 'var(--good)';
+      resultDiv.innerHTML = '🎁 ' + data.msg + '<br><span style="font-size:11px;color:var(--gold);">' + (data.item ? data.item.name : '') + '</span>';
+      _equipmentCache = null;  // 刷新装备缓存
+      setTimeout(() => renderEquipment(), 100);
+    } else if (data.result === 'monster') {
+      resultDiv.style.background = '#1a1a2a';
+      resultDiv.style.color = '#8b5cf6';
+      resultDiv.innerHTML = '🐾 ' + data.msg;
+      // 触发角色列表刷新
+      if (data.char_add) {
+        // 自动发送 CHAR_ADD 给 GM 处理
+        await fetch('/api/session/' + state.session_id + '/chat', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({message: data.char_add}),
+        });
+        setTimeout(() => refreshState(), 500);
+      }
+    }
+    // 刷新探索记录
+    if (state._exploredToday) {
+      state._exploredToday += ',' + charId;
+    } else {
+      state._exploredToday = charId;
+    }
+    showExploreModal();  // 刷新 modal 显示
+  } catch(e) {
+    resultDiv.style.background = '#3a1818';
+    resultDiv.style.color = 'var(--accent)';
+    resultDiv.innerHTML = '❌ 探索失败: ' + e.message;
+  }
 }
 
 /// 更新 tab 切换——加载装备页时刷新
