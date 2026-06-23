@@ -1237,6 +1237,14 @@ async function renderCharDetail() {
       }
     }
   }
+  // 进化属性加成
+  const evolveBonuses = {};
+  if (c.evolve_bonus) {
+    for (const [k, v] of Object.entries(c.evolve_bonus)) {
+      st[k] = (st[k]||3) + v;
+      evolveBonuses[k] = v;
+    }
+  }
   // 衍生值（仅角色级——技能命中/间隔见各技能详情）
   const HP = st.END * 200;
   const stamina = st.END * 50;
@@ -1263,20 +1271,32 @@ async function renderCharDetail() {
     ${draftBanner}
     <div class="stats-section">
       <h3>🔮 ${c.name} · ${c.species} · Lv.${c.level}</h3>
+      ${c.evolved ? `
+        <div style="background:#1a1228;border:1px solid #8b5cf6;border-radius:6px;padding:6px 10px;margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="color:#8b5cf6;font-size:13px;">✨ 已进化</span>
+          <span style="color:var(--text);font-size:13px;">当前形态：<b style="color:#c9a050;">${c.evolve_form || '未选择'}</b></span>
+          ${c.evolve_forms ? c.evolve_forms.map(f => 
+            f !== c.evolve_form ? `<button onclick="switchEvolveForm('${f}')" style="padding:3px 10px;background:#2a1a3a;border:1px solid #8b5cf6;color:#c9a050;border-radius:4px;cursor:pointer;font-size:12px;">🔄 切换为${f}</button>` : ''
+          ).join('') : ''}
+          <span style="font-size:10px;color:var(--dim);">（每日可自由切换）</span>
+        </div>
+      ` : ''}
       <div class="free-pts">剩余点数：<span id="free-pts">${c.free_points}</span></div>
       ${ATTRS.map(({key, name, desc}) => {
         const baseVal = c.stats[key] || 3;
         const eqBonus = equipBonuses[key] || 0;
+        const evBonus = evolveBonuses[key] || 0;
         const delta = isDraft ? (state.draft.deltas[key] || 0) : 0;
-        const displayVal = baseVal + eqBonus + delta;  // 基础+装备+草稿
+        const displayVal = baseVal + eqBonus + evBonus + delta;
         const eqStr = eqBonus !== 0 ? `<span style="color:#c9a050;font-size:11px;margin-left:2px;">${eqBonus>0?'+':''}${eqBonus}装</span>` : '';
+        const evStr = evBonus !== 0 ? `<span style="color:#8b5cf6;font-size:11px;margin-left:2px;">${evBonus>0?'+':''}${evBonus}进化</span>` : '';
         const deltaStr = delta > 0 ? `<span style="color:var(--good);font-size:11px;margin-left:2px;">+${delta}</span>` : '';
         const canPlus = freeLeft > 0 && displayVal < 99;
         const canMinus = isDraft && delta > 0;
         return `<div class="stat-row">
           <span class="stat-name">${name}</span>
           <span class="stat-desc">${desc}</span>
-          <span class="stat-val">${displayVal}${eqStr}${deltaStr}</span>
+          <span class="stat-val">${displayVal}${eqStr}${evStr}${deltaStr}</span>
           ${canMinus ? `<button class="stat-btn minus" onclick="adjustStat('${key}',-1)">−</button>` : ''}
           <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${!canPlus?'disabled':''}>+</button>
         </div>`;
@@ -1716,6 +1736,23 @@ async function upgradeSkill(skid) {
     } else {
       const err = await res.json();
       alert(err.detail || '升级失败');
+    }
+  } catch(e) { alert('错误：' + e.message); }
+}
+
+async function switchEvolveForm(form) {
+  const c = getActiveChar();
+  if (!c || !c.evolved) return;
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + c.id + '/evolve',
+      { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({form}) }
+    );
+    if (res.ok) {
+      await refreshCharacters();
+    } else {
+      const err = await res.json();
+      alert(err.detail || '切换失败');
     }
   } catch(e) { alert('错误：' + e.message); }
 }
