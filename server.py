@@ -1893,6 +1893,16 @@ def _load_library() -> dict:
 def _save_library(data: dict):
     LIBRARY_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
+STAT_TRANS = {"END":"耐力","STR":"力量","SPD":"速度","DEF":"防御","INT":"智力","MP":"法力","WIL":"意志"}
+
+def _tr(text):
+    """翻译文本中的英文属性名为中文"""
+    if not text or not isinstance(text, str):
+        return text
+    for en, zh in STAT_TRANS.items():
+        text = text.replace(en, zh)
+    return text
+
 @app.get("/api/library")
 def get_library():
     lib = _load_library()
@@ -1908,12 +1918,20 @@ def get_library():
             seen[key] = {
                 "name": c["name"], "species": c["species"],
                 "level": c["level"], "stats": c["stats"],
-                "skills": [{"name": sk["name"], "type": sk.get("type",""),"formula": sk.get("formula",""),
-                            "hit_formula": sk.get("hit_formula",""), "cost": sk.get("cost",""),
-                            "interval": sk.get("interval","")} for sk in c.get("skills",[])],
-                "passives": [{"name": p["name"], "effect": p.get("effect","")} for p in c.get("passives",[])],
+                "skills": [{"name": sk["name"], "type": sk.get("type",""),
+                            "formula": _tr(sk.get("formula","")),
+                            "hit_formula": _tr(sk.get("hit_formula","")),
+                            "cost": sk.get("cost",""),
+                            "interval": sk.get("interval",""),
+                            "special": _tr(sk.get("special",""))} for sk in c.get("skills",[])],
+                "passives": [{"name": p["name"], "effect": _tr(p.get("effect",""))} for p in c.get("passives",[])],
             }
     encountered = sorted(seen.values(), key=lambda x: x["level"], reverse=True)
+    # 翻译模板中的公式
+    for tpl in lib.get("templates", []):
+        for sk in tpl.get("skills", []):
+            sk["formula"] = _tr(sk.get("formula", ""))
+            sk["hit_formula"] = _tr(sk.get("hit_formula", ""))
     lib["encountered"] = encountered
     lib["encountered_count"] = len(encountered)
     lib["equipment_templates"] = _equipment_templates.get("templates", [])
