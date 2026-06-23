@@ -1206,7 +1206,7 @@ async function addCharManually() {
   } catch(e) { alert('添加失败: ' + e.message); }
 }
 
-function renderCharDetail() {
+async function renderCharDetail() {
   const c = getActiveChar();
   if (!c) return;
 
@@ -1216,6 +1216,22 @@ function renderCharDetail() {
   if (isDraft) {
     for (const [k, d] of Object.entries(state.draft.deltas)) {
       st[k] = (st[k] || 3) + d;
+    }
+  }
+  // 装备属性加成（加到 st 上，面板直接显示最终值）
+  const ZH2KEY = {耐力:'END',力量:'STR',速度:'SPD',防御:'DEF',智力:'INT',法力:'MP',意志:'WIL'};
+  const equipBonuses = {}; for (const k of ATTRS.map(a=>a.key)) equipBonuses[k] = 0;
+  if (c.equipment) {
+    const eqAll = await loadEquipmentCache();
+    for (const slot of ['weapon','armor','accessory']) {
+      const eqId = c.equipment[slot];
+      if (!eqId) continue;
+      const eq = eqAll.find(e => e.id === eqId);
+      if (!eq || !eq.attribute_bonus) continue;
+      for (const [zhName, val] of Object.entries(eq.attribute_bonus)) {
+        const key = ZH2KEY[zhName];
+        if (key) { st[key] = (st[key]||3) + val; equipBonuses[key] += val; }
+      }
     }
   }
   // 衍生值（仅角色级——技能命中/间隔见各技能详情）
@@ -1247,15 +1263,17 @@ function renderCharDetail() {
       <div class="free-pts">剩余点数：<span id="free-pts">${c.free_points}</span></div>
       ${ATTRS.map(({key, name, desc}) => {
         const baseVal = c.stats[key] || 3;
+        const eqBonus = equipBonuses[key] || 0;
         const delta = isDraft ? (state.draft.deltas[key] || 0) : 0;
-        const displayVal = baseVal + delta;
+        const displayVal = baseVal + eqBonus + delta;  // 基础+装备+草稿
+        const eqStr = eqBonus !== 0 ? `<span style="color:#c9a050;font-size:11px;margin-left:2px;">${eqBonus>0?'+':''}${eqBonus}装</span>` : '';
         const deltaStr = delta > 0 ? `<span style="color:var(--good);font-size:11px;margin-left:2px;">+${delta}</span>` : '';
         const canPlus = freeLeft > 0 && displayVal < 99;
         const canMinus = isDraft && delta > 0;
         return `<div class="stat-row">
           <span class="stat-name">${name}</span>
           <span class="stat-desc">${desc}</span>
-          <span class="stat-val">${displayVal}${deltaStr}</span>
+          <span class="stat-val">${displayVal}${eqStr}${deltaStr}</span>
           ${canMinus ? `<button class="stat-btn minus" onclick="adjustStat('${key}',-1)">−</button>` : ''}
           <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${!canPlus?'disabled':''}>+</button>
         </div>`;
