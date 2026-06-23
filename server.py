@@ -5,7 +5,7 @@
 启动前：复制 .env.example 为 .env，填入你的 LLM API key。
 支持 OpenAI / DeepSeek 等所有 OpenAI 兼容 API。
 """
-import os, json, uuid, random, re, platform, datetime
+import os, json, uuid, random, re, platform, datetime, asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -13,6 +13,9 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from openai import OpenAI
 import httpx
+
+from combat import Fighter, CombatSim, fighter_from_tavern_char, make_default_picker, make_ai_picker
+from combat.skill import parse_tavern_skills
 
 load_dotenv()
 
@@ -1317,24 +1320,13 @@ def chat(req: ChatReq):
                 )
                 _log_event(sess, "recruit", f"招募了 {mon['name']}（{mon['species']}）", {"char": mon['name'], "species": mon['species']})
         day_msg += f'[DAY_ADVANCE] 第{sess["day"]}天。{activity_desc}。' + recruit_msg + (f' ⚠️ 冒险者将在{dta}天后来袭！' if dta > 0 else ' ⚠️ 冒险者今天来袭！准备战斗！')
-        # 第0天 → 注入raid敌人配置
+        # 第0天 → 程序模拟战斗（不再是 AI 叙事）
         if dta == 0:
             wave_idx = sess.get("raid_wave", 1) - 1
-            if wave_idx < len(RAID_WAVES):
-                rw = RAID_WAVES[wave_idx]
-            else:
-                # 3波后无限随机生成
-                rw = _gen_random_wave(sess["raid_wave"])
-            enemy_info = []
-            for i, e in enumerate(rw["enemies"]):
-                st = e["stats"]; sk = e.get("skills_raw", "")
-                enemy_info.append(
-                    f"[ENEMY] {e['name']} Lv.{e['level']} {e['species']} " +
-                    " ".join(f"{k}:{v}" for k,v in st.items()) +
-                    (f" | 技能={sk}" if sk else "")
-                )
-            day_msg += f"\n[RAID] 第{sess['raid_wave']}波冒险者来袭！{rw['desc']}\n" + "\n".join(enemy_info)
-            day_msg += "\n⚠️ 战斗回合开始！每个敌人独立判定，我方魔物和冒险者交替行动。\n⚠️ 每次攻击必须包含 🎯 命中判定 + [DMG] 伤害计算块！格式：\n[DMG: 类型=刺/钝/斩 | 原始伤害=N | 公式=基伤+属性×系数 | 护盾吸收=N | 穿透:N% | 格挡吸收=N | 最终伤害=N | 余伤=N]\n不打[DMG]块的攻击=无效攻击！"
+            combat_result = asyncio.run(_run_raid_combat(sess, wave_idx))
+            combat_narrative = _build_combat_narrative(combat_result, sess["raid_wave"])
+            # 将战斗结果追加到 day_msg，AI 只需润色叙事
+            day_msg += f"\n\n[COMBAT_RESULT]\n{combat_narrative}\n\n⚠️ 以上是程序生成的战斗日志。请 GM 将其润色为一段精彩的战斗叙事（150-250字），不需要再计算伤害——所有数值已经由程序判定完毕。战斗结果：{'我方胜利' if combat_result['victor_team'] == 0 else '敌方胜利'}。"
         if active and action in ('锻炼','训练','train'):
             day_msg += f'\n[EXP] {active["name"]} 获得 {exp_gain} 经验。'
             _log_event(sess, "exp", f'{active["name"]} 获得 {exp_gain} 经验', {"char": active["name"], "exp": exp_gain})
@@ -1436,6 +1428,123 @@ def chat(req: ChatReq):
         "day": sess.get("day", 1), "days_until_attack": sess.get("days_until_attack", 5), "raid_wave": sess.get("raid_wave", 1),
         "characters_updated": chars if chars_updated else False,
     }
+
+
+# ══════════════════════════════════════════
+# 程序主导战斗引擎集成
+# ══════════════════════════════════════════
+
+async def _run_raid_combat(sess: dict, wave_idx: int) -> dict:
+    """
+    用程序模拟器运行一场 raid 战斗。
+    返回: {narrative, victor_team, fighters_final, log, chars_updated}
+    """
+    wave = RAID_WAVES[wave_idx] if wave_idx < len(RAID_WAVES) else _gen_random_wave(sess["raid_wave"])
+    chars = sess.get("characters", [])
+
+    # ── 构建我方 Fighter 列表 ──
+    our_fighters = []
+    for c in chars:
+        cfg = fighter_from_tavern_char(c, team=0)
+        skills = [parse_skill_dict(sk) for sk in c.get("skills", [])]
+        # 补格挡技能（如果没有）
+        if not any(s.get("type") == "defense" for s in skills):
+            skills.append({"name": "格挡", "type": "defense", "formula": "0",
+                          "cooldown": 0.5, "windup": 0.1, "recovery": 0.1})
+        # 确保每个角色有至少一个近战攻击技能
+        melee_types = ("slash", "pierce", "blunt")
+        if not any(s.get("type") in melee_types for s in skills):
+            skills.append({"name": "应急爪击", "type": "slash",
+                          "formula": "10+1.5*STR+0.5*SPD",
+                          "stamina_cost": 10, "cooldown": 2.0,
+                          "windup": 0.3, "recovery": 0.5})
+        f = Fighter(cfg, skills)
+        our_fighters.append(f)
+
+    # ── 构建敌方 Fighter 列表 ──
+    enemy_fighters = []
+    for e in wave["enemies"]:
+        e_skills = parse_tavern_skills(e.get("skills_raw", ""))
+        if not e_skills:
+            e_skills = [{"name": "挥砍", "type": "slash", "formula": "15+2*STR+0.5*SPD",
+                         "stamina_cost": 14, "cooldown": 3.0, "windup": 0.4, "recovery": 0.5}]
+        if not any(s.get("type") == "defense" for s in e_skills):
+            e_skills.append({"name": "格挡", "type": "defense", "formula": "0",
+                           "cooldown": 0.5, "windup": 0.1, "recovery": 0.1})
+        cfg = {
+            "id": f"enemy_{uuid.uuid4().hex[:6]}",
+            "name": e["name"], "level": e["level"],
+            "species_coeff": 1.3,  # 人类
+            "END": e["stats"].get("END", 3), "STR": e["stats"].get("STR", 3),
+            "SPD": e["stats"].get("SPD", 3), "DEF": e["stats"].get("DEF", 2),
+            "INT": e["stats"].get("INT", 2), "WIL": e["stats"].get("WIL", 3),
+            "MP": e["stats"].get("MP", 2), "armor": e["level"] * 15, "team": 1,
+        }
+        enemy_fighters.append(Fighter(cfg, e_skills))
+
+    # ── 环境: 地下城主场 ──
+    env = "narrow"  # 地下城狭窄洞穴
+
+    # ── AI 选择器 (有 API key 则用 DeepSeek，否则默认) ──
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    ai_picker = make_ai_picker(api_key) if api_key else make_default_picker()
+
+    # ── 运行 ──
+    sim = CombatSim(our_fighters, enemy_fighters, environment=env, ai_skill_picker=ai_picker)
+    result = await sim.run()
+
+    # ── 写回 HP/耐力/护甲/精神 到 session ──
+    for f in result.all_fighters_final:
+        char_id = f["char_id"]
+        # 我方角色
+        for c in chars:
+            if c["id"] == char_id:
+                c["current_hp"] = round(f["hp"], 1)
+                c["current_stamina"] = round(f["stamina"], 1)
+                c["current_mana"] = round(f["mana"], 1)
+                c["current_spirit"] = round(f["spirit"], 1)
+                c["current_armor"] = round(f["armor"], 1)
+                break
+
+    return {
+        "wave": wave,
+        "victor_team": result.victor_team,
+        "duration": result.duration,
+        "total_ticks": result.total_ticks,
+        "fighters_final": result.all_fighters_final,
+        "log": result.log,
+        "chars_updated": True,
+    }
+
+
+def _build_combat_narrative(combat_result: dict, wave_num: int) -> str:
+    """将战斗日志转换为 AI 可读的叙事摘要"""
+    lines = []
+    wave = combat_result["wave"]
+    lines.append(f"⚔️ 第{wave_num}波冒险者来袭——{wave['desc']}")
+    lines.append(f"【敌方】{'、'.join(e['name']+'(Lv.'+str(e['level'])+')' for e in wave['enemies'])}")
+    lines.append("")
+
+    for entry in combat_result["log"]:
+        cls = entry.get("cls", "")
+        prefix = {"hit": "⚔️", "spirit": "🔮", "result": "💀", "miss": "💨", "stun": "💫",
+                  "block": "🛡️", "heal": "💚"}.get(cls, "")
+        lines.append(f"[{entry['time']}s] {prefix} {entry['msg']}")
+
+    victor = "我方" if combat_result["victor_team"] == 0 else "敌方"
+    lines.append(f"\n🏆 战斗结束——{victor}获胜！({combat_result['duration']}秒)")
+
+    return "\n".join(lines)
+
+
+def _daily_recovery_all(sess: dict):
+    """每日恢复——所有角色 HP/护甲/体力回满"""
+    for c in sess.get("characters", []):
+        c["current_hp"] = None     # None = 满血
+        c["current_stamina"] = None
+        c["current_mana"] = None
+        c["current_spirit"] = None
+        c["current_armor"] = None
 
 # ── 事件日志 ──
 
