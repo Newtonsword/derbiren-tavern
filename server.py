@@ -5,7 +5,7 @@
 启动前：复制 .env.example 为 .env，填入你的 LLM API key。
 支持 OpenAI / DeepSeek 等所有 OpenAI 兼容 API。
 """
-import os, json, uuid, random, re, platform
+import os, json, uuid, random, re, platform, datetime
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -758,6 +758,22 @@ def _save(s):
     (BASE / "saves" / f"{s['id']}.json").write_text(
         json.dumps(s, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    # 自动注册到存档索引（不重复添加）
+    idx = _load_saves_index()
+    if not any(e.get("session_id") == s["id"] or e.get("file") == f"{s['id']}.json" for e in idx):
+        chars = s.get("characters", [])
+        char_desc = ", ".join(f"{c['name']}(Lv.{c['level']})" for c in chars[:5])
+        idx.append({
+            "file": f"{s['id']}.json",
+            "name": s.get("title", "新冒险"),
+            "saved_at": datetime.datetime.now().isoformat(),
+            "session_id": s["id"],
+            "title": s.get("title", "新冒险"),
+            "characters": char_desc,
+            "msg_count": len(s.get("messages", [])),
+            "auto": True
+        })
+        _save_saves_index(idx)
 
 def _log_event(sess, etype, msg, data=None):
     """记录游戏事件到日志"""
@@ -1318,7 +1334,7 @@ def chat(req: ChatReq):
                     (f" | 技能={sk}" if sk else "")
                 )
             day_msg += f"\n[RAID] 第{sess['raid_wave']}波冒险者来袭！{rw['desc']}\n" + "\n".join(enemy_info)
-            day_msg += "\n⚠️ 使用战斗公式逐回合叙述！每个敌人独立判定，我方魔物和冒险者交替行动。"
+            day_msg += "\n⚠️ 战斗回合开始！每个敌人独立判定，我方魔物和冒险者交替行动。\n⚠️ 每次攻击必须包含 🎯 命中判定 + [DMG] 伤害计算块！格式：\n[DMG: 类型=刺/钝/斩 | 原始伤害=N | 公式=基伤+属性×系数 | 护盾吸收=N | 穿透:N% | 格挡吸收=N | 最终伤害=N | 余伤=N]\n不打[DMG]块的攻击=无效攻击！"
         if active and action in ('锻炼','训练','train'):
             day_msg += f'\n[EXP] {active["name"]} 获得 {exp_gain} 经验。'
             _log_event(sess, "exp", f'{active["name"]} 获得 {exp_gain} 经验', {"char": active["name"], "exp": exp_gain})
