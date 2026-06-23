@@ -985,6 +985,7 @@ async function autoStart() {
     scrollBottom();
     if (data.characters_updated) {
       state.characters = data.characters_updated;
+      _equipmentCache = null;  // 刷新装备缓存（波次奖励）
       renderAll();
     }
   } catch(e) {
@@ -2341,7 +2342,7 @@ function translateStats(statsObj) {
 }
 
 async function loadEquipmentCache() {
-  if (_equipmentCache) return _equipmentCache;
+  if (_equipmentCache !== null) return _equipmentCache;
   try {
     const sid = state.session_id || '';
     const url = '/api/equipment' + (sid ? '?sid=' + encodeURIComponent(sid) : '');
