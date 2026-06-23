@@ -480,7 +480,8 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
       <div id="other-panel" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--input-bg);">
         <h3 style="cursor:pointer;user-select:none;font-size:14px;color:var(--dim);margin:0;" onclick="toggleExpSettings()">🧪 实验设置 <span id="exp-toggle-icon" style="font-size:12px;">▶</span></h3>
         <div id="exp-panel" style="display:none;margin-top:8px;padding:10px;border-left:2px solid var(--border);">
-          <div class="setting-group" style="display:flex;align-items:center;gap:10px;flex-direction:row;">
+          <div class="setting-group" style="display:flex;align-items:center;gap:8px;flex-direction:row;">
+            <span style="font-size:10px;color:#3a3028;opacity:0.5;">nsfw</span>
             <label class="switch">
               <input id="set-nsfw" type="checkbox" onchange="saveSettings()">
               <span class="slider"></span>
