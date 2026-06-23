@@ -9,7 +9,7 @@ import os, json, uuid, random, re, platform
 from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from openai import OpenAI
 import httpx
@@ -833,7 +833,11 @@ NO_KEY_MSG = """🔥💢 本大爷没有 API key 用不了！
 
 @app.get("/")
 def index():
-    return FileResponse(BASE / "index.html")
+    return FileResponse(BASE / "index.html", headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
 
 # ── 聊天 ──
 
