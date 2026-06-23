@@ -326,7 +326,7 @@ body {
     <button class="tab-btn" data-tab="chars">👥 角色</button>
     <button class="tab-btn" data-tab="equipment">⚔️ 装备</button>
     <button class="tab-btn" data-tab="engineering">🏗️ 工程</button>
-    <button class="tab-btn" data-tab="library">📚 技能库</button>
+    <button class="tab-btn" data-tab="library">📚 库</button>
     <button class="tab-btn" data-tab="log">📊 日志</button>
     <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
   </div>
@@ -371,7 +371,7 @@ body {
   <div class="tab-panel" id="tab-library">
     <div id="library-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h2 style="font-size:16px;color:var(--gold);">📚 技能模板库</h2>
+        <h2 style="font-size:16px;color:var(--gold);">📚 模板库</h2>
         <button onclick="loadLibrary()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--dim);cursor:pointer;font-size:12px;font-family:inherit;">🔄 刷新</button>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">
@@ -1564,6 +1564,28 @@ async function loadLibrary() {
 
     if (!templates.length && !encountered.length) {
       html = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无模板——创建角色并升级后会出现在这里。</div>';
+    }
+
+    // 装备模板
+    const eqTemplates = data.equipment_templates || [];
+    if (eqTemplates.length > 0) {
+      html += '<hr style="border-color:var(--border);margin:12px 0;">';
+      html += '<div style="font-size:13px;color:var(--gold);margin-bottom:4px;">⚒️ 装备模板</div>';
+      html += '<div style="font-size:12px;color:var(--dim);margin-bottom:8px;">💡 AI 生成装备时以此库的数值模式为准。</div>';
+      html += eqTemplates.map(eq => `
+        <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:8px;font-size:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+            <strong style="color:var(--gold);">${eq.name}</strong>
+            <span style="color:var(--dim);">${({weapon:'🗡️武器',armor:'🛡️防具',accessory:'💍饰品'})[eq.slot]||eq.slot} · ${RARITY_NAMES[eq.rarity]||eq.rarity} · ${eq.tier||''}</span>
+          </div>
+          <div style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+            <div style="color:var(--dim);margin-bottom:4px;">${eq.description||''}</div>
+            <div style="color:var(--good);">📊 ${Object.entries(eq.stats||{}).map(([k,v])=>k+v).join(' | ')}</div>
+            ${Object.keys(eq.attribute_bonus||{}).length ? `<div style="color:var(--gold);margin-top:4px;">🔸 ${Object.entries(eq.attribute_bonus).map(([k,v])=>STAT_NAMES[k]||k+(v>0?'+':'')+v).join(' ')}</div>` : ''}
+            ${eq.design_notes ? `<div style="color:var(--dim);font-size:11px;margin-top:4px;font-style:italic;">💡 ${eq.design_notes}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
     }
 
     entries.innerHTML = html;
