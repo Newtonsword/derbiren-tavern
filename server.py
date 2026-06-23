@@ -1738,13 +1738,33 @@ def del_char(sid: str, cid: str):
 
 @app.get("/api/equipment")
 def list_equipment(sid: str = ""):
-    """返回装备池。如果提供 sid 则过滤已解锁装备。"""
+    """返回装备池。标注每件装备当前被哪个角色装备。"""
     if sid:
         s = sessions.get(sid) or _load(sid)
         if s:
             unlocked = s.get("unlocked_equipment", [])
-            return {"equipment": [e for e in _equipment_pool if e["id"] in unlocked], "all_unlocked": unlocked}
-    return {"equipment": _equipment_pool}
+            chars = s.get("characters", [])
+            # 收集所有已装备的物品 → 谁装备了它
+            equipped_map = {}  # item_id → [char_name, ...]
+            for c in chars:
+                for slot, eq_id in c.get("equipment", {}).items():
+                    if eq_id:
+                        equipped_map.setdefault(eq_id, []).append(c["name"])
+            result = []
+            for e in _equipment_pool:
+                if e["id"] in unlocked:
+                    item = dict(e)
+                    item["equipped_by"] = equipped_map.get(e["id"], [])
+                    result.append(item)
+            return {"equipment": result, "all_unlocked": unlocked}
+    # 无 sid 时仍返回全量
+    equipped_map = {}
+    result = []
+    for e in _equipment_pool:
+        item = dict(e)
+        item["equipped_by"] = equipped_map.get(e["id"], [])
+        result.append(item)
+    return {"equipment": result}
 
 @app.put("/api/session/{sid}/characters/{cid}/equip")
 def equip_item(sid: str, cid: str, data: dict):

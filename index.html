@@ -2369,12 +2369,28 @@ async function renderEquipment() {
 
   // 渲染装备仓库（过滤）
   const listDiv = document.getElementById('eq-list');
-  const equippedIds = new Set(Object.values(eq).filter(Boolean));
+  // 收集所有角色已装备的物品ID（不只是当前角色）
+  const allEquippedIds = new Set();
+  const allEquippedBy = {};  // item_id → [name, ...]
+  if (state.session && state.session.characters) {
+    for (const ch of state.session.characters) {
+      const eq2 = ch.equipment || {};
+      for (const [slot, eid] of Object.entries(eq2)) {
+        if (eid) {
+          allEquippedIds.add(eid);
+          if (!allEquippedBy[eid]) allEquippedBy[eid] = [];
+          if (!allEquippedBy[eid].includes(ch.name)) allEquippedBy[eid].push(ch.name);
+        }
+      }
+    }
+  }
   let filtered = allEq;
   if (_eqFilter !== 'all') filtered = allEq.filter(e => e.slot === _eqFilter);
 
   listDiv.innerHTML = filtered.map(item => {
-    const isEquipped = equippedIds.has(item.id);
+    const isEquipped = allEquippedIds.has(item.id);
+    const equippedByNames = allEquippedBy[item.id] || [];
+    const equipLabel = isEquipped ? '已装备' + (equippedByNames.length ? '·' + equippedByNames.join('、') : '') : '装备';
     const rarityClass = 'rarity-' + (item.rarity || 'common');
     const bonusStr = item.stats_bonus ? Object.entries(item.stats_bonus)
       .filter(([k,v]) => v !== 0)
@@ -2401,7 +2417,7 @@ async function renderEquipment() {
       ${bonusStr ? `<span class="item-bonus">${bonusStr}</span>` : ''}
       <button class="equip-btn ${isEquipped?'equipped':''}"
         onclick="event.stopPropagation();equipItem('${c.id}','${item.id}')"
-        ${isEquipped?'disabled':''}>${isEquipped?'已装备':'装备'}</button>
+        ${isEquipped?'disabled':''}>${equipLabel}</button>
     </div>
     <div class="eq-detail-expand" style="display:none;padding:8px 14px;margin:-4px 0 6px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--input-bg);font-size:12px;color:var(--dim);line-height:1.7;">
       ${detailHtml}
