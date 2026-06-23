@@ -933,7 +933,9 @@ def _validate_narrative(text: str, chars: list) -> str:
                 warnings.append(f'💡 系统：提到了{sp}但我方队伍中没有{sp}。请只使用 [队伍] 中列出的角色。')
 
     if warnings:
-        return text + '\n\n' + '\n'.join(warnings)
+        # 警告写入事件日志而非泄漏到叙事文本
+        for w in warnings:
+            _log_event(sess, "system_warn", w[:200], {"warning": w[:200]})
     return text
 
 CHAR_ADD_RE = re.compile(
