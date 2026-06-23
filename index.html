@@ -663,13 +663,13 @@ const SPECIES_PRESETS = [
 const CHARACTER_PRESETS = [
   {
     name:"猫龙幼崽「夜牙」", species:"猫龙", coeff:2.5,
-    stats:{END:5,STR:6,SPD:8,DEF:3,INT:4,MP:3,WIL:7},
+    stats:{END:5,STR:6,SPD:8,DEF:4,INT:3,MP:3,WIL:5},
     desc:"一只在月圆之夜从龙蛋中破壳的猫龙幼崽，左粉右绿的异色瞳里藏着未觉醒的龙族血脉。它用猫科的前爪在你腿上踩奶，用龙族的后爪在地上刨出火花——还不知道自己将来能长成什么样的怪物。",
     skills:[
-      {name:"利爪",type:"斩击",formula:"20+2.0×STR+1.5×SPD",cost:"耐力18",interval:"3.0s",hit_formula:"75+2.0×STR+1.0×SPD",category:"主动"},
-      {name:"扫尾",type:"钝击",formula:"15+1.5×STR+1.0×END",cost:"耐力22",interval:"4.5s",hit_formula:"85+1.5×STR",category:"主动"},
+      {name:"利爪",type:"斩击",formula:"20+2.0×力量+1.5×速度",cost:"耐力18",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
+      {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力22",interval:"4.5s",hit_formula:"85+1.5×力量",category:"主动"},
       {name:"暗影闪避",type:"防御",formula:"闪避+25(单次)",cost:"耐力15",interval:"6.0s",hit_formula:"",category:"主动"},
-      {name:"灵巧格挡",type:"防御",formula:"15+2.0×STR+1.0×END/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      {name:"灵巧格挡",type:"防御",formula:"15+2.0×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
       {name:"黑暗视觉",effect:"黑暗环境不受命中惩罚，命中+10%"},
@@ -680,9 +680,9 @@ const CHARACTER_PRESETS = [
      stats:{END:7,STR:7,SPD:4,DEF:6,INT:5,MP:4,WIL:6},
     desc:"从火山灰烬中苏醒的红龙幼崽，鳞片还带着余温。它歪着脑袋打量你，鼻孔冒出的火星点燃了地上的枯草——然后它打了个喷嚏，真正的龙息喷了你一脸。好在你是魔王，不然已经被烤熟了。",
     skills:[
-      {name:"龙息",type:"法术",formula:"30+3.0×INT+1.0×MP",cost:"蓝18",interval:"5.0s",hit_formula:"90",category:"主动"},
-      {name:"尾击",type:"钝击",formula:"25+2.5×STR+0.5×END",cost:"耐力20",interval:"3.5s",hit_formula:"75+2.0×STR",category:"主动"},
-      {name:"龙鳞格挡",type:"防御",formula:"25+2.5×STR+1.5×END/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      {name:"龙息",type:"法术",formula:"30+3.0×智力+1.0×法力",cost:"蓝18",interval:"5.0s",hit_formula:"90",category:"主动"},
+      {name:"尾击",type:"钝击",formula:"25+2.5×力量+0.5×耐力",cost:"耐力20",interval:"3.5s",hit_formula:"75+2.0×力量",category:"主动"},
+      {name:"龙鳞格挡",type:"防御",formula:"25+2.5×力量+1.5×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
       {name:"鳞甲天生",effect:"DEF等效+1，钝伤减伤+10%"},
@@ -690,12 +690,12 @@ const CHARACTER_PRESETS = [
   },
   {
     name:"触手怪「墨墨」", species:"触手怪", coeff:1.8,
-    stats:{END:5,STR:6,SPD:5,DEF:3,INT:3,MP:4,WIL:4},
+    stats:{END:5,STR:5,SPD:6,DEF:3,INT:3,MP:4,WIL:4},
     desc:"地下暗河里漂出来的一团暗紫色生物——不，它不能算'一只'，它是'一团'。墨墨不发声音，只用触手轻轻卷住你的手指，吸盘传来的微弱脉搏让你意识到它在听你的心跳。它不需要你说话，它已经知道你是自己人。",
     skills:[
-      {name:"缠绕",type:"钝击",formula:"10+1.5×STR+1.0×SPD",cost:"耐力15",interval:"4.0s",hit_formula:"80+2.0×SPD",category:"主动"},
-      {name:"鞭打",type:"钝击",formula:"15+2.0×STR+0.5×SPD",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×STR+1.0×SPD",category:"主动"},
-      {name:"触须护盾",type:"防御",formula:"10+1.5×STR+1.0×END/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      {name:"缠绕",type:"钝击",formula:"10+1.5×力量+1.0×速度",cost:"耐力15",interval:"4.0s",hit_formula:"80+2.0×速度",category:"主动"},
+      {name:"鞭打",type:"钝击",formula:"15+2.0×力量+0.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×力量+1.0×速度",category:"主动"},
+      {name:"触须护盾",type:"防御",formula:"10+1.5×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
       {name:"多触须",effect:"每回合额外一次触须攻击(50%伤害)"},
@@ -703,12 +703,12 @@ const CHARACTER_PRESETS = [
   },
   {
     name:"石像鬼「灰翼」", species:"石像鬼", coeff:1.8,
-    stats:{END:6,STR:5,SPD:6,DEF:7,INT:2,MP:2,WIL:5},
+    stats:{END:7,STR:6,SPD:3,DEF:8,INT:2,MP:2,WIL:5},
     desc:"地下城穹顶上蹲了三百年的石雕，在你踏入地下城的那一刻睁开了无瞳的石眼。它选择你作为守护对象——不是因为你的力量，而是因为它已经等了三百年，不想再等了。灰翼不能说话，但它会用石翼替你挡住每一支飞来的箭。",
     skills:[
-      {name:"俯冲",type:"钝击",formula:"25+2.0×SPD+1.0×STR",cost:"耐力18",interval:"4.0s",hit_formula:"75+3.0×SPD",category:"主动"},
-      {name:"碎石",type:"钝击",formula:"15+1.5×STR+0.5×END",cost:"耐力20",interval:"5.0s",hit_formula:"85+1.0×STR",category:"主动"},
-      {name:"石翼守护",type:"防御",formula:"25+2.5×END+1.5×DEF/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      {name:"俯冲",type:"钝击",formula:"25+2.0×速度+1.0×力量",cost:"耐力18",interval:"4.0s",hit_formula:"75+3.0×速度",category:"主动"},
+      {name:"碎石",type:"钝击",formula:"15+1.5×力量+0.5×耐力",cost:"耐力20",interval:"5.0s",hit_formula:"85+1.0×力量",category:"主动"},
+      {name:"石翼守护",type:"防御",formula:"25+2.5×耐力+1.5×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
       {name:"石化皮肤",effect:"减伤+8%，受击概率石化攻击者(-3SPD)"},
@@ -716,13 +716,13 @@ const CHARACTER_PRESETS = [
   },
   {
     name:"杀人兔「雪球」", species:"杀人兔", coeff:1.8,
-    stats:{END:3,STR:8,SPD:9,DEF:1,INT:1,MP:1,WIL:5},
+    stats:{END:3,STR:4,SPD:9,DEF:1,INT:1,MP:1,WIL:4},
     desc:"一团毛茸茸的白色小球在你脚边蹭来蹭去——可爱到你想蹲下来摸它。别摸。上一次摸雪球的是个3级的冒险者，现在他的手指还挂在菌菇森林第三棵蘑菇下面。雪球喜欢你，所以它只是蹭你。对不喜欢的人……它笑的时候你会看到的。",
     skills:[
-      {name:"撕咬",type:"刺击",formula:"20+3.0×SPD+1.0×STR",cost:"耐力10",interval:"2.0s",hit_formula:"70+3.5×SPD",category:"主动"},
-      {name:"飞踢",type:"钝击",formula:"18+2.5×SPD+0.5×STR",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.5×SPD",category:"主动"},
+      {name:"撕咬",type:"刺击",formula:"20+3.0×速度+1.0×力量",cost:"耐力10",interval:"2.0s",hit_formula:"70+3.5×速度",category:"主动"},
+      {name:"飞踢",type:"钝击",formula:"18+2.5×速度+0.5×力量",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.5×速度",category:"主动"},
       {name:"幻影步",type:"防御",formula:"闪避+30(单次)",cost:"耐力12",interval:"5.0s",hit_formula:"",category:"主动"},
-      {name:"轻巧格挡",type:"防御",formula:"8+2.0×SPD+0.5×STR/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      {name:"轻巧格挡",type:"防御",formula:"8+2.0×速度+0.5×力量/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
       {name:"闪避本能",effect:"闪避+10"},
@@ -733,8 +733,8 @@ const CHARACTER_PRESETS = [
     stats:{END:4,STR:5,SPD:7,DEF:2,INT:1,MP:1,WIL:4},
     desc:"一头被狼群驱逐的年轻公狼——因为在狩猎时犹豫了一秒，被头狼咬掉了半只耳朵。灰牙本来会在冬天的森林里饿死，直到它闻到了地下城飘出的魔力气味。它走进来，看见了你，然后就坐下了。它找了很久的主人——不管那是什么物种。",
     skills:[
-      {name:"撕咬",type:"刺击",formula:"15+2.0×STR+1.5×SPD",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×STR+1.0×SPD",category:"主动"},
-      {name:"扑击",type:"钝击",formula:"20+1.5×STR+2.0×SPD",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×SPD+1.0×STR",category:"主动"},
+      {name:"撕咬",type:"刺击",formula:"15+2.0×力量+1.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×力量+1.0×速度",category:"主动"},
+      {name:"扑击",type:"钝击",formula:"20+1.5×力量+2.0×速度",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×速度+1.0×力量",category:"主动"},
       {name:"影步",type:"防御",formula:"闪避+25(单次)",cost:"耐力15",interval:"6.0s",hit_formula:"",category:"主动"},
     ],
     passives:[
@@ -743,11 +743,11 @@ const CHARACTER_PRESETS = [
   },
   {
     name:"史莱姆「啵咕」", species:"史莱姆", coeff:1.0,
-    stats:{END:3,STR:2,SPD:2,DEF:1,INT:1,MP:1,WIL:2},
+    stats:{END:3,STR:3,SPD:3,DEF:3,INT:3,MP:3,WIL:3},
     desc:"一坨淡蓝色的果冻，会弹跳，会蠕动，会把你的钥匙吞进肚子里然后又吐出来——上面全是黏糊糊的消化液。啵咕不是废物，它只是一张白纸。喂它火元素变熔岩史莱姆，喂它冰元素变冰晶史莱姆——或者什么也不喂，看它自己在战斗中被揍出抗性来。",
     skills:[
-      {name:"撞击",type:"钝击",formula:"10+1.5×END+0.5×STR",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.0×END",category:"主动"},
-      {name:"缩壳",type:"防御",formula:"8+1.0×END/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
+      {name:"撞击",type:"钝击",formula:"10+1.5×耐力+0.5×力量",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.0×耐力",category:"主动"},
+      {name:"缩壳",type:"防御",formula:"8+1.0×耐力/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
     ],
     passives:[
       {name:"凝胶身体",effect:"钝伤减半"},
@@ -758,9 +758,9 @@ const CHARACTER_PRESETS = [
     stats:{END:2,STR:2,SPD:5,DEF:1,INT:6,MP:4,WIL:5},
     desc:"一只瘦小的绿皮哥布林，身上挂着用破布和生锈零件拼凑的工具包。吱吱的部落被冒险者公会剿灭了——它是唯一的幸存者。它跪在你面前时膝盖还在发抖，但那双黄色小眼睛里有一种只有亡命徒才有的狂热：它认定你是能带它报仇的魔王。",
     skills:[
-      {name:"陷阱",type:"特殊",formula:"20+2.5×INT",cost:"耐力15",interval:"8.0s",hit_formula:"自动命中",category:"主动"},
-      {name:"投毒",type:"法术",formula:"10+2.0×INT+1.0×MP",cost:"蓝12",interval:"4.0s",hit_formula:"75+2.0×INT",category:"主动"},
-      {name:"魔法护盾",type:"防御",formula:"8+1.0×INT+0.5×MP/秒",cost:"蓝0.8/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      {name:"陷阱",type:"特殊",formula:"20+2.5×智力",cost:"耐力15",interval:"8.0s",hit_formula:"自动命中",category:"主动"},
+      {name:"投毒",type:"法术",formula:"10+2.0×智力+1.0×法力",cost:"蓝12",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
+      {name:"魔法护盾",type:"防御",formula:"8+1.0×智力+0.5×法力/秒",cost:"蓝0.8/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
       {name:"战术大脑",effect:"每回合额外一次战术行动"},
