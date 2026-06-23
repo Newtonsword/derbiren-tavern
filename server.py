@@ -634,17 +634,36 @@ def _assign_starter_skills(char, provided_skills=None, provided_passives=None):
 
 def _ensure_melee_skill(char):
     """确保角色至少有一个近战攻击技能（法师/射手给一个极弱的应急技）"""
-    melee_types = ("斩击", "刺击", "钝击")
-    has_melee = any(s.get("type") in melee_types for s in char.get("skills", []))
-    if has_melee:
-        return
-    # 根据角色战斗风格给一个极弱的近战应急技能
+    # 近战关键字：技能名含这些才算真正的近战攻击
+    melee_keywords = ("杖", "拳", "踢", "咬", "爪", "刀", "剑", "斧", "锤", "棍", "匕", "砍", "劈", "砸", "撞", "尾", "撕")
+    ranged_keywords = ("弓", "射", "弹", "息", "球", "箭", "矢", "枪")
+    for s in char.get("skills", []):
+        name = s.get("name", "")
+        stype = s.get("type", "")
+        # 跳过防御/被动技能
+        if stype == "防御" or s.get("category") == "被动":
+            continue
+        # 有近战关键字 → 有近战
+        if any(kw in name for kw in melee_keywords):
+            return
+        # 远程关键字 → 跳过
+        if any(kw in name for kw in ranged_keywords):
+            continue
+        # 钝击且无名显远程特征 → 算近战
+        if stype == "钝击":
+            return
+    # 根据角色定位给一个极弱的近战应急技能
     stats = char.get("stats", {})
     spd = stats.get("SPD", 3)
     str_ = stats.get("STR", 3)
     int_ = stats.get("INT", 3)
-    # 判断定位：智力最高→法师，速度最高→射手，其他→弱物理
-    if int_ >= spd and int_ >= str_:
+    # 先根据已有技能名判断定位（比属性更准）
+    all_skill_names = " ".join(s.get("name", "") for s in char.get("skills", []))
+    if any(kw in all_skill_names for kw in ("弓箭", "射击", "弓柄")):
+        name, desc = "弓柄敲", "抡起弓柄砸人——射手的保命一击"
+    elif any(kw in all_skill_names for kw in ("吐息", "火球", "魔法", "法术", "奥术", "暗影", "酸液")):
+        name, desc = "杖击", "用施法器具勉强砸过去——法师的近战最后手段"
+    elif int_ >= spd and int_ >= str_:
         name, desc = "杖击", "用施法器具勉强砸过去——法师的近战最后手段"
     elif spd >= str_:
         name, desc = "弓柄敲", "抡起弓柄砸人——射手的保命一击"
@@ -655,8 +674,8 @@ def _ensure_melee_skill(char):
     sk["name"] = name
     sk["type"] = "钝击"
     sk["category"] = "主动"
-    sk["formula"] = f"5 + 0.5×力量 + 0.3×速度"
-    sk["hit_formula"] = f"60 + 1.0×速度"
+    sk["formula"] = "5 + 0.5×力量 + 0.3×速度"
+    sk["hit_formula"] = "60 + 1.0×速度"
     sk["cost"] = "耐力5"
     sk["interval"] = "2.5s"
     sk["description"] = desc
