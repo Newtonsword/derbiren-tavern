@@ -70,5 +70,44 @@
     },
     "build_days": 1,
     "max_count": 2
+  },
+  {
+    "id": "con_env_01",
+    "name": "火把阵",
+    "type": "环境工事",
+    "icon": "🔥",
+    "description": "在通道两侧插满浸油火把——黑暗不再是魔物的主场，但至少大家都看不见了。",
+    "effect": {
+      "darkness_penalty_reduce": "黑暗命中惩罚减半",
+      "attract_enemies": "火光吸引更多冒险者，敌人数+1"
+    },
+    "build_days": 1,
+    "max_count": 1
+  },
+  {
+    "id": "con_env_02",
+    "name": "通风管道",
+    "type": "环境工事",
+    "icon": "💨",
+    "description": "凿穿岩壁的通风网络——窄洞里长兵器不再束手束脚。",
+    "effect": {
+      "narrow_cave_reduce": "窄洞惩罚减半",
+      "poison_resist": "毒雾持续时间-50%"
+    },
+    "build_days": 2,
+    "max_count": 1
+  },
+  {
+    "id": "con_env_03",
+    "name": "魔力水晶",
+    "type": "环境工事",
+    "icon": "💎",
+    "description": "在地下城核心安放魔力水晶——散发的能量让魔物更加凶猛。",
+    "effect": {
+      "ally_damage": "+15%",
+      "ally_hit": "+10%命中"
+    },
+    "build_days": 3,
+    "max_count": 1
   }
 ]
