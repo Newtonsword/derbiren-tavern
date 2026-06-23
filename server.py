@@ -15,7 +15,7 @@ from openai import OpenAI
 import httpx
 
 from combat import Fighter, CombatSim, fighter_from_tavern_char, make_default_picker, make_ai_picker
-from combat.skill import parse_tavern_skills
+from combat.skill import parse_tavern_skills, parse_skill_dict
 
 load_dotenv()
 
@@ -1527,9 +1527,8 @@ def _build_combat_narrative(combat_result: dict, wave_num: int) -> str:
 
     for entry in combat_result["log"]:
         cls = entry.get("cls", "")
-        prefix = {"hit": "⚔️", "spirit": "🔮", "result": "💀", "miss": "💨", "stun": "💫",
-                  "block": "🛡️", "heal": "💚"}.get(cls, "")
-        lines.append(f"[{entry['time']}s] {prefix} {entry['msg']}")
+        # 日志消息已经自带 emoji，不再重复添加前缀
+        lines.append(f"[{entry['time']}s] {entry['msg']}")
 
     victor = "我方" if combat_result["victor_team"] == 0 else "敌方"
     lines.append(f"\n🏆 战斗结束——{victor}获胜！({combat_result['duration']}秒)")
