@@ -505,7 +505,7 @@ SPECIES_STARTER_SKILLS = {
             {"name":"陷阱","type":"钝击","formula":"15+1.0×INT(固定)","cost":"耐力20","interval":"8.0s","hit_formula":"120","category":"主动"},
             {"name":"魔法护盾","type":"防御","formula":"8+1.0×INT+0.5×MP/秒","cost":"蓝0.8/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
-        "passives": [{"name":"狡诈","effect":"先手时命中+15%"}],
+        "passives": [{"name":"狡诈","effect":"先手时命中+15%"}, {"name":"工程天赋","effect":"工程建造速度+0.5天/每日"}],
     },
 }
 
@@ -603,6 +603,28 @@ def _load(sid):
         except Exception:
             pass
     return None
+
+def _advance_constructions(sess):
+    """每日推进工程建造进度——第一个在建工程+1天（哥布林被动+0.5）"""
+    cons = sess.get("constructions", [])
+    building = [c for c in cons if c.get("status") == "building"]
+    if not building:
+        return
+    # 检查哥布林被动——工程加速
+    chars = sess.get("characters", [])
+    bonus = 0
+    for ch in chars:
+        for p in ch.get("passives", []):
+            if "工程" in (p.get("effect", "") or "") or "建造速度" in (p.get("effect", "") or ""):
+                bonus += 0.5
+                break
+    # 推进第一个在建工程
+    first = building[0]  # 按队列顺序（加入顺序）
+    first["build_progress"] = first.get("build_progress", 0) + 1 + bonus
+    if first["build_progress"] >= first.get("build_total", 1):
+        first["status"] = "built"
+        first["built_day"] = sess.get("day", 1)
+        _log_event(sess, "build_complete", f'🏗️ {first["name"]} 建造完成！', {"construction": first["name"], "day": sess.get("day", 1)})
 
 # ── 请求模型 ──
 
@@ -805,7 +827,7 @@ def chat(req: ChatReq):
     base_sys = SYS.replace("{WORLD_SETTING}", world)
     day_info = f"\n[第{day}天] 距离冒险者来袭还有{dta}天。" if dta > 0 else f"\n[第{day}天] ⚠️ 冒险者今天来袭！"
     # 防御工事信息
-    con_list = sess.get("constructions", [])
+    con_list = [c for c in sess.get("constructions", []) if c.get("status") == "built"]
     con_info = ""
     if con_list:
         con_lines = []
@@ -841,6 +863,8 @@ def chat(req: ChatReq):
         sess["day"] = sess.get("day", 1) + 1
         sess["days_until_attack"] = max(0, sess.get("days_until_attack", 5) - 1)
         dta = sess["days_until_attack"]
+        # 工程建造进度推进
+        _advance_constructions(sess)
         # 日常活动 → 给活跃角色加经验
         exp_gain = max(3, int((30 - sess["day"] * 0.5) / max(1, active["level"] * 0.3))) if active else 0
         old_level = active["level"] if active else 1
@@ -1269,18 +1293,22 @@ def build_construction(sid: str, data: dict):
     same_type = [c for c in existing if c["id"] == con_id]
     if len(same_type) >= con.get("max_count", 99):
         raise HTTPException(400, f"{con['name']}已达建造上限({con['max_count']})")
-    built = {
+    build_days = con.get("build_days", 1)
+    instance = {
         "instance_id": uuid.uuid4().hex[:6],
         "id": con_id,
         "name": con["name"],
         "type": con["type"],
         "icon": con.get("icon", ""),
         "effect": con.get("effect", {}),
-        "built_day": s.get("day", 1),
+        "status": "building",
+        "build_progress": 0,
+        "build_total": build_days,
+        "started_day": s.get("day", 1),
         "uses_left": con.get("effect", {}).get("uses", 999),
     }
-    s.setdefault("constructions", []).append(built)
-    _log_event(s, "build", f'🏗️ 建造了 {con["name"]}（{con["type"]}）', {"construction": con["name"], "day": s.get("day", 1)})
+    s.setdefault("constructions", []).append(instance)
+    _log_event(s, "build", f'🏗️ 开始建造 {con["name"]}（{con["type"]}）——需{build_days}天', {"construction": con["name"], "day": s.get("day", 1), "build_days": build_days})
     _save(s); sessions[sid] = s
     return {"ok": True, "constructions": s["constructions"]}
 
