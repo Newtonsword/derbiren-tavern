@@ -1060,7 +1060,7 @@ function addMsg(cls, text) {
       if (narrative) {
         const p = document.createElement('div');
         p.style.whiteSpace = 'pre-wrap';
-        p.textContent = narrative;
+        p.textContent = translateFormula(narrative);
         div.appendChild(p);
       }
       // 选项按钮
@@ -1081,10 +1081,10 @@ function addMsg(cls, text) {
       });
       div.appendChild(btnRow);
     } else {
-      div.textContent = text;
+      div.textContent = translateFormula(text);
     }
   } else {
-    div.textContent = text;
+    div.textContent = translateFormula(text);
   }
   log.appendChild(div);
 }
