@@ -1222,9 +1222,9 @@ function renderCharDetail() {
   const stamina = st.END * 50;
   const mana = st.MP * 20;
   const spirit = st.WIL * 10;
-  const defRate = (st.DEF / (st.DEF + 15) * 100).toFixed(1);
-  const moveSpd = st.SPD;
-  const dodge = (st.SPD * 2.5 + st.DEF * 0.5).toFixed(1);
+  const isMonster = ['猫龙','幼龙','触手怪','石像鬼','杀人兔','野狼','史莱姆','哥布林'].includes(c.species);
+  const defEff = isMonster ? (st.DEF + st.END * 0.5).toFixed(1) : st.DEF;
+  const dodge = (st.SPD * 2.5 + (isMonster ? st.DEF + st.END * 0.5 : st.DEF) * 0.5).toFixed(1);
 
   const freeLeft = isDraft ? state.draft.freeLeft : c.free_points;
 
@@ -1266,10 +1266,10 @@ function renderCharDetail() {
         <div>🏃 体力 <span style="color:var(--gold);">${stamina}</span></div>
         <div>💎 魔法储量 <span style="color:#4b9eef;">${mana}</span></div>
         <div>🧠 精神条 <span style="color:#8b5cf6;">${spirit}</span></div>
-        <div>🛡️ 减伤率 <span style="color:var(--dim);">${defRate}%</span></div>
+        <div>🛡️ 有效防御 <span style="color:var(--dim);">${defEff}</span></div>
         <div>💨 基础闪避 <span style="color:#5a9e4b;">+${dodge}</span></div>
         <div style="grid-column:1/-1;font-size:10px;color:var(--dim);margin-top:2px;">
-          💡 命中率/间隔见各技能详情（每技能独立公式）| 闪避含远程距离修正(+1/米,上限+20) | 被近战牵制时闪避-15(高速可减免)</div>
+          💡 野怪=DEF+耐力×0.5 | 人类=DEF | 防御仅影响格挡值 | 格挡受攻击穿透影响</div>
       </div>
     </div>`;
 
@@ -1515,7 +1515,7 @@ async function loadLibrary() {
           <div style="display:none;padding:8px 10px;border-top:1px solid var(--border);">
             <div style="color:var(--dim);margin-bottom:6px;line-height:1.8;">
               ${translateStats(c.stats)}
-              <div style="font-size:10px;margin-top:2px;">HP=${(c.stats.END||3)*200} | 体力=${(c.stats.END||3)*50} | 蓝量=${(c.stats.MP||3)*20} | 精神条=${(c.stats.WIL||3)*10} | 减伤=${((c.stats.DEF||3)/((c.stats.DEF||3)+15)*100).toFixed(1)}% | 闪避=${((c.stats.SPD||3)*2.5+(c.stats.DEF||3)*0.5).toFixed(1)}</div>
+              <div style="font-size:10px;margin-top:2px;">HP=${(c.stats.END||3)*200} | 体力=${(c.stats.END||3)*50} | 蓝量=${(c.stats.MP||3)*20} | 精神条=${(c.stats.WIL||3)*10} | 有效防御=${(c.stats.DEF||3)+((c.stats.END||3)*0.5)} | 闪避=${((c.stats.SPD||3)*2.5+((c.stats.DEF||3)+(c.stats.END||3)*0.5)*0.5).toFixed(1)}</div>
             </div>
             ${c.skills?.length ? '<div style="font-size:12px;color:var(--accent);margin-bottom:4px;">⚔️ 技能</div>' + c.skills.map(sk => `
               <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
