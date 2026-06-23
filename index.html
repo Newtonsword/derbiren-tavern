@@ -1268,11 +1268,10 @@ function renderCharDetail() {
         <div>🏃 体力 <span style="color:var(--gold);">${stamina}</span></div>
         <div>💎 魔法储量 <span style="color:#4b9eef;">${mana}</span></div>
         <div>🧠 精神条 <span style="color:#8b5cf6;">${spirit}</span></div>
-        <div>🛡️ 有效防御 <span style="color:var(--dim);">${defEff}</span></div>
-        <div>🛡️ 防御缓冲 <span style="color:#c9a050;">${defBuffer}</span></div>
+        <div>🛡️ 统一护盾 <span style="color:#c9a050;">${defBuffer}</span><span style="font-size:10px;color:var(--dim);"> +装备护甲</span></div>
         <div>💨 基础闪避 <span style="color:#5a9e4b;">+${dodge}</span></div>
         <div style="grid-column:1/-1;font-size:10px;color:var(--dim);margin-top:2px;">
-          💡 防御缓冲=有效DEF×50 | 常驻额外HP不依赖格挡 | 野怪有效DEF=DEF+耐力×0.5</div>
+          💡 统一护盾=有效DEF×50+装备护甲 | 常驻不依赖格挡 | 野怪有效DEF=DEF+耐力×0.5</div>
       </div>
     </div>`;
 
@@ -1518,7 +1517,7 @@ async function loadLibrary() {
           <div style="display:none;padding:8px 10px;border-top:1px solid var(--border);">
             <div style="color:var(--dim);margin-bottom:6px;line-height:1.8;">
               ${translateStats(c.stats)}
-              <div style="font-size:10px;margin-top:2px;">HP=${(c.stats.END||3)*200} | 体力=${(c.stats.END||3)*50} | 蓝量=${(c.stats.MP||3)*20} | 精神条=${(c.stats.WIL||3)*10} | 防御缓冲=${((c.stats.DEF||3)+((c.stats.END||3)*0.5))*50} | 闪避=${((c.stats.SPD||3)*2.5+((c.stats.DEF||3)+(c.stats.END||3)*0.5)*0.5).toFixed(1)}</div>
+              <div style="font-size:10px;margin-top:2px;">HP=${(c.stats.END||3)*200} | 体力=${(c.stats.END||3)*50} | 蓝量=${(c.stats.MP||3)*20} | 精神条=${(c.stats.WIL||3)*10} | 护盾=${((c.stats.DEF||3)+((c.stats.END||3)*0.5))*50} | 闪避=${((c.stats.SPD||3)*2.5+((c.stats.DEF||3)+(c.stats.END||3)*0.5)*0.5).toFixed(1)}</div>
             </div>
             ${c.skills?.length ? '<div style="font-size:12px;color:var(--accent);margin-bottom:4px;">⚔️ 技能</div>' + c.skills.map(sk => `
               <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
@@ -2202,7 +2201,7 @@ async function demolishCon(iid) {
 let _equipmentCache = null;
 let _eqFilter = 'all';
 const STAT_NAMES = {END:'耐力', STR:'力量', SPD:'速度', DEF:'防御', INT:'智力', MP:'法力', WIL:'意志'};
-const STAT_DESCS = {END:'HP+200/点 体力+50/点', STR:'物理伤害主属性', SPD:'命中/闪避主属性', DEF:'防御缓冲+50/点', INT:'法术伤害主属性', MP:'蓝量+20/点', WIL:'精神条+10/点'};
+const STAT_DESCS = {END:'HP+200/点 体力+50/点', STR:'物理伤害主属性', SPD:'命中/闪避主属性', DEF:'护盾+50/点', INT:'法术伤害主属性', MP:'蓝量+20/点', WIL:'精神条+10/点'};
 const RARITY_NAMES = {common:'普通', uncommon:'精良', rare:'稀有', epic:'史诗'};
 const SLOT_NAMES = {weapon:'武器', armor:'防具', accessory:'饰品'};
 function translateFormula(str) {
