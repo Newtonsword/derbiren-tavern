@@ -1908,6 +1908,85 @@ async function refreshLog() {
     + (dmgHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin:12px 0 8px;">⚔️ 战斗判定</div>' + dmgHtml : '');
 }
 
+// ── 存档/读档 ──
+
+function showSaveModal() {
+  if (!state.session_id) { alert('请先开始冒险'); return; }
+  document.getElementById('save-name').value = '';
+  document.getElementById('save-modal').classList.add('show');
+}
+
+function closeSaveModal() {
+  document.getElementById('save-modal').classList.remove('show');
+}
+
+async function doSave() {
+  const name = document.getElementById('save-name').value.trim() || '存档';
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, saved_at: new Date().toISOString()}),
+    });
+    if (res.ok) {
+      closeSaveModal();
+      alert('✅ 存档成功: ' + name);
+    } else {
+      const err = await res.json();
+      alert('存档失败: ' + (err.detail || ''));
+    }
+  } catch(e) { alert('存档失败: ' + e.message); }
+}
+
+async function showLoadModal() {
+  document.getElementById('load-modal').classList.add('show');
+  const list = document.getElementById('load-list');
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">加载中...</div>';
+  try {
+    const res = await fetch('/api/saves');
+    const data = await res.json();
+    const saves = data.saves || [];
+    if (saves.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">暂无存档</div>';
+      return;
+    }
+    list.innerHTML = saves.map(s => {
+      const date = s.saved_at ? new Date(s.saved_at).toLocaleString('zh-CN') : '未知';
+      return `<div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;background:var(--input-bg);display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">💾</span>
+        <div style="flex:1;">
+          <div style="color:var(--gold);font-weight:bold;">${s.name}</div>
+          <div style="font-size:11px;color:var(--dim);">${s.characters||''} | ${s.msg_count||0}条消息 | ${date}</div>
+        </div>
+        <button onclick="event.stopPropagation();doLoad('${s.file}')" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">📂 读取</button>
+      </div>`;
+    }).join('');
+  } catch(e) { list.innerHTML = '<div style="color:var(--accent);">加载失败: ' + e.message + '</div>'; }
+}
+
+function closeLoadModal() {
+  document.getElementById('load-modal').classList.remove('show');
+}
+
+async function doLoad(filename) {
+  try {
+    const res = await fetch('/api/saves/' + filename + '/load', { method:'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      state.session_id = data.session_id;
+      state.characters = data.characters || [];
+      state.active_char_id = state.characters[0]?.id || '';
+      localStorage.setItem('derbiren_sid', state.session_id);
+      document.getElementById('sid-display').textContent = state.session_id;
+      closeLoadModal();
+      // 刷新全部
+      await loadOrCreateSession();
+    } else {
+      const err = await res.json();
+      alert('读档失败: ' + (err.detail || ''));
+    }
+  } catch(e) { alert('读档失败: ' + e.message); }
+}
+
 // ── 工程/陷阱系统 ──
 
 let _engCache = null;
