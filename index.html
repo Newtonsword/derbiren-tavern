@@ -243,6 +243,19 @@ body {
 }
 .setting-group input:focus { border-color: var(--accent); }
 .setting-group .hint { font-size: 11px; color: var(--dim); }
+/* NSFW toggle switch */
+.switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background: #3a3028; border-radius: 26px; transition: 0.3s;
+}
+.slider::before {
+  content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
+  background: var(--dim); border-radius: 50%; transition: 0.3s;
+}
+input:checked + .slider { background: var(--accent); }
+input:checked + .slider::before { transform: translateX(22px); background: #fff; }
 #save-settings-btn {
   padding: 10px 28px; background: var(--accent); color: #fff;
   border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit;
@@ -463,6 +476,14 @@ body {
       </div>
       <button id="save-settings-btn" onclick="saveSettings()">💾 保存</button>
       <div id="settings-status"></div>
+      <h2 style="margin-top:16px;">🔞 NSFW 模式</h2>
+      <div class="setting-group" style="display:flex;align-items:center;gap:10px;">
+        <label class="switch">
+          <input id="set-nsfw" type="checkbox" onchange="saveSettings()">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:13px;color:var(--dim);">开启后配种场景将详细描写（魔王监督），关闭后魔物躲进育成室关上门。</span>
+      </div>
       <h2 style="margin-top:16px;">🌍 世界观</h2>
       <div class="setting-group">
         <label>自定义世界设定（影响 GM 叙事风格）</label>
@@ -782,6 +803,7 @@ async function init() {
     document.getElementById('set-base').value = s.base_url || '';
     document.getElementById('set-model').value = s.model || '';
     document.getElementById('set-key').placeholder = s.has_key ? '(已设置)' : 'sk-...';
+    document.getElementById('set-nsfw').checked = s.nsfw || false;
   } catch(e) {}
   await loadOrCreateSession();
 }
@@ -1790,11 +1812,12 @@ async function saveSettings() {
   const key = document.getElementById('set-key').value.trim();
   const base = document.getElementById('set-base').value.trim();
   const model = document.getElementById('set-model').value.trim();
+  const nsfw = document.getElementById('set-nsfw').checked;
   const status = document.getElementById('settings-status');
   try {
     const res = await fetch('/api/settings', {
       method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({api_key:key, base_url:base, model:model}),
+      body: JSON.stringify({api_key:key, base_url:base, model:model, nsfw:nsfw}),
     });
     if (res.ok) {
       status.textContent = '✅ 保存成功';
