@@ -476,14 +476,20 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
       </div>
       <button id="save-settings-btn" onclick="saveSettings()">💾 保存</button>
       <div id="settings-status"></div>
-      <h2 style="margin-top:16px;">🔞 NSFW 模式</h2>
-      <div class="setting-group" style="display:flex;align-items:center;gap:10px;">
-        <label class="switch">
-          <input id="set-nsfw" type="checkbox" onchange="saveSettings()">
-          <span class="slider"></span>
-        </label>
-        <span style="font-size:13px;color:var(--dim);">开启后配种场景将详细描写（魔王监督），关闭后魔物躲进育成室关上门。</span>
+      <h2 style="margin-top:16px;cursor:pointer;user-select:none;" onclick="toggleOtherSettings()">⚙️ 其他设置 <span id="other-toggle-icon" style="font-size:14px;color:var(--dim);">▶</span></h2>
+      <div id="other-panel" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--input-bg);">
+        <h3 style="cursor:pointer;user-select:none;font-size:14px;color:var(--dim);margin:0;" onclick="toggleExpSettings()">🧪 实验设置 <span id="exp-toggle-icon" style="font-size:12px;">▶</span></h3>
+        <div id="exp-panel" style="display:none;margin-top:8px;padding:10px;border-left:2px solid var(--border);">
+          <div class="setting-group" style="display:flex;align-items:center;gap:10px;flex-direction:row;">
+            <label class="switch">
+              <input id="set-nsfw" type="checkbox" onchange="saveSettings()">
+              <span class="slider"></span>
+            </label>
+            <span style="font-size:13px;color:var(--dim);">🔞 NSFW 模式</span>
+          </div>
+        </div>
       </div>
+
       <h2 style="margin-top:16px;">🌍 世界观</h2>
       <div class="setting-group">
         <label>自定义世界设定（影响 GM 叙事风格）</label>
@@ -1858,6 +1864,32 @@ async function saveWorld() {
 
 function setWorldField(val) {
   document.getElementById('set-world').value = val || '小魔王地下城——你是一只小魔王，冒险者公会三天两头来砸场子。';
+}
+
+// ── 其他设置折叠 ──
+
+function toggleOtherSettings() {
+  const panel = document.getElementById('other-panel');
+  const icon = document.getElementById('other-toggle-icon');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    icon.textContent = '▼';
+  } else {
+    panel.style.display = 'none';
+    icon.textContent = '▶';
+  }
+}
+
+function toggleExpSettings() {
+  const panel = document.getElementById('exp-panel');
+  const icon = document.getElementById('exp-toggle-icon');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    icon.textContent = '▼';
+  } else {
+    panel.style.display = 'none';
+    icon.textContent = '▶';
+  }
 }
 
 // ── 开发者模式 ──
