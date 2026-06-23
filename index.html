@@ -663,16 +663,16 @@ const SPECIES_PRESETS = [
 const CHARACTER_PRESETS = [
   {
     name:"猫龙幼崽「夜牙」", species:"猫龙", coeff:2.5,
-    stats:{END:5,STR:6,SPD:8,DEF:4,INT:3,MP:3,WIL:5},
+    stats:{END:5,STR:6,SPD:5,DEF:3,INT:6,MP:5,WIL:5},
     desc:"一只在月圆之夜从龙蛋中破壳的猫龙幼崽，左粉右绿的异色瞳里藏着未觉醒的龙族血脉。它用猫科的前爪在你腿上踩奶，用龙族的后爪在地上刨出火花——还不知道自己将来能长成什么样的怪物。",
     skills:[
-      {name:"利爪",type:"斩击",formula:"20+2.0×力量+1.5×速度",cost:"耐力18",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
-      {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力22",interval:"4.5s",hit_formula:"85+1.5×力量",category:"主动"},
-      {name:"暗影闪避",type:"防御",formula:"闪避+25(单次)",cost:"耐力15",interval:"6.0s",hit_formula:"",category:"主动"},
+      {name:"暗影吐息",type:"法术",formula:"25+3.0×智力+1.0×法力",cost:"蓝16",interval:"4.5s",hit_formula:"85+2.5×智力",category:"主动"},
+      {name:"利爪",type:"斩击",formula:"20+2.0×力量+1.0×速度",cost:"耐力16",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
+      {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力20",interval:"4.5s",hit_formula:"85+1.5×力量",category:"主动"},
       {name:"灵巧格挡",type:"防御",formula:"15+2.0×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
-      {name:"黑暗视觉",effect:"黑暗环境不受命中惩罚，命中+10%"},
+      {name:"暗影亲和",effect:"黑暗环境不受命中惩罚，法术伤害+10%"},
     ],
   },
   {

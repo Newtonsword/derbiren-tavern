@@ -490,12 +490,12 @@ def _skill_id() -> str:
 SPECIES_STARTER_SKILLS = {
     "猫龙": {
         "skills": [
-            {"name":"利爪","type":"斩击","formula":"20+2.0×力量+1.5×速度","cost":"耐力18","interval":"3.0s","hit_formula":"75+2.0×力量+1.0×速度","category":"主动"},
-            {"name":"扫尾","type":"钝击","formula":"15+1.5×力量+1.0×耐力","cost":"耐力22","interval":"4.5s","hit_formula":"85+1.5×力量","category":"主动"},
-            {"name":"暗影闪避","type":"防御","formula":"闪避+25(单次)","cost":"耐力15","interval":"6.0s","hit_formula":"","category":"主动"},
+            {"name":"暗影吐息","type":"法术","formula":"25+3.0×智力+1.0×法力","cost":"蓝16","interval":"4.5s","hit_formula":"85+2.5×智力","category":"主动"},
+            {"name":"利爪","type":"斩击","formula":"20+2.0×力量+1.0×速度","cost":"耐力16","interval":"3.0s","hit_formula":"75+2.0×力量+1.0×速度","category":"主动"},
+            {"name":"扫尾","type":"钝击","formula":"15+1.5×力量+1.0×耐力","cost":"耐力20","interval":"4.5s","hit_formula":"85+1.5×力量","category":"主动"},
             {"name":"灵巧格挡","type":"防御","formula":"15+2.0×力量+1.0×耐力/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
-        "passives": [{"name":"黑暗视觉","effect":"黑暗环境不受命中惩罚，命中+10%"}],
+        "passives": [{"name":"暗影亲和","effect":"黑暗环境不受命中惩罚，法术伤害+10%"}],
     },
     "幼龙": {
         "skills": [
@@ -1108,7 +1108,7 @@ def _wave_reward_monster(sess, wave):
         {"species": "幼龙", "coeff": 2.5, "stats": {"END": 7, "STR": 7, "SPD": 4, "DEF": 6, "INT": 5, "MP": 4, "WIL": 6}},
         {"species": "石像鬼", "coeff": 2.5, "stats": {"END": 7, "STR": 6, "SPD": 3, "DEF": 8, "INT": 2, "MP": 2, "WIL": 5}},
         {"species": "触手怪", "coeff": 2.0, "stats": {"END": 5, "STR": 5, "SPD": 6, "DEF": 3, "INT": 3, "MP": 4, "WIL": 4}},
-        {"species": "猫龙", "coeff": 2.0, "stats": {"END": 5, "STR": 6, "SPD": 8, "DEF": 4, "INT": 3, "MP": 3, "WIL": 5}},
+        {"species": "猫龙", "coeff": 2.0, "stats": {"END": 5, "STR": 6, "SPD": 5, "DEF": 3, "INT": 6, "MP": 5, "WIL": 5}},
         {"species": "野狼", "coeff": 1.8, "stats": {"END": 4, "STR": 5, "SPD": 7, "DEF": 2, "INT": 1, "MP": 1, "WIL": 4}},
         {"species": "杀人兔", "coeff": 1.8, "stats": {"END": 3, "STR": 4, "SPD": 9, "DEF": 1, "INT": 1, "MP": 1, "WIL": 4}},
     ]
