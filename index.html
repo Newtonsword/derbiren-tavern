@@ -510,7 +510,7 @@ body {
           <div style="display:flex;gap:6px;margin-top:4px;">
             <select id="dev-stat-char" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;"></select>
             <select id="dev-stat-key" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
-              <option value="END">END</option><option value="STR">STR</option><option value="SPD">SPD</option><option value="DEF">DEF</option><option value="INT">INT</option><option value="MP">MP</option><option value="WIL">WIL</option>
+              <option value="END">耐力END</option><option value="STR">力量STR</option><option value="SPD">速度SPD</option><option value="DEF">防御DEF</option><option value="INT">智力INT</option><option value="MP">法力MP</option><option value="WIL">精神WIL</option>
             </select>
             <input id="dev-stat-val" type="number" value="10" min="1" max="99" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
             <button onclick="devSetStat()" style="padding:6px 12px;background:var(--gold);color:#1a1410;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">修改</button>
@@ -819,7 +819,7 @@ async function newAdventure() {
 function renderPresets() {
   const list = document.getElementById('preset-list');
   list.innerHTML = CHARACTER_PRESETS.map((p,i) => {
-    const statStr = Object.entries(p.stats).map(([k,v]) => `<span style="color:var(--gold);">${k}:${v}</span>`).join(' ');
+    const statStr = Object.entries(p.stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
     return `<div onclick="selectPreset(${i})" style="cursor:pointer;border:1px solid var(--border);border-radius:5px;padding:6px 10px;background:var(--input-bg);font-size:11px;line-height:1.5;transition:.15s;"
       onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
       <div style="font-weight:bold;color:var(--gold);">${p.name}</div>
@@ -1298,9 +1298,9 @@ function renderCharDetail() {
             </div>
             <div class="skill-detail${expanded ? ' open' : ''}" id="sk-det-${sk.id}">
               <div>📝 ${sk.description || '无描述'}</div>
-              <div>📐 <span class="s-formula">${sk.formula}</span> = ${dmg} 伤害</div>
-              ${sk.hit_formula ? `<div>🎯 命中: <span style="color:#5a9e4b;">${sk.hit_formula}</span>${sk.hit_formula.match(/^\d+$/) ? '' : ' = ' + evalHit(sk.hit_formula, st)}</div>` : ''}
-              <div>💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
+              <div>📐 <span class="s-formula">${translateFormula(sk.formula)}</span> = ${dmg} 伤害</div>
+              ${sk.hit_formula ? `<div>🎯 命中: <span style="color:#5a9e4b;">${translateFormula(sk.hit_formula)}</span>${sk.hit_formula.match(/^\d+$/) ? '' : ' = ' + evalHit(sk.hit_formula, st)}</div>` : ''}
+              <div>💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${translateFormula(sk.special)}` : ''}</div>
               ${(c.pending_skill_points > 0 && sk.level < sk.max_level)
                 ? `<button class="upgrade-btn" onclick="upgradeSkill('${sk.id}')">⬆ 升级到 Lv.${sk.level+1}</button>`
                 : ''}
@@ -1324,7 +1324,7 @@ function renderCharDetail() {
           📜 被动
         </h3>
         <div id="pa-list-${c.id}" style="${paCollapsed ? 'display:none' : ''}">
-          ${c.passives.map(p => `<div class="passive-row"><span class="p-name">${p.name}</span> ${p.effect || p.description}</div>`).join('')}
+          ${c.passives.map(p => `<div class="passive-row"><span class="p-name">${p.name}</span> ${translateFormula(p.effect || p.description)}</div>`).join('')}
         </div>
       </div>`;
   } else {
@@ -1514,29 +1514,26 @@ async function loadLibrary() {
           </div>
           <div style="display:none;padding:8px 10px;border-top:1px solid var(--border);">
             <div style="color:var(--dim);margin-bottom:6px;line-height:1.8;">
-              ${Object.entries(c.stats||{}).map(([k,v])=>`<b>${k}</b>:${v}`).join('  ')}
+              ${translateStats(c.stats)}
               <div style="font-size:10px;margin-top:2px;">HP=${(c.stats.END||3)*200} | 体力=${(c.stats.END||3)*50} | 蓝量=${(c.stats.MP||3)*20} | 精神条=${(c.stats.WIL||3)*10} | 减伤=${((c.stats.DEF||3)/((c.stats.DEF||3)+15)*100).toFixed(1)}% | 闪避=${((c.stats.SPD||3)*2.5+(c.stats.DEF||3)*0.5).toFixed(1)}</div>
             </div>
             ${c.skills?.length ? '<div style="font-size:12px;color:var(--accent);margin-bottom:4px;">⚔️ 技能</div>' + c.skills.map(sk => `
               <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
                 <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⏱${sk.interval||''}</span></div>
-                <div style="color:var(--text);">伤害: ${sk.formula||''}</div>
-                ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${sk.hit_formula}</div>` : ''}
-                ${sk.special ? `<div style="color:#8b5cf6;">✨ ${sk.special}</div>` : ''}
+                <div style="color:var(--text);">伤害: ${translateFormula(sk.formula)}</div>
+                ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${translateFormula(sk.hit_formula)}</div>` : ''}
+                ${sk.special ? `<div style="color:#8b5cf6;">✨ ${translateFormula(sk.special)}</div>` : ''}
               </div>
             `).join('') : ''}
             ${c.passives?.length ? '<div style="font-size:12px;color:#8b5cf6;margin:6px 0 4px;">📜 被动</div>' + c.passives.map(p => `
               <div style="background:#1a1612;border-left:2px solid #8b5cf6;border-radius:0 4px 4px 0;padding:4px 8px;margin:4px 0;">
-                <b style="color:#8b5cf6;">${p.name}</b> <span style="color:var(--text);">${p.effect||''}</span>
+                <b style="color:#8b5cf6;">${p.name}</b> <span style="color:var(--text);">${translateFormula(p.effect)}</span>
               </div>
             `).join('') : ''}
           </div>
         </div>
       `).join('');
       html += '<hr style="border-color:var(--border);margin:12px 0;">';
-    }
-
-    // 模板角色
     html += '<div style="font-size:13px;color:var(--gold);margin-bottom:4px;">📚 设计模板</div>';
     html += templates.map(tpl => `
       <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:8px;font-size:12px;">
@@ -1545,21 +1542,21 @@ async function loadLibrary() {
           <span style="color:var(--dim);">${tpl.species} Lv.${tpl.level} · ${tpl.style||''}</span>
         </div>
         <div style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
-          <div style="color:var(--dim);margin-bottom:4px;">${Object.entries(tpl.stats||{}).map(([k,v])=>`<b>${k}</b>:${v}`).join('  ')}</div>
+          <div style="color:var(--dim);margin-bottom:4px;">${translateStats(tpl.stats)}</div>
           ${tpl.skills?.map(sk => `
             <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
               <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⏱${sk.interval||''}</span></div>
-              <div style="color:var(--text);">伤害: ${sk.formula||''}</div>
-              ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${sk.hit_formula}</div>` : ''}
-              ${sk.rationale ? `<div style="color:var(--dim);font-size:11px;margin-top:3px;font-style:italic;">💡 ${sk.rationale}</div>` : ''}
+              <div style="color:var(--text);">伤害: ${translateFormula(sk.formula)}</div>
+              ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${translateFormula(sk.hit_formula)}</div>` : ''}
+              ${sk.rationale ? `<div style="color:var(--dim);font-size:11px;margin-top:3px;font-style:italic;">💡 ${translateFormula(sk.rationale)}</div>` : ''}
             </div>
           `).join('') || ''}
           ${tpl.passives?.map(p => `
             <div style="background:#1a1612;border-left:2px solid #8b5cf6;border-radius:0 4px 4px 0;padding:4px 8px;margin:4px 0;">
-              <b style="color:#8b5cf6;">📜 ${p.name}</b> <span style="color:var(--text);">${p.effect||''}</span>
+              <b style="color:#8b5cf6;">📜 ${p.name}</b> <span style="color:var(--text);">${translateFormula(p.effect)}</span>
             </div>
           `).join('') || ''}
-          ${tpl.design_notes ? `<div style="color:var(--dim);font-size:11px;margin-top:4px;">📝 ${tpl.design_notes}</div>` : ''}
+          ${tpl.design_notes ? `<div style="color:var(--dim);font-size:11px;margin-top:4px;">📝 ${translateFormula(tpl.design_notes)}</div>` : ''}
         </div>
       </div>
     `).join('');
@@ -2182,6 +2179,14 @@ const STAT_NAMES = {END:'耐力', STR:'力量', SPD:'速度', DEF:'防御', INT:
 const STAT_DESCS = {END:'HP+200/点 体力+50/点', STR:'物理伤害主属性', SPD:'命中/闪避主属性', DEF:'减伤率', INT:'法术伤害主属性', MP:'蓝量+20/点', WIL:'精神条+10/点'};
 const RARITY_NAMES = {common:'普通', uncommon:'精良', rare:'稀有', epic:'史诗'};
 const SLOT_NAMES = {weapon:'武器', armor:'防具', accessory:'饰品'};
+function translateFormula(str) {
+  if (!str) return '';
+  return str.replace(/(END|STR|SPD|DEF|INT|MP|WIL)/g, m => STAT_NAMES[m] || m);
+}
+function translateStats(statsObj) {
+  if (!statsObj) return '';
+  return Object.entries(statsObj).map(([k,v]) => `<b>${STAT_NAMES[k]||k}</b>:${v}`).join('  ');
+}
 
 async function loadEquipmentCache() {
   if (_equipmentCache) return _equipmentCache;
