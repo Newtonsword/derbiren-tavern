@@ -667,8 +667,8 @@ const CHARACTER_PRESETS = [
     desc:"一只在月圆之夜从龙蛋中破壳的猫龙幼崽，左粉右绿的异色瞳里藏着未觉醒的龙族血脉。它用猫科的前爪在你腿上踩奶，用龙族的后爪在地上刨出火花——还不知道自己将来能长成什么样的怪物。",
     skills:[
       {name:"暗影吐息",type:"法术",formula:"25+3.0×智力+1.0×法力",cost:"蓝16",interval:"4.5s",hit_formula:"85+2.5×智力",category:"主动"},
-      {name:"利爪",type:"斩击",formula:"20+2.0×力量+1.0×速度",cost:"耐力16",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
-      {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力20",interval:"4.5s",hit_formula:"85+1.5×力量",category:"主动"},
+      {name:"利爪",type:"斩击",formula:"20+2.0×力量+1.0×速度",cost:"耐力16",interval:"3.0s",hit_formula:"75+2.0×速度+1.0×速度",category:"主动"},
+      {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力20",interval:"4.5s",hit_formula:"85+1.5×速度",category:"主动"},
       {name:"灵巧格挡",type:"防御",formula:"15+2.0×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
@@ -681,7 +681,7 @@ const CHARACTER_PRESETS = [
     desc:"从火山灰烬中苏醒的红龙幼崽，鳞片还带着余温。它歪着脑袋打量你，鼻孔冒出的火星点燃了地上的枯草——然后它打了个喷嚏，真正的龙息喷了你一脸。好在你是魔王，不然已经被烤熟了。",
     skills:[
       {name:"龙息",type:"法术",formula:"30+3.0×智力+1.0×法力",cost:"蓝18",interval:"5.0s",hit_formula:"90",category:"主动"},
-      {name:"尾击",type:"钝击",formula:"25+2.5×力量+0.5×耐力",cost:"耐力20",interval:"3.5s",hit_formula:"75+2.0×力量",category:"主动"},
+      {name:"尾击",type:"钝击",formula:"25+2.5×力量+0.5×耐力",cost:"耐力20",interval:"3.5s",hit_formula:"75+2.0×速度",category:"主动"},
       {name:"龙鳞格挡",type:"防御",formula:"25+2.5×力量+1.5×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
@@ -694,7 +694,7 @@ const CHARACTER_PRESETS = [
     desc:"地下暗河里漂出来的一团暗紫色生物——不，它不能算'一只'，它是'一团'。墨墨不发声音，只用触手轻轻卷住你的手指，吸盘传来的微弱脉搏让你意识到它在听你的心跳。它不需要你说话，它已经知道你是自己人。",
     skills:[
       {name:"缠绕",type:"钝击",formula:"10+1.5×力量+1.0×速度",cost:"耐力15",interval:"4.0s",hit_formula:"80+2.0×速度",category:"主动"},
-      {name:"鞭打",type:"钝击",formula:"15+2.0×力量+0.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×力量+1.0×速度",category:"主动"},
+      {name:"鞭打",type:"钝击",formula:"15+2.0×力量+0.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×速度+1.0×速度",category:"主动"},
       {name:"触须护盾",type:"防御",formula:"10+1.5×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
@@ -707,7 +707,7 @@ const CHARACTER_PRESETS = [
     desc:"地下城穹顶上蹲了三百年的石雕，在你踏入地下城的那一刻睁开了无瞳的石眼。它选择你作为守护对象——不是因为你的力量，而是因为它已经等了三百年，不想再等了。灰翼不能说话，但它会用石翼替你挡住每一支飞来的箭。",
     skills:[
       {name:"俯冲",type:"钝击",formula:"25+2.0×速度+1.0×力量",cost:"耐力18",interval:"4.0s",hit_formula:"75+3.0×速度",category:"主动"},
-      {name:"碎石",type:"钝击",formula:"15+1.5×力量+0.5×耐力",cost:"耐力20",interval:"5.0s",hit_formula:"85+1.0×力量",category:"主动"},
+      {name:"碎石",type:"钝击",formula:"15+1.5×力量+0.5×耐力",cost:"耐力20",interval:"5.0s",hit_formula:"85+1.0×速度",category:"主动"},
       {name:"石翼守护",type:"防御",formula:"25+2.5×耐力+1.5×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
@@ -733,8 +733,8 @@ const CHARACTER_PRESETS = [
     stats:{END:4,STR:5,SPD:7,DEF:2,INT:1,MP:1,WIL:4},
     desc:"一头被狼群驱逐的年轻公狼——因为在狩猎时犹豫了一秒，被头狼咬掉了半只耳朵。灰牙本来会在冬天的森林里饿死，直到它闻到了地下城飘出的魔力气味。它走进来，看见了你，然后就坐下了。它找了很久的主人——不管那是什么物种。",
     skills:[
-      {name:"撕咬",type:"刺击",formula:"15+2.0×力量+1.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×力量+1.0×速度",category:"主动"},
-      {name:"扑击",type:"钝击",formula:"20+1.5×力量+2.0×速度",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×速度+1.0×力量",category:"主动"},
+      {name:"撕咬",type:"刺击",formula:"15+2.0×力量+1.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×速度+1.0×速度",category:"主动"},
+      {name:"扑击",type:"钝击",formula:"20+1.5×力量+2.0×速度",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×速度+1.0×速度",category:"主动"},
       {name:"影步",type:"防御",formula:"闪避+25(单次)",cost:"耐力15",interval:"6.0s",hit_formula:"",category:"主动"},
     ],
     passives:[
