@@ -1543,12 +1543,16 @@ def _wave_reward_monster(sess, wave):
              "触手怪": ["墨影", "深海", "缠绕"], "猫龙": ["影爪", "夜牙", "迅羽"],
              "野狼": ["灰鬃", "白牙", "裂风"], "杀人兔": ["血瞳", "飞腿", "雪球"]}
     name = random.choice(names.get(sp["species"], [sp["species"]]))
-    # 放大属性到对应等级
+    # 构造 CHAR_ADD 标签——让系统自动加入角色面板
     from copy import deepcopy
     stats = deepcopy(sp["stats"])
     for k in stats:
         stats[k] = int(stats[k] * (0.8 + level * 0.2))
-    # 构造 CHAR_ADD 信息（不直接加角色，让GM叙述后通过CHAR_ADD标签加入）
+    char = _make_char(name, sp["species"], sp["coeff"], level)
+    char["stats"] = stats
+    _assign_starter_skills(char)
+    _ensure_melee_skill(char)
+    sess["characters"].append(char)
     _log_event(sess, "wave_monster", f'波次{wave}吸引了 {name}({sp["species"]} Lv.{level})', {"name": name, "species": sp["species"], "level": level})
 
 
