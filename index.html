@@ -1127,6 +1127,10 @@ function scrollBottom() {
 
 async function sendMessage() {
   if (state.isLoading) return;
+  if (!state.session_id) {
+    addMsg('gm', '⚠️ 还没创建或加载存档呢杂鱼——先点「开始新冒险」！');
+    return;
+  }
   const input = document.getElementById('user-input');
   const msg = input.value.trim();
   if (!msg) return;
