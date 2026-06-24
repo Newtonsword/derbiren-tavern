@@ -1491,6 +1491,73 @@ def chat(req: ChatReq):
                     day_msg += f' 技能点+{active["pending_skill_points"]}（每级获得）。'
         req.message = day_msg
 
+    # ── 预解析用户消息中的标签（探索/招募链路兜底）──
+    # 探索接口返回 [CHAR_ADD:...] 标签，前端作为用户消息发给 /chat，
+    # 但 _parse_char_add 只解析 AI 回复。如果 AI 没回传标签，角色静默丢失。
+    # 这里在发 LLM 之前先解析并处理用户消息中的标签。
+    clean_msg, user_char_data, user_level_ups, user_renames, user_con_discovers, user_con_upgrades = _parse_char_add(req.message)
+    if user_char_data or user_level_ups or user_renames or user_con_discovers or user_con_upgrades:
+        # 处理 CHAR_ADD
+        if user_char_data:
+            new_char = _make_char(user_char_data["name"], user_char_data["species"], 1.3, 1)
+            new_char["stats"] = user_char_data["stats"]
+            new_char["free_points"] = 0
+            new_char["skills"] = _make_skills_from_raw(user_char_data.get("skills_raw", ""))
+            chars.append(new_char)
+            _log_event(sess, "recruit", f'探索加入了 {user_char_data["name"]}', {"char": user_char_data["name"], "species": user_char_data["species"]})
+            chars_updated = True
+        # 处理 LEVEL_UP
+        for lu in user_level_ups:
+            target = lu["name"].strip().lower()
+            for c in chars:
+                if c["name"].strip().lower() == target:
+                    old_lv = c["level"]
+                    c["level"] = lu["new_level"]
+                    new_sp = c["level"] - old_lv
+                    if new_sp > 0:
+                        c["pending_skill_points"] += new_sp
+                    chars_updated = True
+        # 处理 CHAR_RENAME
+        for rn in user_renames:
+            old = rn["old"].strip()
+            new = rn["new"].strip()
+            for c in chars:
+                if c["name"].strip() == old:
+                    c["name"] = new
+                    _log_event(sess, "rename", f'{old} → {new}', {"char": new, "old": old, "new": new})
+                    chars_updated = True
+                    break
+        # 处理 CONSTRUCTION_DISCOVER
+        sess_constructions = sess.setdefault("constructions", [])
+        for cd in user_con_discovers:
+            con_id = f"con_explore_{len(sess_constructions)+1}_{cd['name'].replace(' ','_')[:10]}"
+            new_con = {
+                "id": con_id, "name": cd["name"], "icon": cd["icon"],
+                "type": cd["type"], "description": cd["description"],
+                "effect": json.loads(cd["effect"]) if cd["effect"].strip().startswith("{") else {},
+                "build_days": cd["build_days"], "max_count": cd["max_count"],
+                "status": "discovered", "build_progress": 0,
+            }
+            sess_constructions.append(new_con)
+            _log_event(sess, "construct_discover", f'发现工程蓝图: {cd["name"]}', {"name": cd["name"]})
+        # 处理 CONSTRUCTION_UPGRADE
+        for cu in user_con_upgrades:
+            for sc in sess_constructions:
+                if sc["name"].strip() == cu["name"].strip():
+                    sc["max_count"] = cu["new_max"]
+                    _log_event(sess, "construct_upgrade", f'{cu["name"]} 上限提升至 {cu["new_max"]}', {"name": cu["name"], "new_max": cu["new_max"]})
+        # 替换为清洁消息；若标签是唯一内容，补充叙事上下文
+        if not clean_msg.strip():
+            hints = []
+            if user_char_data:
+                hints.append(f'{user_char_data["name"]}（{user_char_data["species"]}）加入了地下城')
+            if user_renames:
+                hints.append(f'{user_renames[0]["old"]} 改名为 {user_renames[0]["new"]}')
+            if user_level_ups:
+                hints.append(f'{user_level_ups[0]["name"]} 升到了 Lv.{user_level_ups[0]["new_level"]}')
+            clean_msg = "（系统通知：" + "；".join(hints) + "。请 GM 叙述。）"
+        req.message = clean_msg
+
     msgs.append({"role": "user", "content": req.message})
 
     if not os.getenv("OPENAI_API_KEY", ""):
@@ -1919,6 +1986,44 @@ def explore_dungeon(sid: str, req: ExploreRequest):
         return {"result": "equipment", "item": item, "msg": msg}
     
     else:
+        # 获得魔物 —— 每次袭击周期最多一只
+        current_wave = s.get("raid_wave", 1)
+        last_monster_wave = s.get("_explore_monster_raid_wave", 0)
+        if last_monster_wave >= current_wave:
+            # 本轮已获得过魔物，降级：重新随机到装备或空手
+            sub_roll = random.random()
+            if sub_roll < 0.70:
+                _log_event(s, "explore", f'{char["name"]} 探索归来——什么也没找到（本轮已遇过魔物）')
+                _save(s)
+                return {"result": "nothing", "msg": f'{char["name"]}在黑暗中摸索了半天，什么都没发现。'}
+            else:
+                # 给装备
+                pool = [e for e in _equipment_pool if e.get("source") == "exploration"]
+                if random.random() < 0.15:
+                    pool += [e for e in _equipment_by_source.get("wave", []) if e["rarity"] in ("common", "uncommon")]
+                filtered = filter_equipment_by_tier(pool, tier, _equipment_scores)
+                if not filtered:
+                    _save(s)
+                    return {"result": "nothing", "msg": "探索了一番，但地下城能捡的破烂都捡完了。"}
+                item = random.choice(filtered)
+                unlocked = s.setdefault("unlocked_equipment", [])
+                if item["id"] not in unlocked:
+                    unlocked.append(item["id"])
+                char.setdefault("equipment", {"weapon": None, "armor": None, "accessory": None})
+                slot = item["slot"]
+                old = char["equipment"].get(slot)
+                char["equipment"][slot] = item["id"]
+                score = calc_equipment_score(item)
+                msg = f'{char["name"]}在探索中发现了 {item["name"]}（效能分:{score}）！'
+                if old:
+                    old_item = next((e for e in _equipment_pool if e["id"] == old), None)
+                    msg += f'（替换了{old_item["name"] if old_item else "旧装备"}）'
+                _log_event(s, "explore_equip", msg, {"char": char["name"], "item": item["name"]})
+                _save(s)
+                return {"result": "equipment", "item": item, "msg": msg}
+
+        # 记录本轮已获得魔物
+        s["_explore_monster_raid_wave"] = current_wave
         # 获得垃圾魔物 —— 从 recruits 池或随机弱属性
         from copy import deepcopy
         if _recruit_pool and random.random() < 0.5:
