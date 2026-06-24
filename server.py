@@ -597,18 +597,18 @@ def _skill_id() -> str:
 SPECIES_STARTER_SKILLS = {
     "猫龙": {
         "skills": [
-            {"name":"暗影吐息","type":"法术","formula":"25+3.0×智力","cost":"蓝16","interval":"4.5s","cooldown":"8s","hit_formula":"85+2.5×智力","category":"主动"},
-            {"name":"利爪","type":"斩击","formula":"20+2.0×力量+1.0×速度","cost":"耐力16","interval":"3.0s","hit_formula":"75+2.0×速度+1.0×速度","category":"主动"},
-            {"name":"扫尾","type":"钝击","formula":"15+1.5×力量+1.0×耐力","cost":"耐力20","interval":"4.5s","hit_formula":"85+1.5×速度","category":"主动"},
+            {"name":"暗影吐息","type":"法术","formula":"22+2.5×智力","cost":"蓝14","interval":"4.5s","cooldown":"8s","hit_formula":"85+2.0×智力","category":"主动"},
+            {"name":"利爪","type":"斩击","formula":"18+2.0×力量+1.5×速度","cost":"耐力14","interval":"3.0s","hit_formula":"75+2.0×力量+1.0×速度","category":"主动"},
+            {"name":"扫尾","type":"钝击","formula":"15+1.5×力量+1.0×耐力","cost":"耐力18","interval":"4.0s","hit_formula":"80+1.5×速度","category":"主动"},
             {"name":"灵巧格挡","type":"防御","formula":"15+2.0×力量+1.0×耐力/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"暗影亲和","effect":"黑暗环境不受命中惩罚，法术伤害+10%"}],
     },
     "幼龙": {
         "skills": [
-            {"name":"龙息","type":"法术","formula":"30+3.0×智力","cost":"蓝18","interval":"5.0s","hit_formula":"90","category":"主动"},
-            {"name":"尾击","type":"钝击","formula":"25+2.5×力量+0.5×耐力","cost":"耐力20","interval":"3.5s","hit_formula":"75+2.0×速度","category":"主动"},
-            {"name":"龙鳞格挡","type":"防御","formula":"25+2.5×力量+1.5×耐力/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
+            {"name":"龙息","type":"法术","formula":"25+3.0×智力","cost":"蓝16","interval":"5.0s","cooldown":"8s","hit_formula":"90","category":"主动"},
+            {"name":"尾击","type":"钝击","formula":"18+2.0×力量+0.5×耐力","cost":"耐力18","interval":"4.0s","hit_formula":"75+2.0×速度","category":"主动"},
+            {"name":"龙鳞格挡","type":"防御","formula":"20+2.0×耐力+1.0×防御/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"鳞甲天生","effect":"DEF等效+1，钝伤减伤+10%"}],
     },
@@ -622,16 +622,16 @@ SPECIES_STARTER_SKILLS = {
     },
     "石像鬼": {
         "skills": [
-            {"name":"俯冲","type":"钝击","formula":"25+2.0×速度+1.0×力量","cost":"耐力18","interval":"4.0s","hit_formula":"75+3.0×速度","category":"主动"},
-            {"name":"碎石","type":"钝击","formula":"15+1.5×力量+0.5×耐力","cost":"耐力20","interval":"5.0s","hit_formula":"85+1.0×速度","category":"主动"},
-            {"name":"石翼守护","type":"防御","formula":"25+2.5×耐力+1.5×防御/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
+            {"name":"俯冲","type":"钝击","formula":"22+2.0×速度+1.0×力量","cost":"耐力16","interval":"4.0s","hit_formula":"75+3.0×速度","category":"主动"},
+            {"name":"碎石","type":"钝击","formula":"16+1.5×力量+0.5×耐力","cost":"耐力20","interval":"5.0s","cooldown":"8s","hit_formula":"85+1.0×速度","category":"主动"},
+            {"name":"石翼守护","type":"防御","formula":"20+2.5×耐力+1.5×防御/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"石化皮肤","effect":"减伤+8%，受击概率石化攻击者(-3SPD)"}],
     },
     "杀人兔": {
         "skills": [
-            {"name":"撕咬","type":"刺击","formula":"20+3.0×速度+1.0×力量","cost":"耐力10","interval":"2.0s","cooldown":"6s","hit_formula":"70+3.5×速度","category":"主动"},
-            {"name":"飞踢","type":"钝击","formula":"18+2.5×速度+0.5×力量","cost":"耐力14","interval":"3.0s","hit_formula":"75+2.5×速度","category":"主动"},
+            {"name":"致命突袭","type":"刺击","formula":"18+3.0×速度+0.5×力量","cost":"耐力10","interval":"2.0s","cooldown":"6s","hit_formula":"70+3.5×速度","category":"主动"},
+            {"name":"连咬","type":"斩击","formula":"14+1.5×速度+1.0×力量","cost":"耐力8","interval":"1.8s","cooldown":"0.5s","hit_formula":"75+2.0×速度","category":"主动"},
             {"name":"幻影步","type":"防御","formula":"闪避+30(单次)","cost":"耐力12","interval":"5.0s","hit_formula":"","category":"主动"},
             {"name":"轻巧格挡","type":"防御","formula":"8+2.0×速度+0.5×力量/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
@@ -639,18 +639,24 @@ SPECIES_STARTER_SKILLS = {
     },
     "野狼": {
         "skills": [
-            {"name":"撕咬","type":"刺击","formula":"15+2.0×力量+1.5×速度","cost":"耐力12","interval":"2.5s","hit_formula":"75+1.5×速度+1.0×速度","category":"主动"},
-            {"name":"扑击","type":"钝击","formula":"20+1.5×力量+2.0×速度","cost":"耐力16","interval":"3.5s","hit_formula":"70+2.0×速度+1.0×速度","category":"主动"},
+            {"name":"撕咬","type":"刺击","formula":"15+2.0×力量+1.5×速度","cost":"耐力12","interval":"2.5s","hit_formula":"75+1.5×速度+1.0×力量","category":"主动"},
+            {"name":"扑击","type":"钝击","formula":"18+1.5×力量+2.0×速度","cost":"耐力16","interval":"3.5s","hit_formula":"70+2.0×速度+1.0×力量","category":"主动"},
             {"name":"影步","type":"防御","formula":"闪避+25(单次)","cost":"耐力15","interval":"6.0s","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"狼群战术","effect":"队友在场时伤害+10%"}],
     },
     "史莱姆": {
         "skills": [
-            {"name":"撞击","type":"钝击","formula":"10+1.5×耐力+0.5×力量","cost":"耐力10","interval":"3.0s","hit_formula":"70+1.0×耐力","category":"主动"},
+            {"name":"撞击","type":"钝击","formula":"10+1.0×耐力+0.5×力量","cost":"耐力8","interval":"3.0s","hit_formula":"70+1.0×耐力","category":"主动"},
             {"name":"缩壳","type":"防御","formula":"8+1.0×耐力/秒","cost":"耐力8","interval":"5.0s(冷却)","hit_formula":"","category":"主动"},
         ],
         "passives": [{"name":"凝胶身体","effect":"钝伤减半"}],
+        # 双倍开局时第二只史莱姆用酸液技能组
+        "alt_skills": [
+            {"name":"酸液喷射","type":"刺击","formula":"12+2.0×智力+0.5×速度","cost":"蓝6","interval":"4.0s","hit_formula":"75+2.0×智力","category":"主动"},
+            {"name":"分裂","type":"防御","formula":"下次受击减半后回复8+1.0×耐力","cost":"耐力10","interval":"12.0s(冷却)","hit_formula":"","category":"主动"},
+        ],
+        "alt_passives": [{"name":"酸性体质","effect":"受击时对攻击者造成2+0.3×智力酸蚀伤害"}],
     },
     "哥布林": {
         "skills": [
@@ -662,23 +668,10 @@ SPECIES_STARTER_SKILLS = {
         # 第二只哥布林用弓箭手技能组（战士+射手搭配）
         "alt_skills": [
             {"name":"短弓射击","type":"刺击","formula":"12+2.0×速度+0.5×力量","cost":"耐力8","interval":"3.0s","hit_formula":"75+2.0×速度","category":"主动"},
-            {"name":"淬毒箭","type":"刺击","formula":"18+2.5×速度+1.0×智力","cost":"耐力16","interval":"6.0s","hit_formula":"80+2.0×速度","category":"主动"},
+            {"name":"淬毒箭","type":"刺击","formula":"18+2.5×速度+1.0×智力","cost":"耐力16","interval":"6.0s","cooldown":"8s","hit_formula":"80+2.0×速度","category":"主动"},
             {"name":"闪避步法","type":"防御","formula":"10+2.0×速度/秒","cost":"耐力0.4/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "alt_passives": [{"name":"远程狙击","effect":"远程攻击伤害+15%，命中+10%"}, {"name":"工程天赋","effect":"工程建造速度+0.5天/每日"}],
-    },
-    "史莱姆": {
-        "skills": [
-            {"name":"撞击","type":"钝击","formula":"10+1.5×耐力+0.5×力量","cost":"耐力10","interval":"3.0s","hit_formula":"70+1.0×耐力","category":"主动"},
-            {"name":"缩壳","type":"防御","formula":"8+1.0×耐力/秒","cost":"耐力8","interval":"5.0s(冷却)","hit_formula":"","category":"主动"},
-        ],
-        "passives": [{"name":"凝胶身体","effect":"钝伤减半"}],
-        # 双倍开局时第二只史莱姆用酸液技能组
-        "alt_skills": [
-            {"name":"酸液喷射","type":"法术","formula":"15+2.0×智力","cost":"蓝10","interval":"3.5s","hit_formula":"70+2.0×智力","category":"主动"},
-            {"name":"分裂","type":"防御","formula":"下次受击减半后回复8+1.0×耐力","cost":"耐力10","interval":"12.0s(冷却)","hit_formula":"","category":"主动"},
-        ],
-        "alt_passives": [{"name":"酸性体质","effect":"受击时对攻击者造成2+0.3×智力酸蚀伤害"}],
     },
 }
 

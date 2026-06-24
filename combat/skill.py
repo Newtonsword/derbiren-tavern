@@ -46,12 +46,41 @@ def parse_tavern_skill(raw: str) -> dict:
                 except:
                     pass
 
-    # 解析间隔
+    # 解析间隔（使用时间）和可选冷却时间
+    # 格式: interval 或 interval:hit_formula 或 interval:hit_formula:cooldown
     interval = 3.0
+    hit_formula = ""
+    cooldown_override = None
     try:
+        interval_str = parts[4].strip() if len(parts) > 4 else "3.0s"
         interval = float(re.sub(r'[^0-9.]', '', interval_str))
+        if len(parts) > 5:
+            # parts[5] 可能是 hit_formula 或 cooldown
+            # 判断: 如果包含数字+运算符（如 "70+3.5×速度"）→ hit_formula
+            #       如果是纯时间（如 "6s", "0.5s"）→ cooldown
+            f5 = parts[5].strip()
+            if re.match(r'^[\d.]+s?$', f5) or re.match(r'^[\d.]+[sS秒]?$', f5):
+                cooldown_override = float(re.sub(r'[^0-9.]', '', f5))
+                if len(parts) > 6:
+                    f6 = parts[6].strip()
+                    if re.match(r'^[\d.]+s?$', f6) or re.match(r'^[\d.]+[sS秒]?$', f6):
+                        cooldown_override = float(re.sub(r'[^0-9.]', '', f6))
+                    else:
+                        cooldown_override = float(re.sub(r'[^0-9.]', '', f5))
+            elif len(parts) > 6:
+                # parts[5] 是 hit_formula, parts[6] 是 cooldown
+                hit_formula = f5
+                f6 = parts[6].strip()
+                try:
+                    cooldown_override = float(re.sub(r'[^0-9.]', '', f6))
+                except:
+                    pass
+            else:
+                hit_formula = f5
     except:
         pass
+
+    cooldown = cooldown_override if cooldown_override is not None else interval
 
     # 伤害类型映射
     type_map = {
@@ -73,9 +102,10 @@ def parse_tavern_skill(raw: str) -> dict:
         "formula": formula,
         "stamina_cost": stamina_cost,
         "mana_cost": mana_cost,
-        "cooldown": interval,
+        "cooldown": cooldown,
         "windup": windup,
         "recovery": recovery,
+        "hit_formula": hit_formula,
     }
 
 

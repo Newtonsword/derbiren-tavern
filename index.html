@@ -773,9 +773,9 @@ const CHARACTER_PRESETS = [
     ],
   },
   {
-    name:"史莱姆姐妹「软软&黏黏」", species:"史莱姆", coeff:1.0,
+    name:"史莱姆「软软」", species:"史莱姆", coeff:1.0,
     stats:{END:2,STR:2,SPD:2,DEF:2,INT:1,MP:2,WIL:1},
-    desc:"一对史莱姆姐妹——蓝色软软是物理肉盾，绿色黏黏是酸液射手。选一得二，弱小物种以数量取胜。",
+    desc:"一只半透明的蓝色小史莱姆，地下城最底层的魔物。什么都学不会，但什么都愿意试试——虽然大部分时候只是在地上弹来弹去。",
     skills:[
       {name:"撞击",type:"钝击",formula:"10+1.0×耐力+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"70+1.0×耐力",category:"主动"},
       {name:"缩壳",type:"防御",formula:"8+1.0×耐力/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
@@ -783,22 +783,23 @@ const CHARACTER_PRESETS = [
     passives:[
       {name:"凝胶身体",effect:"钝伤减半"},
     ],
-    twin:{
-      name:"黏黏",
-      stats:{END:1,STR:1,SPD:3,DEF:1,INT:2,MP:2,WIL:2},
-      skills:[
-        {name:"酸液喷射",type:"刺击",formula:"12+2.0×智力+0.5×速度",cost:"蓝6",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
-        {name:"分裂",type:"防御",formula:"下次受击减半后回复8+1.0×耐力",cost:"耐力10",interval:"12.0s(冷却)",hit_formula:"",category:"主动"},
-      ],
-      passives:[
-        {name:"酸性体质",effect:"受击时对攻击者造成2+0.3×智力酸蚀伤害"},
-      ],
-    },
   },
   {
-    name:"哥布林兄弟「哥布A&哥布B」", species:"哥布林", coeff:1.0,
+    name:"史莱姆「黏黏」", species:"史莱姆", coeff:1.0,
+    stats:{END:1,STR:1,SPD:3,DEF:1,INT:2,MP:2,WIL:2},
+    desc:"软软的妹妹——一滩淡绿色的酸液史莱姆，比姐姐更胆小但吐酸水特别准。平时躲在软软身后，但一旦被惹毛就会把对方盔甲溶个洞。",
+    skills:[
+      {name:"酸液喷射",type:"刺击",formula:"12+2.0×智力+0.5×速度",cost:"蓝6",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
+      {name:"分裂",type:"防御",formula:"下次受击减半后回复8+1.0×耐力",cost:"耐力10",interval:"12.0s(冷却)",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"酸性体质",effect:"受击时对攻击者造成2+0.3×智力酸蚀伤害"},
+    ],
+  },
+  {
+    name:"哥布林「哥布A」", species:"哥布林", coeff:1.0,
     stats:{END:2,STR:3,SPD:2,DEF:2,INT:1,MP:1,WIL:1},
-    desc:"哥布林兄弟——哥布A拿短剑冲前线，哥布B躲后排射箭。选一得二，兄弟齐心互不坑。",
+    desc:"一只被同族赶出来的瘦小哥布林战士，捡了把生锈的短剑当宝贝。虽然笨但很勇——每次冲上去之前都会大喊一声给自己壮胆。",
     skills:[
       {name:"挥砍",type:"斩击",formula:"12+2.0×力量+0.5×速度",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.5×力量+0.5×速度",category:"主动"},
       {name:"盾击",type:"钝击",formula:"10+1.5×力量+0.5×耐力",cost:"耐力14",interval:"4.0s",hit_formula:"75+1.5×力量",category:"主动"},
@@ -808,19 +809,20 @@ const CHARACTER_PRESETS = [
       {name:"战斗怒吼",effect:"战斗开始时STR+1"},
       {name:"工程天赋",effect:"工程建造速度+0.5天/每日"},
     ],
-    twin:{
-      name:"哥布B",
-      stats:{END:1,STR:2,SPD:4,DEF:1,INT:1,MP:1,WIL:2},
-      skills:[
-        {name:"短弓射击",type:"刺击",formula:"12+2.0×速度+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"75+2.0×速度",category:"主动"},
-        {name:"淬毒箭",type:"刺击",formula:"18+2.5×速度+1.0×智力",cost:"耐力16",interval:"6.0s",hit_formula:"80+2.0×速度",category:"主动"},
-        {name:"闪避步法",type:"防御",formula:"10+2.0×速度/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
-      ],
-      passives:[
-        {name:"远程狙击",effect:"远程攻击伤害+15%，命中+10%"},
-        {name:"工程天赋",effect:"工程建造速度+0.5天/每日"},
-      ],
-    },
+  },
+  {
+    name:"哥布林「哥布B」", species:"哥布林", coeff:1.0,
+    stats:{END:1,STR:2,SPD:4,DEF:1,INT:1,MP:1,WIL:2},
+    desc:"哥布A的弟弟，从小不敢近战但射弹弓百发百中。那把弓是用垃圾堆里捡的废铁和橡皮筋拼的——但箭是真的箭。",
+    skills:[
+      {name:"短弓射击",type:"刺击",formula:"12+2.0×速度+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"75+2.0×速度",category:"主动"},
+      {name:"淬毒箭",type:"刺击",formula:"18+2.5×速度+1.0×智力",cost:"耐力16",interval:"6.0s",cooldown:"8s",hit_formula:"80+2.0×速度",category:"主动"},
+      {name:"闪避步法",type:"防御",formula:"10+2.0×速度/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"远程狙击",effect:"远程攻击伤害+15%，命中+10%"},
+      {name:"工程天赋",effect:"工程建造速度+0.5天/每日"},
+    ],
   },
 ];
 
