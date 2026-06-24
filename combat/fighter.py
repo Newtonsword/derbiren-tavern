@@ -15,7 +15,7 @@ from .buff import BuffManager, BuffDef, BuffInstance, TriggerType, AtomicAction
 # ══════════════════════════════════════════
 TICK = 0.1  # 秒
 
-def hp_from(end: float) -> float:    return end * 200
+def hp_from(end: float) -> float:    return end * 100
 def stam_from(end: float) -> float:  return end * 50
 def mana_from(int_: float) -> float: return int_ * 20
 def def_reduce(damage: float, defense: float) -> float:
@@ -27,7 +27,7 @@ def species_resist(coeff: float) -> float:
 
 # 伤害类型穿透/破甲参数
 DAMAGE_TYPES = {
-    "pierce":  {"bypass": 0.10, "armor_dmg_mult": 1.5,  "base_mult": 1.0},
+    "pierce":  {"bypass": 0.10, "armor_dmg_mult": 1.5,  "base_mult": 1.08},
     "blunt":   {"bypass": 0.40, "armor_dmg_mult": 1.0,  "base_mult": 0.85},
     "slash":   {"bypass": 0.20, "armor_dmg_mult": 0.4,  "base_mult": 1.15},
     "fire":    {"bypass": 0.20, "armor_dmg_mult": 0.3,  "base_mult": 1.0},
@@ -251,6 +251,12 @@ class Fighter:
             self.armor = max(0, self.armor - armor_dmg_total)
         else:
             hp_dmg += armor_hit
+
+        # 受伤加深/减免 (来自 debuff, 如龙吼精神崩坏后的易伤)
+        vuln = self.buffs.get_passive_value(AtomicAction.DAMAGE_TAKEN_MULT)
+        if vuln:
+            hp_dmg *= (1.0 + vuln)
+            hp_dmg = max(0, hp_dmg)
 
         self.hp -= hp_dmg
 

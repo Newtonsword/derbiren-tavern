@@ -1227,6 +1227,27 @@ def chat(req: ChatReq):
     chars_updated = False
     day_advanced = False
     user_msg = req.message.strip()
+    # ── 超时撤退/继续打检测 ──
+    _last_vic = sess.get("_last_combat_victor")
+    if sess.get("days_until_attack", 5) == 0 and _last_vic == -1:
+        retreat_kw = ('撤退', '撤', '离开', '放弃', '不打了', '跑')
+        continue_kw = ('继续打', '继续', '再战', '再打', '战')
+        if any(kw in user_msg for kw in retreat_kw):
+            wave_idx = sess.get("raid_wave", 1) - 1
+            reset_days = RAID_WAVES[wave_idx]["reset_days"] if wave_idx < len(RAID_WAVES) else 5
+            sess["days_until_attack"] = reset_days
+            sess.pop("_last_combat_victor", None)
+            sessions[sess["id"]] = sess
+            _save(sess)
+            return {
+                "narrative": f"你们选择撤退，双方都精疲力竭。冒险者重整旗鼓，将在 {reset_days} 天后再来。",
+                "session_id": sess["id"], "title": sess["title"],
+                "day": sess.get("day", 1), "days_until_attack": reset_days,
+                "raid_wave": sess.get("raid_wave", 1), "characters_updated": False,
+            }
+        elif any(kw in user_msg for kw in continue_kw):
+            sess.pop("_last_combat_victor", None)
+            user_msg = '/day'  # 强制走战斗流程（day会+1但语义可接受）
     if user_msg.startswith('/day') or user_msg.startswith('/次日') or user_msg.startswith('/过天'):
         day_advanced = True
         action = user_msg.replace('/day','').replace('/次日','').replace('/过天','').strip() or '锻炼'
@@ -1388,9 +1409,12 @@ def chat(req: ChatReq):
         if dta == 0:
             wave_idx = sess.get("raid_wave", 1) - 1
             combat_result = asyncio.run(_run_raid_combat(sess, wave_idx))
+            sess["_last_combat_victor"] = combat_result["victor_team"]
             combat_narrative = _build_combat_narrative(combat_result, sess["raid_wave"])
             # 将战斗结果追加到 day_msg，AI 只需润色叙事
-            day_msg += f"\n\n[COMBAT_RESULT]\n{combat_narrative}\n\n⚠️ 以上是程序生成的战斗日志。请 GM 将其润色为一段精彩的战斗叙事（150-250字），不需要再计算伤害——所有数值已经由程序判定完毕。战斗结果：{'我方胜利' if combat_result['victor_team'] == 0 else '敌方胜利'}。"
+            day_msg += f"\n\n[COMBAT_RESULT]\n{combat_narrative}\n\n⚠️ 以上是程序生成的战斗日志。请 GM 将其润色为一段精彩的战斗叙事（150-250字），不需要再计算伤害——所有数值已经由程序判定完毕。战斗结果：{'我方胜利' if combat_result['victor_team'] == 0 else ('敌方胜利' if combat_result['victor_team'] == 1 else '平局——双方僵持不下，战斗超时')}。"
+            if combat_result['victor_team'] == -1:
+                day_msg += "\n\n⚔️ 双方都精疲力竭。你可以选择：【撤退】（放弃战斗，不给奖励，冒险者几天后再来）或【继续打】（下轮重新触发战斗）。"
         if active and action in ('锻炼','训练','train'):
             day_msg += f'\n[EXP] {active["name"]} 获得 {exp_gain} 经验。'
             _log_event(sess, "exp", f'{active["name"]} 获得 {exp_gain} 经验', {"char": active["name"], "exp": exp_gain})
@@ -1479,7 +1503,8 @@ def chat(req: ChatReq):
         {"role": "assistant", "content": clean_reply},
     ]
     # raid 后自动重置：第0天战斗结束后，推进波次+重置倒计时
-    if sess.get("days_until_attack", 5) == 0:
+    # 超时(-1)不给奖励——双方没分出胜负
+    if sess.get("days_until_attack", 5) == 0 and sess.get("_last_combat_victor", 0) != -1:
         wave_idx = sess.get("raid_wave", 1) - 1
         reset_days = RAID_WAVES[wave_idx]["reset_days"] if wave_idx < len(RAID_WAVES) else min(5 + wave_idx + 1, 15)
         sess["days_until_attack"] = reset_days
@@ -1529,13 +1554,13 @@ async def _run_raid_combat(sess: dict, wave_idx: int) -> dict:
         skills = cfg.get("skills", [])
         # 补格挡技能（如果没有）
         if not any(s.get("type") == "defense" for s in skills):
-            skills.append({"name": "格挡", "type": "defense", "formula": "0",
+            skills.append({"name": "格挡", "type": "defense", "formula": "50+5.0*DEF",
                           "cooldown": 0.5, "windup": 0.1, "recovery": 0.1})
         # 确保每个角色有至少一个近战攻击技能
         melee_types = ("slash", "pierce", "blunt")
         if not any(s.get("type") in melee_types for s in skills):
             skills.append({"name": "应急爪击", "type": "slash",
-                          "formula": "10+1.5*STR+0.5*SPD",
+                          "formula": "15+2.0*STR+0.5*SPD",
                           "stamina_cost": 10, "cooldown": 2.0,
                           "windup": 0.3, "recovery": 0.5})
         f = Fighter(cfg, skills)
@@ -1546,10 +1571,10 @@ async def _run_raid_combat(sess: dict, wave_idx: int) -> dict:
     for e in wave["enemies"]:
         e_skills = parse_tavern_skills(e.get("skills_raw", ""))
         if not e_skills:
-            e_skills = [{"name": "挥砍", "type": "slash", "formula": "15+2*STR+0.5*SPD",
+            e_skills = [{"name": "挥砍", "type": "slash", "formula": "20+2.5*STR+0.5*SPD",
                          "stamina_cost": 14, "cooldown": 3.0, "windup": 0.4, "recovery": 0.5}]
         if not any(s.get("type") == "defense" for s in e_skills):
-            e_skills.append({"name": "格挡", "type": "defense", "formula": "0",
+            e_skills.append({"name": "格挡", "type": "defense", "formula": "50+5.0*DEF",
                            "cooldown": 0.5, "windup": 0.1, "recovery": 0.1})
         cfg = {
             "id": f"enemy_{uuid.uuid4().hex[:6]}",
@@ -1609,7 +1634,7 @@ def _build_combat_narrative(combat_result: dict, wave_num: int) -> str:
         # 日志消息已经自带 emoji，不再重复添加前缀
         lines.append(f"[{entry['time']}s] {entry['msg']}")
 
-    victor = "我方" if combat_result["victor_team"] == 0 else "敌方"
+    victor = "我方" if combat_result["victor_team"] == 0 else ("敌方" if combat_result["victor_team"] == 1 else "平局——双方僵持不下")
     lines.append(f"\n🏆 战斗结束——{victor}获胜！({combat_result['duration']}秒)")
 
     return "\n".join(lines)

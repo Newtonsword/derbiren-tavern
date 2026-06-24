@@ -54,8 +54,11 @@ class AtomicAction(Enum):
     DAMAGE_MULTIPLIER = auto()   # 伤害倍率 (value=倍率加成, 如0.25=+25%)
     BLOCK_MULTIPLIER = auto()    # 格挡值倍率
     DR_BY_TYPE = auto()          # 按伤害类型的减伤 (condition指定类型)
+    DAMAGE_TAKEN_MULT = auto()   # 受到伤害倍率 (value=倍率, 如0.1=受伤+10%)
     HIT_RATE_MOD = auto()        # 命中率修正
     DODGE_RATE_MOD = auto()      # 闪避率修正
+    CLEAVE_RANGE_MOD = auto()    # 溅射范围修正 (米, 正值=增大)
+    CLEAVE_RATIO_MOD = auto()    # 溅射伤害比例修正 (如 0.10=+10%比例)
 
 @dataclass
 class BuffDef:
@@ -89,11 +92,12 @@ class BuffInstance:
     def expired(self): return self.remaining <= 0 and self.definition.duration > 0
 
 class BuffManager:
-    """管理一个 Fighter 身上所有 buff"""
+    """管理一个角色的所有 buff"""
 
-    def __init__(self, owner_id: str):
-        self.owner_id = owner_id
+    def __init__(self, owner_id: str = ""):
         self.buffs: list[BuffInstance] = []
+        self.owner_id = owner_id
+        self._sim_time: float = 0.0  # 模拟时间, 替代 time.time() 做间隔检查
 
     def apply(self, buff_def: BuffDef, source_id: str = "", duration_override: float = None):
         """施加 buff。已有同名的 → 叠层/刷新时间；新 buff → 添加"""
@@ -123,30 +127,46 @@ class BuffManager:
                     total += b.definition.value * b.stacks
         return total
 
+    def get_cleave_range_bonus(self) -> float:
+        """溅射范围总修正 (米)。正值=增大溅射范围。"""
+        total = 0.0
+        for b in self.buffs:
+            if b.definition.action == AtomicAction.CLEAVE_RANGE_MOD:
+                total += b.definition.value * b.stacks
+        return total
+
+    def get_cleave_ratio_bonus(self) -> float:
+        """溅射伤害比例总修正。如 0.10=+10% 比例 (加法叠加)。"""
+        total = 0.0
+        for b in self.buffs:
+            if b.definition.action == AtomicAction.CLEAVE_RATIO_MOD:
+                total += b.definition.value * b.stacks
+        return total
+
     def tick(self, elapsed: float):
         """推进时间——减少持续，触发 ON_TICK"""
+        self._sim_time += elapsed
         for b in self.buffs:
             if b.definition.duration > 0:
                 b.remaining -= elapsed
-        # 移除过期 buff
-        self.buffs = [b for b in self.buffs if not b.expired]
+        # 移除过期 buff 及层数耗尽 buff
+        self.buffs = [b for b in self.buffs if not b.expired and b.stacks > 0]
 
     def get_triggered(self, trigger: TriggerType, context: dict = None) -> list[BuffInstance]:
-        """获取匹配触发条件且满足概率/间隔的 buff 列表"""
-        import random, time
+        """获取匹配触发条件且满足概率/间隔的 buff 列表 (使用模拟时间做间隔检查)"""
+        import random
         result = []
-        now = time.time()
         for b in self.buffs:
             if b.definition.trigger != trigger:
                 continue
             if b.definition.chance < 1.0 and random.random() > b.definition.chance:
                 continue
-            # 间隔检查 (ON_TICK 专用)
+            # 间隔检查 (使用模拟时间, 非墙钟)
             if b.definition.interval > 0:
-                elapsed = now - b.last_tick
+                elapsed = self._sim_time - b.last_tick
                 if elapsed < b.definition.interval:
                     continue
-                b.last_tick = now
+                b.last_tick = self._sim_time
             result.append(b)
         return result
 
@@ -294,3 +314,236 @@ PASSIVE_LIBRARY: dict[str, list[BuffDef]] = {
 def get_passive_buffs(name: str) -> list[BuffDef]:
     """根据被动技能名获取 BuffDef 列表。复杂被动→多个简单 BuffDef 组合。"""
     return PASSIVE_LIBRARY.get(name, [])
+
+
+# ══════════════════════════════════════════
+# Buff 预设库 —— AI 生成技能时引用的"零件目录"
+# ══════════════════════════════════════════
+# 用法: skill.effects.on_spirit_break.self = ["spirit_restore_full"]
+#       skill.effects.on_spirit_break.target = ["vulnerable_10"]
+# 也支持直接写 dict: {"action": "HEAL_SPIRIT", "value": 999}
+# 瞬时效果(INSTANT_EFFECTS)在 sim.py 中直接修改属性;
+# 持续Buff(BUFF_PRESETS)通过 buffs.apply() 施加。
+
+BUFF_PRESETS: dict[str, BuffDef] = {
+    # ══════════════════════════════════════════
+    # 七大属性增益 (持续30s, 每属性3档: +3/+5/+8)
+    # ══════════════════════════════════════════
+    "end_up_3":   BuffDef(name="耐力+3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=3,  duration=30, description="耐力+3"),
+    "end_up_5":   BuffDef(name="耐力+5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=5,  duration=30, description="耐力+5"),
+    "end_up_8":   BuffDef(name="耐力+8",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=8,  duration=30, description="耐力+8"),
+    "str_up_3":   BuffDef(name="力量+3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=3,  duration=30, description="力量+3"),
+    "str_up_5":   BuffDef(name="力量+5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=5,  duration=30, description="力量+5"),
+    "str_up_8":   BuffDef(name="力量+8",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=8,  duration=30, description="力量+8"),
+    "spd_up_3":   BuffDef(name="速度+3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=3,  duration=30, description="速度+3"),
+    "spd_up_5":   BuffDef(name="速度+5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=5,  duration=30, description="速度+5"),
+    "spd_up_8":   BuffDef(name="速度+8",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=8,  duration=30, description="速度+8"),
+    "def_up_3":   BuffDef(name="防御+3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=3,  duration=30, description="防御+3"),
+    "def_up_5":   BuffDef(name="防御+5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=5,  duration=30, description="防御+5"),
+    "def_up_8":   BuffDef(name="防御+8",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=8,  duration=30, description="防御+8"),
+    "int_up_3":   BuffDef(name="智力+3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=3,  duration=30, description="智力+3"),
+    "int_up_5":   BuffDef(name="智力+5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=5,  duration=30, description="智力+5"),
+    "int_up_8":   BuffDef(name="智力+8",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=8,  duration=30, description="智力+8"),
+    "wil_up_3":   BuffDef(name="精神+3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=3,  duration=30, description="精神+3"),
+    "wil_up_5":   BuffDef(name="精神+5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=5,  duration=30, description="精神+5"),
+    "wil_up_8":   BuffDef(name="精神+8",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=8,  duration=30, description="精神+8"),
+    "mp_up_3":    BuffDef(name="法量+3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=3,  duration=30, description="法量+3"),
+    "mp_up_5":    BuffDef(name="法量+5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=5,  duration=30, description="法量+5"),
+    "mp_up_8":    BuffDef(name="法量+8",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=8,  duration=30, description="法量+8"),
+
+    # ══════════════════════════════════════════
+    # 七大属性减益 (持续20s, 每属性2档: -3/-5)
+    # ══════════════════════════════════════════
+    "end_down_3": BuffDef(name="耐力-3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-3, duration=20, description="耐力-3"),
+    "end_down_5": BuffDef(name="耐力-5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-5, duration=20, description="耐力-5"),
+    "str_down_3": BuffDef(name="力量-3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-3, duration=20, description="力量-3"),
+    "str_down_5": BuffDef(name="力量-5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-5, duration=20, description="力量-5"),
+    "spd_down_3": BuffDef(name="速度-3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-3, duration=20, description="速度-3"),
+    "spd_down_5": BuffDef(name="速度-5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-5, duration=20, description="速度-5"),
+    "def_down_3": BuffDef(name="防御-3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-3, duration=20, description="防御-3"),
+    "def_down_5": BuffDef(name="防御-5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-5, duration=20, description="防御-5"),
+    "int_down_3": BuffDef(name="智力-3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-3, duration=20, description="智力-3"),
+    "int_down_5": BuffDef(name="智力-5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-5, duration=20, description="智力-5"),
+    "wil_down_3": BuffDef(name="精神-3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-3, duration=20, description="精神-3"),
+    "wil_down_5": BuffDef(name="精神-5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-5, duration=20, description="精神-5"),
+    "mp_down_3":  BuffDef(name="法量-3",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-3, duration=20, description="法量-3"),
+    "mp_down_5":  BuffDef(name="法量-5",   trigger=TriggerType.PASSIVE, action=AtomicAction.MODIFY_STAT, value=-5, duration=20, description="法量-5"),
+
+    # ══════════════════════════════════════════
+    # 伤害倍率 — 全局 (持续30s)
+    # ══════════════════════════════════════════
+    "damage_up_15":  BuffDef(name="伤害+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.15, duration=30, description="伤害+15%"),
+    "damage_up_25":  BuffDef(name="伤害+25%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.25, duration=30, description="伤害+25%"),
+    "damage_up_40":  BuffDef(name="伤害+40%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.40, duration=30, description="伤害+40%"),
+    "damage_down_15": BuffDef(name="伤害-15%", trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=-0.15, duration=20, description="伤害-15%"),
+    "damage_down_25": BuffDef(name="伤害-25%", trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=-0.25, duration=20, description="伤害-25%"),
+
+    # ══════════════════════════════════════════
+    # 伤害倍率 — 按类型 (condition=dmg_type=X, 持续30s)
+    # ══════════════════════════════════════════
+    "damage_up_slash_15":    BuffDef(name="斩伤+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.15, duration=30, condition="dmg_type=slash",   description="斩击伤害+15%"),
+    "damage_up_slash_25":    BuffDef(name="斩伤+25%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.25, duration=30, condition="dmg_type=slash",   description="斩击伤害+25%"),
+    "damage_up_pierce_15":   BuffDef(name="刺伤+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.15, duration=30, condition="dmg_type=pierce",  description="刺击伤害+15%"),
+    "damage_up_pierce_25":   BuffDef(name="刺伤+25%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.25, duration=30, condition="dmg_type=pierce",  description="刺击伤害+25%"),
+    "damage_up_blunt_15":    BuffDef(name="钝伤+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.15, duration=30, condition="dmg_type=blunt",   description="钝击伤害+15%"),
+    "damage_up_blunt_25":    BuffDef(name="钝伤+25%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.25, duration=30, condition="dmg_type=blunt",   description="钝击伤害+25%"),
+    "damage_up_spirit_15":   BuffDef(name="精神伤+15%",trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.15, duration=30, condition="dmg_type=spirit",  description="精神伤害+15%"),
+    "damage_up_spirit_25":   BuffDef(name="精神伤+25%",trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER, value=0.25, duration=30, condition="dmg_type=spirit",  description="精神伤害+25%"),
+
+    # ══════════════════════════════════════════
+    # 按类型减伤 (DR_BY_TYPE, condition=dmg_type=X, 持续30s)
+    # ══════════════════════════════════════════
+    "dr_slash_15":    BuffDef(name="斩抗+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.15, duration=30, condition="dmg_type=slash",   description="受到斩伤-15%"),
+    "dr_slash_30":    BuffDef(name="斩抗+30%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.30, duration=30, condition="dmg_type=slash",   description="受到斩伤-30%"),
+    "dr_pierce_15":   BuffDef(name="刺抗+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.15, duration=30, condition="dmg_type=pierce",  description="受到刺伤-15%"),
+    "dr_pierce_30":   BuffDef(name="刺抗+30%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.30, duration=30, condition="dmg_type=pierce",  description="受到刺伤-30%"),
+    "dr_blunt_15":    BuffDef(name="钝抗+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.15, duration=30, condition="dmg_type=blunt",   description="受到钝伤-15%"),
+    "dr_blunt_30":    BuffDef(name="钝抗+30%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.30, duration=30, condition="dmg_type=blunt",   description="受到钝伤-30%"),
+    "dr_spirit_15":   BuffDef(name="精抗+15%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.15, duration=30, condition="dmg_type=spirit",  description="受到精神伤-15%"),
+    "dr_spirit_30":   BuffDef(name="精抗+30%",  trigger=TriggerType.PASSIVE, action=AtomicAction.DR_BY_TYPE, value=0.30, duration=30, condition="dmg_type=spirit",  description="受到精神伤-30%"),
+
+    # ══════════════════════════════════════════
+    # 受伤倍率 (易伤/坚韧, 持续30s)
+    # ══════════════════════════════════════════
+    "vulnerable_10": BuffDef(name="易伤",      trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_TAKEN_MULT, value=0.10, duration=30, description="受伤+10%"),
+    "vulnerable_25": BuffDef(name="重伤",      trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_TAKEN_MULT, value=0.25, duration=30, description="受伤+25%"),
+    "tough_15":      BuffDef(name="坚韧",      trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_TAKEN_MULT, value=-0.15, duration=30, description="受伤-15%"),
+    "tough_30":      BuffDef(name="铁壁",      trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_TAKEN_MULT, value=-0.30, duration=30, description="受伤-30%"),
+
+    # ══════════════════════════════════════════
+    # 格挡倍率 (持续30s)
+    # ══════════════════════════════════════════
+    "block_up_30": BuffDef(name="格挡+30%", trigger=TriggerType.PASSIVE, action=AtomicAction.BLOCK_MULTIPLIER, value=0.30, duration=30, description="格挡值+30%"),
+    "block_up_50": BuffDef(name="格挡+50%", trigger=TriggerType.PASSIVE, action=AtomicAction.BLOCK_MULTIPLIER, value=0.50, duration=30, description="格挡值+50%"),
+
+    # ══════════════════════════════════════════
+    # 命中/闪避 (持续30s)
+    # ══════════════════════════════════════════
+    "hit_up_10":   BuffDef(name="精准",       trigger=TriggerType.PASSIVE, action=AtomicAction.HIT_RATE_MOD,  value=10, duration=30, description="命中+10"),
+    "hit_up_20":   BuffDef(name="鹰眼",       trigger=TriggerType.PASSIVE, action=AtomicAction.HIT_RATE_MOD,  value=20, duration=30, description="命中+20"),
+    "dodge_up_10": BuffDef(name="灵巧",       trigger=TriggerType.PASSIVE, action=AtomicAction.DODGE_RATE_MOD, value=10, duration=30, description="闪避+10"),
+    "dodge_up_20": BuffDef(name="幻影",       trigger=TriggerType.PASSIVE, action=AtomicAction.DODGE_RATE_MOD, value=20, duration=30, description="闪避+20"),
+    "hit_down_10": BuffDef(name="盲目",       trigger=TriggerType.PASSIVE, action=AtomicAction.HIT_RATE_MOD,  value=-10, duration=20, description="命中-10"),
+    "dodge_down_10": BuffDef(name="迟缓",     trigger=TriggerType.PASSIVE, action=AtomicAction.DODGE_RATE_MOD, value=-10, duration=20, description="闪避-10"),
+
+    # ══════════════════════════════════════════
+    # 护甲 (临时护甲, 持续30s)
+    # ══════════════════════════════════════════
+    "armor_up_30":  BuffDef(name="护甲+30",  trigger=TriggerType.PASSIVE, action=AtomicAction.GAIN_ARMOR, value=30,  duration=30, description="护甲+30"),
+    "armor_up_50":  BuffDef(name="护甲+50",  trigger=TriggerType.PASSIVE, action=AtomicAction.GAIN_ARMOR, value=50,  duration=30, description="护甲+50"),
+    "armor_up_100": BuffDef(name="护甲+100", trigger=TriggerType.PASSIVE, action=AtomicAction.GAIN_ARMOR, value=100, duration=30, description="护甲+100"),
+
+    # ══════════════════════════════════════════
+    # 持续恢复 (ON_TICK, 永久持续, value=0由引擎按END动态计算)
+    # ══════════════════════════════════════════
+    "regen_hp_2s":   BuffDef(name="再生·速",   trigger=TriggerType.ON_TICK, action=AtomicAction.HEAL_HP, value=0, duration=-1, interval=2.0, description="每2秒恢复END×2 HP"),
+    "regen_hp_3s":   BuffDef(name="再生",       trigger=TriggerType.ON_TICK, action=AtomicAction.HEAL_HP, value=0, duration=-1, interval=3.0, description="每3秒恢复END×2 HP"),
+    "regen_hp_5s":   BuffDef(name="再生·缓",   trigger=TriggerType.ON_TICK, action=AtomicAction.HEAL_HP, value=0, duration=-1, interval=5.0, description="每5秒恢复END×2 HP"),
+    "regen_stam_2s": BuffDef(name="耐力恢复",   trigger=TriggerType.ON_TICK, action=AtomicAction.HEAL_STAMINA, value=0, duration=-1, interval=2.0, description="每2秒恢复END×2 体力"),
+
+    # ══════════════════════════════════════════
+    # 控制效果 (ON_ATTACK_HIT)
+    # ══════════════════════════════════════════
+    "stun_on_hit_05s": BuffDef(name="钝击", trigger=TriggerType.ON_ATTACK_HIT, action=AtomicAction.STUN, value=0.5, duration=0, description="命中时硬直0.5s"),
+    "stun_on_hit_1s":  BuffDef(name="重击", trigger=TriggerType.ON_ATTACK_HIT, action=AtomicAction.STUN, value=1.0, duration=0, description="命中时硬直1s"),
+
+    # ══════════════════════════════════════════
+    # 持续性伤害 DoT (ON_TICK + DEAL_DAMAGE)
+    # condition 控制衰减模式:
+    #   "dot"=每跳层数-1(毒), "dot_halve"=每跳层数减半(燃烧),
+    #   "dot_nodecay"=层数不减(固定持续伤害)
+    # ══════════════════════════════════════════
+    # ── 层数-1型 (中毒: 伤害稳定递减) ──
+    "dot_poison_3":  BuffDef(name="中毒",  trigger=TriggerType.ON_TICK, action=AtomicAction.DEAL_DAMAGE, value=3, duration=-1, interval=1.0, max_stacks=10, condition="dot", description="每秒3×层毒伤,层数-1"),
+    "dot_poison_5":  BuffDef(name="剧毒",  trigger=TriggerType.ON_TICK, action=AtomicAction.DEAL_DAMAGE, value=5, duration=-1, interval=1.0, max_stacks=10, condition="dot", description="每秒5×层毒伤,层数-1"),
+    # ── 层数减半型 (燃烧: 伤害快速衰减, 每次减半) ──
+    "dot_burn_4":    BuffDef(name="燃烧",  trigger=TriggerType.ON_TICK, action=AtomicAction.DEAL_DAMAGE, value=4, duration=-1, interval=1.0, max_stacks=8,  condition="dot_halve", description="每秒4×层燃烧,层数减半"),
+    "dot_burn_6":    BuffDef(name="烈焰",  trigger=TriggerType.ON_TICK, action=AtomicAction.DEAL_DAMAGE, value=6, duration=-1, interval=1.0, max_stacks=8,  condition="dot_halve", description="每秒6×层燃烧,层数减半"),
+    # ── 层数不减型 (固定持续伤害, 靠duration到期) ──
+    "dot_bleed_2":   BuffDef(name="流血",  trigger=TriggerType.ON_TICK, action=AtomicAction.DEAL_DAMAGE, value=2, duration=10, interval=1.0, max_stacks=1,  condition="dot_nodecay", description="每秒2点流血,持续10秒"),
+    "dot_bleed_4":   BuffDef(name="大出血",trigger=TriggerType.ON_TICK, action=AtomicAction.DEAL_DAMAGE, value=4, duration=10, interval=1.0, max_stacks=1,  condition="dot_nodecay", description="每秒4点流血,持续10秒"),
+
+    # ══════════════════════════════════════════
+    # 溅射修正 (CLEAVE_RANGE_MOD / CLEAVE_RATIO_MOD, 持续30s)
+    # ══════════════════════════════════════════
+    # ── 溅射范围 (+/- 米) ──
+    "cleave_range_up_1":   BuffDef(name="横扫",   trigger=TriggerType.PASSIVE, action=AtomicAction.CLEAVE_RANGE_MOD, value=1.0,  duration=30, description="溅射范围+1m"),
+    "cleave_range_up_2":   BuffDef(name="旋风斩", trigger=TriggerType.PASSIVE, action=AtomicAction.CLEAVE_RANGE_MOD, value=2.0,  duration=30, description="溅射范围+2m"),
+    "cleave_range_down_1": BuffDef(name="拘束",   trigger=TriggerType.PASSIVE, action=AtomicAction.CLEAVE_RANGE_MOD, value=-1.0, duration=20, description="溅射范围-1m"),
+    # ── 溅射比例 (+/- 百分点) ──
+    "cleave_ratio_up_10":  BuffDef(name="裂伤",   trigger=TriggerType.PASSIVE, action=AtomicAction.CLEAVE_RATIO_MOD, value=0.10, duration=30, description="溅射伤害比例+10%"),
+    "cleave_ratio_up_20":  BuffDef(name="粉碎",   trigger=TriggerType.PASSIVE, action=AtomicAction.CLEAVE_RATIO_MOD, value=0.20, duration=30, description="溅射伤害比例+20%"),
+    "cleave_ratio_down_10":BuffDef(name="收束",   trigger=TriggerType.PASSIVE, action=AtomicAction.CLEAVE_RATIO_MOD, value=-0.10,duration=20, description="溅射伤害比例-10%"),
+}
+
+
+# ══════════════════════════════════════════
+# 瞬时效果 —— 一次性生效，不产生持续 Buff
+# ══════════════════════════════════════════
+# key → {"action": str, "value": float}
+# 支持的行动: HEAL_HP, HEAL_SPIRIT, HEAL_STAMINA, RESTORE_ARMOR, STUN
+INSTANT_EFFECTS: dict[str, dict] = {
+    # ── 瞬时回血 ──
+    "heal_hp_30":     {"action": "HEAL_HP", "value": 30},
+    "heal_hp_50":     {"action": "HEAL_HP", "value": 50},
+    "heal_hp_100":    {"action": "HEAL_HP", "value": 100},
+    "heal_hp_50pct":  {"action": "HEAL_HP_PCT", "value": 0.5},   # 特殊: 百分比回血
+
+    # ── 瞬时回精神 ──
+    "spirit_restore_full": {"action": "HEAL_SPIRIT", "value": 9999},
+    "spirit_restore_50":   {"action": "HEAL_SPIRIT", "value": 50},
+    "spirit_restore_30":   {"action": "HEAL_SPIRIT", "value": 30},
+
+    # ── 瞬时回蓝 ──
+    "mana_restore_full": {"action": "HEAL_MANA", "value": 9999},
+    "mana_restore_50":   {"action": "HEAL_MANA", "value": 50},
+    "mana_restore_30":   {"action": "HEAL_MANA", "value": 30},
+
+    # ── 瞬时回体力 ──
+    "stamina_restore_full": {"action": "HEAL_STAMINA", "value": 9999},
+    "stamina_restore_50":   {"action": "HEAL_STAMINA", "value": 50},
+
+    # ── 瞬时硬直 ──
+    "stun_05s": {"action": "STUN", "value": 0.5},
+    "stun_1s":  {"action": "STUN", "value": 1.0},
+    "stun_2s":  {"action": "STUN", "value": 2.0},
+}
+
+
+def resolve_effect(effect):
+    """将 effect 字符串或 dict 解析为可执行的 (type, data) 元组。
+    
+    返回:
+      ("instant", {action, value})  — 瞬时效果
+      ("buff", BuffDef)             — 持续 buff
+      None — 无法解析
+    """
+    if isinstance(effect, str):
+        # 引用预设名
+        if effect in INSTANT_EFFECTS:
+            return ("instant", INSTANT_EFFECTS[effect])
+        if effect in BUFF_PRESETS:
+            return ("buff", BUFF_PRESETS[effect])
+        return None
+    if isinstance(effect, dict):
+        action = effect.get("action", "")
+        # 如果 action 是 BUFF_PRESETS 里的 key → 持续 buff
+        if action in BUFF_PRESETS:
+            # 允许覆盖 duration
+            bd = BUFF_PRESETS[action]
+            dur = effect.get("duration", bd.duration)
+            return ("buff", BuffDef(
+                name=bd.name, trigger=bd.trigger, action=bd.action,
+                value=bd.value * effect.get("value_mult", 1.0),
+                duration=dur, description=bd.description,
+                interval=bd.interval,
+            ))
+        # 如果 action 是 INSTANT_EFFECTS 里的 key → 瞬时
+        if action in INSTANT_EFFECTS:
+            ie = dict(INSTANT_EFFECTS[action])
+            if "value" in effect:
+                ie["value"] = effect["value"]
+            return ("instant", ie)
+        # 否则直接作为字典使用
+        return ("instant", effect)
+    return None

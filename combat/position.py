@@ -13,6 +13,7 @@ PositionManager —— 战斗位置/距离/移动系统
 from dataclasses import dataclass, field
 from typing import Optional
 from .fighter import TICK
+from .skill import normalize_type
 
 # 地图尺寸映射 (米)
 MAP_SIZES = {
@@ -133,7 +134,7 @@ class PositionManager:
         for sk in fighter.skills:
             cat = sk.get("category", "")
             stype = sk.get("type", "")
-            if cat == "被动" or stype == "defense":
+            if cat == "被动" or normalize_type(stype) == "defense":
                 continue
             total += 1
             if sk.get("ranged"):
@@ -169,6 +170,13 @@ class PositionManager:
         pos = self.positions.get(fighter.char_id)
         if pos:
             pos.stagger_timer = int(0.3 / TICK)  # 3 ticks
+
+    def nearby_enemies(self, fighter, enemies: list, max_range: float) -> list:
+        """返回 fighter 周围 max_range 米内的存活敌人（不含 fighter 自己）"""
+        if fighter.lost:
+            return []
+        live = [e for e in enemies if not e.lost and e.char_id != fighter.char_id]
+        return [e for e in live if self.distance(fighter, e) <= max_range]
 
     def tick_movement(self, fighter, enemies: list):
         """

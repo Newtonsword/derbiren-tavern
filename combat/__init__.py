@@ -31,6 +31,7 @@ Buff 系统参考 Unity 卡牌游戏架构 (TriggerType → AtomicAction → Act
 
 from .fighter import Fighter, CombatAction, SkillCD, TICK
 from .buff import BuffDef, BuffInstance, BuffManager, TriggerType, AtomicAction, PASSIVE_LIBRARY, get_passive_buffs
+from .buff import BUFF_PRESETS, INSTANT_EFFECTS, resolve_effect
 from .position import PositionManager, FighterPosition, MAP_SIZES, MELEE_RANGE, RANGED_COMFORT_MIN, RANGED_COMFORT_MAX
 from .skill import (
     parse_tavern_skill, parse_tavern_skills, parse_skill_dict,

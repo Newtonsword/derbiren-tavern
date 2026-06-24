@@ -86,6 +86,23 @@ def parse_tavern_skills(skills_raw: str) -> list[dict]:
     return [s for s in (parse_tavern_skill(s.strip()) for s in skills_raw.split(";")) if s]
 
 
+def normalize_type(raw_type: str) -> str:
+    """将中文/混合类型名转换为引擎内部类型名 (供 combat 模块各处复用)"""
+    if raw_type in ("slash", "pierce", "blunt", "spirit", "defense", "fire"):
+        return raw_type
+    if "精神" in raw_type:
+        return "spirit"
+    if "斩" in raw_type:
+        return "slash"
+    if "刺" in raw_type:
+        return "pierce"
+    if "钝" in raw_type:
+        return "blunt"
+    if "防" in raw_type:
+        return "defense"
+    return "slash"
+
+
 def parse_skill_dict(skill_dict: dict) -> dict:
     """
     从 tavern 的 skill 字典转换为战斗引擎格式。
@@ -98,16 +115,7 @@ def parse_skill_dict(skill_dict: dict) -> dict:
     name = skill_dict.get("name", "???")
     stype_raw = skill_dict.get("type", "斩击")
     category = skill_dict.get("category", "主动")
-
-    # 类型映射
-    type_map = {
-        "斩击": "slash", "斩": "slash",
-        "刺击": "pierce", "刺": "pierce",
-        "钝击": "blunt", "钝": "blunt",
-        "精神": "spirit", "法术": "spirit",
-        "防御": "defense",
-    }
-    dmg_type = type_map.get(stype_raw, "slash")
+    dmg_type = normalize_type(stype_raw)
 
     # 公式
     formula = skill_dict.get("formula", "")

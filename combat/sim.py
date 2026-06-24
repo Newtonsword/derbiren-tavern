@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional
 import random
 from .fighter import Fighter, TICK, CombatAction
-from .buff import TriggerType, AtomicAction
+from .buff import TriggerType, AtomicAction, BuffDef
 from .position import PositionManager, MELEE_RANGE
 from .ai import clear_quality_cache
 
@@ -124,13 +124,37 @@ class CombatSim:
                 f.tick_stun()
                 f.buffs.tick(TICK)
 
-                # ON_TICK 被动 (再生等持续恢复)
+                # ON_TICK 被动 (再生/DoT/持续恢复)
                 for b in f.buffs.get_triggered(TriggerType.ON_TICK):
-                    if b.action == AtomicAction.HEAL_HP:
+                    bd = b.definition
+                    if bd.action == AtomicAction.HEAL_HP:
                         heal = f.end * 2
                         f.hp = min(f.max_hp, f.hp + heal)
                         self._add_log(self.tick,
-                            f"💚 {f.name} [再生] HP+{heal:.0f} → {f.hp:.0f}", "heal")
+                            f"💚 {f.name} [{bd.name}] HP+{heal:.0f} → {f.hp:.0f}", "heal")
+                    elif bd.action == AtomicAction.HEAL_STAMINA:
+                        f.stamina = min(f.max_stamina, f.stamina + f.end * 2)
+                    elif bd.action == AtomicAction.DEAL_DAMAGE:
+                        # DoT: 根据 condition 选择衰减模式
+                        dot_dmg = bd.value * b.stacks
+                        f.hp -= dot_dmg
+                        cond = bd.condition or "dot"
+                        if cond == "dot_halve":
+                            b.stacks = max(0, b.stacks // 2)
+                            decay_tag = "减半"
+                        elif cond == "dot_nodecay":
+                            decay_tag = ""
+                        else:  # "dot" = 层数-1
+                            b.stacks -= 1
+                            decay_tag = f"剩{b.stacks}层"
+                        self._add_log(self.tick,
+                            f"🩸 {f.name} [{bd.name}] DoT-{dot_dmg:.0f} "
+                            f"({decay_tag}) → HP{f.hp:.0f}", "dot")
+                        if f.hp <= 0:
+                            f.hp = 0
+                            f.lost = True
+                            self._add_log(self.tick,
+                                f"💀 {f.name} 被持续性伤害击倒！", "result")
 
                 # 体力/蓝量自然恢复
                 f.stamina = min(f.max_stamina, f.stamina + 0.1)
@@ -156,7 +180,7 @@ class CombatSim:
 
                 if skill and f.can_use(skill):
                     # 距离检查: 近战必须在近战距离内
-                    stype = skill.get("type", "")
+                    stype = self._normalize_type(skill.get("type", ""))
                     if not skill.get("ranged") and stype != "spirit":
                         live_enemies = [e for e in enemies if not e.lost]
                         if live_enemies:
@@ -210,7 +234,7 @@ class CombatSim:
                 continue
 
             skill = act.skill
-            stype = skill.get("type", "")
+            stype = self._normalize_type(skill.get("type", ""))
 
             # 只对攻击性技能触发防御 (防御技/精神攻击不触发)
             if stype in ("defense", "spirit"):
@@ -229,7 +253,7 @@ class CombatSim:
             # 目标是否有可用的防御技能?
             def_skill = None
             for sk in target.skills:
-                if sk.get("type") == "defense" and target.can_use(sk):
+                if self._normalize_type(sk.get("type", "")) == "defense" and target.can_use(sk):
                     def_skill = sk
                     break
 
@@ -260,7 +284,7 @@ class CombatSim:
             return  # 动作还在进行中
 
         skill = act.skill
-        stype = skill.get("type", "")
+        stype = self._normalize_type(skill.get("type", ""))
         is_ranged = bool(skill.get("ranged"))
 
         if act.phase == "windup":
@@ -307,20 +331,104 @@ class CombatSim:
         # 按距离排序, 优先最近的
         return min(live, key=lambda e: self.positions.distance(attacker, e))
 
+    # ── 技能特效应用 ──
+    def _apply_skill_effects(self, source: Fighter, target: Fighter,
+                              effects: dict, skill: dict, trigger_name: str = ""):
+        """应用技能 effects 字段定义的效果链 (on_hit / on_spirit_break 等)。
+        
+        支持两种 effect 格式:
+          1. 字符串引用预设: "spirit_restore_full", "vulnerable_10" 等
+          2. dict 直接定义: {"action": "HEAL_SPIRIT", "value": 999}
+        """
+        from .buff import resolve_effect
+        skill_name = skill.get("name", "???")
+        tag = f"[{trigger_name}]" if trigger_name else ""
+
+        for eff in effects.get("self", []):
+            result = resolve_effect(eff)
+            if result is None:
+                continue
+            etype, data = result
+            if etype == "instant":
+                self._exec_instant(source, data)
+                self._add_log(self.tick,
+                    f"✨ {source.name} {tag} {skill_name} → "
+                    f"{data.get('action','?')}:{data.get('value','?')}",
+                    "buff")
+            elif etype == "buff":
+                source.buffs.apply(data, source_id=source.char_id)
+                self._add_log(self.tick,
+                    f"⬆️ {source.name} {tag} 获得 [{data.name}] "
+                    f"({data.description})",
+                    "buff")
+
+        for eff in effects.get("target", []):
+            result = resolve_effect(eff)
+            if result is None:
+                continue
+            etype, data = result
+            if etype == "instant":
+                self._exec_instant(target, data)
+                self._add_log(self.tick,
+                    f"💥 {target.name} {tag} {skill_name} → "
+                    f"{data.get('action','?')}:{data.get('value','?')}",
+                    "debuff")
+            elif etype == "buff":
+                target.buffs.apply(data, source_id=source.char_id)
+                self._add_log(self.tick,
+                    f"💔 {target.name} {tag} {skill_name} → {data.name}! "
+                    f"{data.description}",
+                    "debuff")
+
+    def _exec_instant(self, fighter: Fighter, data: dict):
+        """执行瞬时效果——直接修改 Fighter 属性，不产生持续 Buff"""
+        action = data.get("action", "")
+        value = float(data.get("value", 0))
+        if action == "HEAL_SPIRIT":
+            fighter.spirit = min(fighter.max_spirit, fighter.spirit + value)
+        elif action == "HEAL_HP":
+            fighter.hp = min(fighter.max_hp, fighter.hp + value)
+        elif action == "HEAL_HP_PCT":
+            fighter.hp = min(fighter.max_hp, fighter.hp + fighter.max_hp * value)
+        elif action == "HEAL_MANA":
+            fighter.mana = min(fighter.max_mana, fighter.mana + value)
+        elif action == "HEAL_STAMINA":
+            fighter.stamina = min(fighter.max_stamina, fighter.stamina + value)
+        elif action == "RESTORE_ARMOR":
+            fighter.armor = min(fighter.max_armor, fighter.armor + value)
+        elif action == "STUN":
+            fighter.stunned = int(value / TICK)
+
+    @staticmethod
+    def _normalize_type(raw_type: str) -> str:
+        from .skill import normalize_type
+        return normalize_type(raw_type)
+
     # ── 命中判定与伤害 ──
     def _execute_hit(self, attacker: Fighter, target: Fighter, skill: dict):
         """执行一次攻击判定"""
-        dmg_type = skill.get("type", "slash")
+        dmg_type = self._normalize_type(skill.get("type", "slash"))
         is_ranged = bool(skill.get("ranged"))
 
         # 精神攻击
         if dmg_type == "spirit":
             raw = self._calc_skill_damage(attacker, skill)
+            was_lost_before = target.lost
             result = target.take_damage(raw, dmg_type, attacker, is_spirit=True)
             self._add_log(self.tick,
                 f"🔮 {attacker.name} [{skill['name']}] 精神伤害{raw:.0f} → "
                 f"{target.name}精神条{target.spirit:.0f}/{target.max_spirit}",
                 "spirit")
+
+            # 精神崩坏特效
+            if not was_lost_before and target.lost:
+                effects = skill.get("effects", {}).get("on_spirit_break", {})
+                if effects:
+                    self._apply_skill_effects(attacker, target, effects, skill, "on_spirit_break")
+            # 通用命中特效 (on_hit)
+            hit_eff = skill.get("effects", {}).get("on_hit", {})
+            if hit_eff:
+                self._apply_skill_effects(attacker, target, hit_eff, skill, "on_hit")
             return
 
         # ── 距离惩罚: 远程在近战范围命中率减半 ──
@@ -355,6 +463,32 @@ class CombatSim:
             f"HP{target.hp:.0f} 护甲{target.armor:.0f} 距离{dist:.1f}m{dist_tag}",
             "hit")
 
+        # ── 近战溅射 (Cleave): 被包围时概率对周围敌人造成比例伤害 ──
+        # 溅射范围和伤害比例可由 Buff 修正 (CLEAVE_RANGE_MOD / CLEAVE_RATIO_MOD)
+        BASE_CLEAVE_RANGE = 3.0
+        if not is_ranged and not target.lost:
+            cleave_chances = {"slash": 0.45, "blunt": 0.30, "pierce": 0.12}
+            cleave_ratios  = {"slash": 0.35, "blunt": 0.50, "pierce": 0.25}
+            chance = cleave_chances.get(dmg_type, 0.20)
+            ratio  = cleave_ratios.get(dmg_type, 0.30) + attacker.buffs.get_cleave_ratio_bonus()
+            cleave_range = BASE_CLEAVE_RANGE + attacker.buffs.get_cleave_range_bonus()
+            if random.random() < chance:
+                enemies = self.team1 if attacker in self.team0 else self.team0
+                nearby = self.positions.nearby_enemies(target, enemies, cleave_range)
+                for nb in nearby:
+                    cleave_raw = raw * ratio
+                    nb_result = nb.take_damage(cleave_raw, dmg_type, attacker)
+                    self._add_log(self.tick,
+                        f"💥 {attacker.name} 溅射({dmg_type}) → {nb.name} "
+                        f"HP-{nb_result['hp_dmg']:.0f}(格挡{nb_result['blocked']:.0f}) "
+                        f"HP{nb.hp:.0f}",
+                        "hit")
+                    if nb.lost:
+                        self._add_log(self.tick,
+                            f"💀 {nb.name} 被溅射击倒！", "result")
+                        for b in attacker.buffs.get_triggered(TriggerType.ON_KILL):
+                            self._execute_buff_action(attacker, b, attacker, nb)
+
         # ── 命中 stagger: 被命中者速度减半 0.3s ──
         self.positions.stagger(target)
 
@@ -372,6 +506,11 @@ class CombatSim:
                 f"💀 {target.name} 丧失战斗力！", "result")
             for b in attacker.buffs.get_triggered(TriggerType.ON_KILL):
                 self._execute_buff_action(attacker, b, attacker, target)
+
+        # 通用命中特效 (on_hit)
+        hit_eff = skill.get("effects", {}).get("on_hit", {})
+        if hit_eff:
+            self._apply_skill_effects(attacker, target, hit_eff, skill, "on_hit")
 
     # ── 伤害公式计算 ──
     def _calc_skill_damage(self, fighter: Fighter, skill: dict) -> float:
@@ -432,7 +571,7 @@ class CombatSim:
         dodge += dodge_mod
 
         if self.environment == "narrow":
-            if skill.get("type") == "spirit":
+            if self._normalize_type(skill.get("type", "")) == "spirit":
                 dodge += 5
 
         hit = base_hit - dodge
@@ -500,7 +639,7 @@ class CombatSim:
         has_eagle = any(b.definition.name == "鹰眼"
                        for b in fighter.buffs.buffs)
         is_ranged = skill.get("ranged") or (
-            has_eagle and skill.get("type") in ("pierce",)
+            has_eagle and self._normalize_type(skill.get("type", "")) in ("pierce",)
         )
         return {
             "environment": self.environment,

@@ -101,7 +101,7 @@ class TestFighterFromTavernChar:
             "skills": [
                 {"name": "利爪", "type": "slash", "formula": "30+2.0*STR+1.5*SPD",
                  "stamina_cost": 22, "cooldown": 3.5},
-                {"name": "格挡", "type": "defense", "formula": "0",
+                {"name": "格挡", "type": "defense", "formula": "50+5.0*DEF",
                  "stamina_cost": 5, "cooldown": 0.5},
             ],
             "equipment": {},

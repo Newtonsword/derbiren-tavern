@@ -18,9 +18,9 @@ def make_basic_fighter(name="测试战士", level=1, **overrides):
     }
     cfg.update(overrides)
     skills = [
-        {"name": "挥砍", "type": "slash", "formula": "10+2.0*STR",
+        {"name": "挥砍", "type": "slash", "formula": "15+2.5*STR",
          "cooldown": 3.0, "windup": 0.3, "recovery": 0.5},
-        {"name": "格挡", "type": "defense", "formula": "0",
+        {"name": "格挡", "type": "defense", "formula": "50+5.0*DEF",
          "cooldown": 0.5, "windup": 0.1, "recovery": 0.1},
     ]
     return Fighter(cfg, skills)
@@ -35,14 +35,14 @@ class TestFighterStats:
 
     def test_derived_values(self):
         f = make_basic_fighter(END=5)
-        assert f.max_hp == hp_from(5)  # 5*200 = 1000
-        assert f.hp == 1000
+        assert f.max_hp == hp_from(5)  # 5*100 = 500
+        assert f.hp == 500
         assert f.max_stamina == stam_from(5)  # 5*50 = 250
 
     def test_custom_hp(self):
         f = make_basic_fighter(END=5, current_hp=500)
         assert f.hp == 500
-        assert f.max_hp == 1000
+        assert f.max_hp == 500
 
     def test_stat_accessors_no_buffs(self):
         f = make_basic_fighter(STR=8, DEF=4)
@@ -52,8 +52,8 @@ class TestFighterStats:
 
 class TestDerivedFormulas:
     def test_hp_from(self):
-        assert hp_from(1) == 200
-        assert hp_from(5) == 1000
+        assert hp_from(1) == 100
+        assert hp_from(5) == 500
 
     def test_stam_from(self):
         assert stam_from(5) == 250
@@ -171,11 +171,11 @@ class TestSkills:
 
 class TestDailyRecovery:
     def test_daily_recovery_full(self):
-        f = make_basic_fighter(END=5, WIL=4)  # 1000 HP, 40 spirit
-        f.take_damage(500, "slash")
+        f = make_basic_fighter(END=5, WIL=4)  # 500 HP, 40 spirit
+        f.take_damage(400, "slash")
         f.spirit = 10
         f.daily_recovery()
-        assert f.hp == f.max_hp == 1000
+        assert f.hp == f.max_hp == 500
         assert f.spirit == f.max_spirit == 40
 
     def test_daily_recovery_already_full(self):

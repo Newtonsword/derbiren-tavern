@@ -22,6 +22,7 @@ AI 技能选择器 v2 —— 质量分 + 动态调整 + 智力影响 + 距离感
 from dataclasses import dataclass, field
 from typing import Optional
 import random
+from .skill import normalize_type
 
 # ══════════════════════════════════════════
 # 技能基础质量分 (战斗开始时计算, 不变)
@@ -66,7 +67,7 @@ def compute_skill_qualities(fighter) -> dict[str, SkillQuality]:
         stype = sk.get("type", "")
 
         # 防御技能和被动不参与选技
-        if cat == "被动" or stype == "defense":
+        if cat == "被动" or normalize_type(stype) == "defense":
             continue
 
         name = sk.get("name", "???")
@@ -105,7 +106,7 @@ def compute_skill_qualities(fighter) -> dict[str, SkillQuality]:
             is_ranged=bool(sk.get("ranged")),
             is_heal=is_heal,
             is_ally_heal=is_ally_heal,
-            dmg_type=sk.get("type", "slash"),
+            dmg_type=normalize_type(sk.get("type", "slash")),
             windup=windup,
             recovery=recovery,
         )
@@ -153,6 +154,10 @@ def _evaluate_buff_effects(skill: dict, fighter) -> float:
     # 范围攻击
     if any(kw in all_text for kw in ['范围', 'aoe', '全体', '溅射']):
         score += 10
+
+    # 精神崩坏连锁 (如龙吼——击溃时触发强力效果)
+    if any(kw in all_text for kw in ['on_spirit_break', '精神崩坏', 'spirit_break']):
+        score += 20
 
     return min(30, score)
 
@@ -237,9 +242,16 @@ def adjust_quality_for_context(
         # 刺击克低护甲
         if sq.dmg_type == "pierce" and closest.armor < 10:
             score *= 1.2
-        # 精神攻击克高精神
-        if sq.dmg_type == "spirit" and closest.spirit > closest.max_spirit * 0.5:
-            score *= 1.3
+        # 精神攻击: 仅50-70%为黄金窗口, 其余区间不特别推荐
+        if sq.dmg_type == "spirit" and closest.max_spirit > 0:
+            spirit_ratio = closest.spirit / closest.max_spirit
+            if 0.5 < spirit_ratio <= 0.7:
+                score *= 1.4   # 黄金窗口 — 继续压精神有望崩坏
+            elif spirit_ratio < 0.25:
+                score *= 1.3   # 濒临崩溃 — 一击可溃
+            elif 0.25 <= spirit_ratio <= 0.5:
+                score *= 0.5   # 精神不多 — 物理攻击更高效
+            # spirit_ratio > 0.7: 保持原分(1.0x) — 精神太多不如砍HP
 
     # ── 5. 距离惩罚 ──
     if position_manager and live_enemies:
@@ -348,7 +360,7 @@ def scored_pick_v2(
         stype = sk.get("type", "")
 
         # 防御/被动不参与选择
-        if cat == "被动" or stype == "defense":
+        if cat == "被动" or normalize_type(stype) == "defense":
             continue
 
         if name not in qualities:
