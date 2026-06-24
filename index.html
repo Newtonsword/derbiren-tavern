@@ -1018,6 +1018,8 @@ async function loadOrCreateSession() {
 
 async function newAdventure() {
   document.getElementById('create-modal').classList.add('show');
+  document.getElementById('birth-detail').style.display = 'none';
+  document.getElementById('birth-list').dataset.selected = '';
   renderBirths();
   renderPresets();
 }
@@ -1053,12 +1055,21 @@ function selectBirth(birthId) {
   if (!b) return;
   const detail = document.getElementById('birth-detail');
   detail.style.display = 'block';
+  // 查找角色图鉴描述（放在出生描述上面）
+  const cp = CHARACTER_PRESETS.find(p => p.name.includes(b.primary.name));
+  const twinCP = b.twin ? CHARACTER_PRESETS.find(p => p.name.includes(b.twin.name)) : null;
+  const charDescHTML = [
+    cp ? `<div style="color:var(--text);margin-bottom:4px;line-height:1.7;font-size:12px;"><span style="color:var(--gold);font-weight:bold;">🐾 ${cp.name}</span> — ${cp.desc}</div>` : '',
+    twinCP ? `<div style="color:var(--text);margin-bottom:4px;line-height:1.7;font-size:12px;"><span style="color:var(--gold);font-weight:bold;">🐾 ${twinCP.name}</span> — ${twinCP.desc}</div>` : '',
+  ].filter(Boolean).join('');
   const chars = b.twin
     ? `<b>${b.primary.name}</b>（${b.species}）+ <b>${b.twin.name}</b>（${b.species}）`
     : `<b>${b.primary.name}</b>（${b.species}）`;
   const twinStats = b.twin ? `<br>${b.twin.name}: ${Object.entries(b.twin.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}` : '';
   detail.innerHTML = `
-    <div style="color:var(--text);margin-bottom:6px;line-height:1.7;">${b.desc}</div>
+    ${charDescHTML}
+    <div style="color:var(--accent-glow);margin-bottom:4px;font-size:11px;border-top:1px solid var(--border);padding-top:6px;">📍 出生场景</div>
+    <div style="color:var(--dim);margin-bottom:6px;line-height:1.7;font-size:12px;">${b.desc}</div>
     <div style="color:var(--dim);font-size:11px;margin-bottom:4px;">🎯 获得角色：${chars}</div>
     <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${b.primary.name}: ${Object.entries(b.primary.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}${twinStats}</div>
     <div style="color:#c9a050;font-size:11px;">💡 ${b.hint}</div>
