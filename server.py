@@ -597,7 +597,7 @@ def _skill_id() -> str:
 SPECIES_STARTER_SKILLS = {
     "猫龙": {
         "skills": [
-            {"name":"暗影吐息","type":"法术","formula":"25+3.0×智力","cost":"蓝16","interval":"4.5s","hit_formula":"85+2.5×智力","category":"主动"},
+            {"name":"暗影吐息","type":"法术","formula":"25+3.0×智力","cost":"蓝16","interval":"4.5s","cooldown":"8s","hit_formula":"85+2.5×智力","category":"主动"},
             {"name":"利爪","type":"斩击","formula":"20+2.0×力量+1.0×速度","cost":"耐力16","interval":"3.0s","hit_formula":"75+2.0×速度+1.0×速度","category":"主动"},
             {"name":"扫尾","type":"钝击","formula":"15+1.5×力量+1.0×耐力","cost":"耐力20","interval":"4.5s","hit_formula":"85+1.5×速度","category":"主动"},
             {"name":"灵巧格挡","type":"防御","formula":"15+2.0×力量+1.0×耐力/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},
@@ -630,7 +630,7 @@ SPECIES_STARTER_SKILLS = {
     },
     "杀人兔": {
         "skills": [
-            {"name":"撕咬","type":"刺击","formula":"20+3.0×速度+1.0×力量","cost":"耐力10","interval":"2.0s","hit_formula":"70+3.5×速度","category":"主动"},
+            {"name":"撕咬","type":"刺击","formula":"20+3.0×速度+1.0×力量","cost":"耐力10","interval":"2.0s","cooldown":"6s","hit_formula":"70+3.5×速度","category":"主动"},
             {"name":"飞踢","type":"钝击","formula":"18+2.5×速度+0.5×力量","cost":"耐力14","interval":"3.0s","hit_formula":"75+2.5×速度","category":"主动"},
             {"name":"幻影步","type":"防御","formula":"闪避+30(单次)","cost":"耐力12","interval":"5.0s","hit_formula":"","category":"主动"},
             {"name":"轻巧格挡","type":"防御","formula":"8+2.0×速度+0.5×力量/秒","cost":"耐力0.5/0.1s","interval":"持续","hit_formula":"","category":"主动"},

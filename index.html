@@ -697,7 +697,7 @@ const CHARACTER_PRESETS = [
     stats:{END:3,STR:5,SPD:5,DEF:3,INT:4,MP:3,WIL:2},
     desc:"一只浑身漆黑的猫龙幼崽，在月光下的废墟中被发现。瞳孔能在黑暗与光明间自由切换——猫科动物的敏捷加上龙族血脉的魔力。走路没有声音，但尾巴尖的火焰出卖了它。",
     skills:[
-      {name:"暗影吐息",type:"法术",formula:"22+2.5×智力",cost:"蓝14",interval:"4.5s",hit_formula:"85+2.0×智力",category:"主动"},
+      {name:"暗影吐息",type:"法术",formula:"22+2.5×智力",cost:"蓝14",interval:"4.5s",cooldown:"8s",hit_formula:"85+2.0×智力",category:"主动"},
       {name:"利爪",type:"斩击",formula:"18+2.0×力量+1.5×速度",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
       {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"80+1.5×速度",category:"主动"},
       {name:"灵巧格挡",type:"防御",formula:"15+2.0×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
@@ -750,8 +750,8 @@ const CHARACTER_PRESETS = [
     stats:{END:2,STR:3,SPD:7,DEF:2,INT:1,MP:1,WIL:4},
     desc:"一只外表萌死人的小白兔——直到你看见它后腿肌肉的轮廓和那双血红的眼睛。被冒险者踢了一脚后怀恨在心，现在踢人是它的专长。战斗结束后会恢复毛球模式，蹭腿讨零食。",
     skills:[
-      {name:"致命突袭",type:"刺击",formula:"18+3.0×速度+0.5×力量",cost:"耐力10",interval:"2.0s",hit_formula:"70+3.5×速度",category:"主动"},
-      {name:"连咬",type:"斩击",formula:"14+1.5×速度+1.0×力量",cost:"耐力8",interval:"1.8s",hit_formula:"75+2.0×速度",category:"主动"},
+      {name:"致命突袭",type:"刺击",formula:"18+3.0×速度+0.5×力量",cost:"耐力10",interval:"2.0s",cooldown:"6s",hit_formula:"70+3.5×速度",category:"主动"},
+      {name:"连咬",type:"斩击",formula:"14+1.5×速度+1.0×力量",cost:"耐力8",interval:"1.8s",cooldown:"0.5s",hit_formula:"75+2.0×速度",category:"主动"},
       {name:"幻影步",type:"防御",formula:"闪避+30(单次)",cost:"耐力12",interval:"5.0s",hit_formula:"",category:"主动"},
     ],
     passives:[
@@ -1443,7 +1443,7 @@ async function renderCharDetail() {
               <div>📝 ${sk.description || '无描述'}</div>
               <div>📐 <span class="s-formula">${translateFormula(sk.formula)}</span> = ${dmg} 伤害</div>
               ${sk.hit_formula ? `<div>🎯 命中: <span style="color:#5a9e4b;">${translateFormula(sk.hit_formula)}</span>${sk.hit_formula.match(/^\d+$/) ? '' : ' = ' + evalHit(sk.hit_formula, st)}</div>` : ''}
-              <div>💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${translateFormula(sk.special)}` : ''}</div>
+              <div>💰 ${sk.cost} | ⚡${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ` | 🕐${sk.cooldown}` : ''}${sk.special ? ` | ✨ ${translateFormula(sk.special)}` : ''}</div>
               ${(c.pending_skill_points > 0 && sk.level < sk.max_level)
                 ? `<button class="upgrade-btn" onclick="upgradeSkill('${sk.id}')">⬆ 升级到 Lv.${sk.level+1}</button>`
                 : ''}
@@ -1612,7 +1612,7 @@ async function loadSkillOptions() {
         <div class="so-desc">${sk.description || ''}</div>
         <div class="so-formula">${sk.formula}</div>
         ${sk.hit_formula ? `<div class="so-formula" style="color:#5a9e4b;font-size:11px;">🎯 命中: ${sk.hit_formula}</div>` : ''}
-        <div class="so-meta">💰 ${sk.cost} | ⏱ ${sk.interval}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
+        <div class="so-meta">💰 ${sk.cost} | ⚡${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ` | 🕐${sk.cooldown}` : ''}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
         <button class="pick-btn" onclick='pickSkill(${JSON.stringify(sk).replace(/'/g,"&#39;")})'>选择</button>
       </div>
     `).join('');
@@ -1662,7 +1662,7 @@ async function loadLibrary() {
             </div>
             ${c.skills?.length ? '<div style="font-size:12px;color:var(--accent);margin-bottom:4px;">⚔️ 技能</div>' + c.skills.map(sk => `
               <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
-                <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⏱${sk.interval||''}</span></div>
+                <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⚡${sk.interval||''}${sk.cooldown&&sk.cooldown!==sk.interval?` 🕐${sk.cooldown}`:''}</span></div>
                 <div style="color:var(--text);">伤害: ${translateFormula(sk.formula)}</div>
                 ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${translateFormula(sk.hit_formula)}</div>` : ''}
                 ${sk.special ? `<div style="color:#8b5cf6;">✨ ${translateFormula(sk.special)}</div>` : ''}
@@ -1689,7 +1689,7 @@ async function loadLibrary() {
           <div style="color:var(--dim);margin-bottom:4px;">${translateStats(tpl.stats)}</div>
           ${tpl.skills?.map(sk => `
             <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
-              <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⏱${sk.interval||''}</span></div>
+              <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⚡${sk.interval||''}${sk.cooldown&&sk.cooldown!==sk.interval?` 🕐${sk.cooldown}`:''}</span></div>
               <div style="color:var(--text);">伤害: ${translateFormula(sk.formula)}</div>
               ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${translateFormula(sk.hit_formula)}</div>` : ''}
               ${sk.rationale ? `<div style="color:var(--dim);font-size:11px;margin-top:3px;font-style:italic;">💡 ${translateFormula(sk.rationale)}</div>` : ''}
@@ -2472,7 +2472,7 @@ async function renderEquipment() {
     let skillHtml = '';
     if (item.skill) {
       const sk = item.skill;
-      skillHtml = `<div style="font-size:11px;color:var(--accent);margin-top:2px;">⚡ ${sk.name}「${sk.type}」| 公式:${sk.formula} | 命中:${sk.hit_formula} | 消耗:${sk.cost} | 冷却:${sk.interval}${sk.special?' | '+sk.special:''}${sk.description?'<br>📝 '+sk.description:''}</div>`;
+      skillHtml = `<div style="font-size:11px;color:var(--accent);margin-top:2px;">⚡ ${sk.name}「${sk.type}」| 公式:${sk.formula} | 命中:${sk.hit_formula} | 消耗:${sk.cost} | 使用:${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ' | 冷却:'+sk.cooldown : ''}${sk.special?' | '+sk.special:''}${sk.description?'<br>📝 '+sk.description:''}</div>`;
     }
     let detailHtml = `<div style="font-size:12px;color:var(--good);margin-top:2px;">📊 ${bonusStr}</div>`;
     if (item.secondary_bonus && Object.values(item.secondary_bonus).some(v=>v!==0)) {
@@ -2530,7 +2530,7 @@ async function renderEquipment() {
     }
     if (item.skill) {
       const sk = item.skill;
-      detailHtml += `<div style="font-size:11px;color:var(--accent);margin-top:4px;">⚡ 技能: ${sk.name}「${sk.type}」<br>　 伤害公式: ${sk.formula}<br>　 命中公式: ${sk.hit_formula}<br>　 消耗: ${sk.cost} | 冷却: ${sk.interval}${sk.special?'<br>　 特殊: '+sk.special:''}${sk.description?'<br>　 📝 '+sk.description:''}</div>`;
+      detailHtml += `<div style="font-size:11px;color:var(--accent);margin-top:4px;">⚡ 技能: ${sk.name}「${sk.type}」<br>　 伤害公式: ${sk.formula}<br>　 命中公式: ${sk.hit_formula}<br>　 消耗: ${sk.cost} | 使用: ${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ' | 冷却: '+sk.cooldown : ''}${sk.special?'<br>　 特殊: '+sk.special:''}${sk.description?'<br>　 📝 '+sk.description:''}</div>`;
     }
     if (item.special) {
       detailHtml += `<div style="font-size:11px;color:#8b5cf6;margin-top:4px;">✨ ${item.special}</div>`;

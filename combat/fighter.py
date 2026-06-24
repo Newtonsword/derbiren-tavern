@@ -106,11 +106,14 @@ class Fighter:
         self.lost: bool = False    # 丧失战斗力
         self.state: str = "idle"   # idle / windup / stunned
 
-        # ── 技能 ──
+        # ── 技能（使用时间/冷却时间 分离）──
+        # windup = 使用时间（攻击动画，完成后进入 0.1s recovery）
+        # cooldown = 冷却时间（此技能复用间隔，期间可切其他技能）
         self.skills: list[dict] = skills or []
         self.cooldowns: dict[str, SkillCD] = {}
         for sk in self.skills:
-            cd_ticks = int(sk.get("cooldown", 3.0) / TICK)
+            cd_val = sk.get("cooldown", sk.get("windup", 3.0))  # cooldown 独立于 windup
+            cd_ticks = int(cd_val / TICK)
             self.cooldowns[sk["name"]] = SkillCD(name=sk["name"], total=cd_ticks)
 
         self.current_action: Optional[CombatAction] = None
@@ -291,10 +294,11 @@ class Fighter:
         self.state = "windup"
 
     def use_skill_costs(self, skill: dict):
-        """扣除技能消耗"""
+        """扣除技能消耗 + 设置此技能冷却"""
         self.stamina = max(0, self.stamina - skill.get("stamina_cost", 0))
         self.mana = max(0, self.mana - skill.get("mana_cost", 0))
-        cd_ticks = int(skill.get("cooldown", 3.0) / TICK)
+        cd_val = skill.get("cooldown", skill.get("windup", 3.0))  # cooldown 独立
+        cd_ticks = int(cd_val / TICK)
         cd = self.cooldowns.get(skill["name"])
         if cd:
             cd.remaining = cd_ticks

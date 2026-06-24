@@ -144,16 +144,24 @@ def parse_skill_dict(skill_dict: dict) -> dict:
             except:
                 pass
 
-    # 冷却
+    # 使用时间 / 冷却时间（拆分）
+    #   interval  → cast_time（使用时间，攻击动画时长）
+    #   cooldown  → 冷却时间（此技能复用间隔，默认=使用时间，向后兼容）
+    interval_str = str(skill_dict.get("interval", "3.0s"))
+    try:
+        cast_time = float(re.sub(r'[^0-9.]', '', interval_str))
+    except:
+        cast_time = 3.0
+
     cooldown_str = str(skill_dict.get("cooldown", skill_dict.get("interval", "3.0s")))
     try:
         cooldown = float(re.sub(r'[^0-9.]', '', cooldown_str))
     except:
-        cooldown = 3.0
+        cooldown = cast_time
 
     # 前摇/后摇
-    windup = 0.3 if dmg_type not in ("spirit", "defense") else 0.6
-    recovery = 0.5
+    windup = cast_time  # 使用时间 = 前摇（攻击动画）
+    recovery = 0.1      # 固定 0.1s 最低间隔（允许切技能）
 
     # 特殊效果
     special = skill_dict.get("special", skill_dict.get("effect", ""))
