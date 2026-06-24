@@ -1157,6 +1157,17 @@ def index():
 
 # ── 聊天 ──
 
+@app.post("/api/session/{sid}/chat")
+def session_chat(sid: str, data: dict):
+    """会话级聊天——前端按钮(改名/招募等)用此接口，免传 session_id"""
+    s = sessions.get(sid) or _load(sid)
+    if not s: raise HTTPException(404, "存档不存在")
+    msg = data.get("message", "").strip()
+    if not msg: raise HTTPException(400, "消息不能为空")
+    # 构造 ChatReq 交给主处理逻辑
+    req = ChatReq(session_id=sid, message=msg)
+    return chat(req)
+
 @app.post("/api/chat")
 def chat(req: ChatReq):
     sess = sessions.get(req.session_id) or new_session()
