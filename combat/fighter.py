@@ -135,6 +135,11 @@ class Fighter:
     def mp(self):  return self._mp  + self.buffs.get_stat_mod("MP")
 
     @property
+    def move_speed(self) -> float:
+        """基础移动速度 (m/s): 2.0 + SPD × 0.3"""
+        return 2.0 + self.spd * 0.3
+
+    @property
     def broken(self) -> bool:
         """HP 低于崩盘线 → 伤害减半"""
         return self.hp < self.collapse
