@@ -683,7 +683,7 @@ let state = {
 const SPECIES_PRESETS = [
   {name:"猫龙", coeff:2.5, desc:"精英×2.5 | 龙族血脉+猫科身体，黑暗视觉，可进化龙形/人形 | 最强初始魔物之一"},
   {name:"幼龙", coeff:2.5, desc:"精英×2.5 | 纯血幼龙，鳞甲天生，龙息威力巨大但成长缓慢"},
-  {name:"触手怪", coeff:1.8, desc:"精锐×1.8 | 多触须同时攻击，控制技丰富，地下城本土魔物"},
+  {name:"触手怪", coeff:1.8, desc:"精锐×1.8 | 精神攻击型，触手附带精神侵蚀，精神条耗尽即瘫倒"},
   {name:"石像鬼", coeff:1.8, desc:"精锐×1.8 | 石化皮肤高防御，窄洞飞行无视地形，黑暗主场"},
   {name:"杀人兔", coeff:1.8, desc:"精锐×1.8 | 体型小速度快，暴击率高，萌外表下是杀戮机器"},
   {name:"野狼", coeff:1.3, desc:"普通×1.3 | 游击刺客，高SPD闪避，撕咬扑击，狼群战术增伤"},
@@ -721,15 +721,15 @@ const CHARACTER_PRESETS = [
   },
   {
     name:"触手怪「墨墨」", species:"触手怪", coeff:1.8,
-    stats:{END:5,STR:5,SPD:6,DEF:3,INT:3,MP:4,WIL:4},
-    desc:"地下暗河里漂出来的一团暗紫色生物——不，它不能算'一只'，它是'一团'。墨墨不发声音，只用触手轻轻卷住你的手指，吸盘传来的微弱脉搏让你意识到它在听你的心跳。它不需要你说话，它已经知道你是自己人。",
+    stats:{END:5,STR:4,SPD:5,DEF:3,INT:7,MP:5,WIL:6},
+    desc:"地下暗河里漂出来的一团暗紫色生物——不，它不能算'一只'，它是'一团'。墨墨不发声音，只用触手轻轻卷住你的手指，吸盘传来的微弱脉搏让你意识到它在听你的心跳。它不需要你说话，它已经知道你是自己人。触手上的吸盘能释放精神脉冲，敌人甚至来不及惨叫就瘫软在地。",
     skills:[
-      {name:"缠绕",type:"钝击",formula:"10+1.5×力量+1.0×速度",cost:"耐力15",interval:"4.0s",hit_formula:"80+2.0×速度",category:"主动"},
-      {name:"鞭打",type:"钝击",formula:"15+2.0×力量+0.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×速度+1.0×速度",category:"主动"},
-      {name:"触须护盾",type:"防御",formula:"10+1.5×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      {name:"缠绕",type:"钝击",formula:"10+1.5×智力+1.0×速度",cost:"耐力15",interval:"4.0s",hit_formula:"80+2.0×智力",category:"主动"},
+      {name:"鞭打",type:"钝击",formula:"15+1.5×智力+1.0×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×智力+1.0×速度",category:"主动"},
+      {name:"触须护盾",type:"防御",formula:"10+1.5×智力+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
-      {name:"多触须",effect:"每回合额外一次触须攻击(50%伤害)"},
+      {name:"精神触须",effect:"攻击附带精神伤害，每次命中减少目标WIL×0.5精神条"},
     ],
   },
   {
@@ -795,7 +795,7 @@ const CHARACTER_PRESETS = [
       {name:"魔法护盾",type:"防御",formula:"8+1.0×智力+0.5×法力/秒",cost:"蓝0.8/0.1s",interval:"持续",hit_formula:"",category:"主动"},
     ],
     passives:[
-      {name:"战术大脑",effect:"每回合额外一次战术行动"},
+      {name:"战术大脑",effect:"每隔4s额外一次战术行动"},
       {name:"工程天赋",effect:"工程建造速度+0.5天/每日"},
     ],
   },
@@ -2447,8 +2447,8 @@ async function renderEquipment() {
   // 收集所有角色已装备的物品ID（不只是当前角色）
   const allEquippedIds = new Set();
   const allEquippedBy = {};  // item_id → [name, ...]
-  if (state.session && state.session.characters) {
-    for (const ch of state.session.characters) {
+  if (state.characters && state.characters.length > 0) {
+    for (const ch of state.characters) {
       const eq2 = ch.equipment || {};
       for (const [slot, eid] of Object.entries(eq2)) {
         if (eid) {
