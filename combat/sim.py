@@ -51,19 +51,24 @@ class CombatSim:
         team0: 玩家方 Fighter 列表
         team1: 敌方 Fighter 列表
         environment: "open" | "narrow" (狭窄洞穴)
-        ai_skill_picker: async (fighter, enemies, allies, log) → skill_name
+        ai_skill_picker: async (fighter, enemies, allies) -> skill_name
         max_ticks: 最大 tick 数 (2000 = 200 秒)
         """
         self.team0 = team0
         self.team1 = team1
         self.all_fighters = team0 + team1
         self.environment = environment
-        self.ai_picker = ai_skill_picker or self._default_ai_pick
+        self.ai_picker = ai_skill_picker or self._default_async_pick
         self.max_ticks = max_ticks
         self.log: list[CombatLogEntry] = []
         self.tick = 0
 
     # ── 默认 AI (简单: 选第一个可用的技能) ──
+    async def _default_async_pick(self, fighter: Fighter,
+                                   enemies: list[Fighter],
+                                   allies: list[Fighter]) -> Optional[dict]:
+        return self._default_ai_pick(fighter, enemies, allies)
+
     def _default_ai_pick(self, fighter: Fighter,
                          enemies: list[Fighter],
                          allies: list[Fighter]) -> Optional[dict]:

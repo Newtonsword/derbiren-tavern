@@ -22,6 +22,66 @@ load_dotenv()
 BASE = Path(__file__).parent
 (BASE / "saves").mkdir(exist_ok=True)
 
+# ══════════════════════════════════════════════
+# 上下文管理 —— 消息截断 + 长期记忆摘要
+# ══════════════════════════════════════════════
+MAX_CONTEXT_MESSAGES = 40      # 最多保留 40 条消息（20 回合）
+SUMMARY_TRIGGER = 20           # 超出窗口 20 条以上才触发摘要
+SUMMARY_CACHE_KEY = "_history_summary"
+
+def _trim_and_summarize(sess: dict, max_msgs: int = MAX_CONTEXT_MESSAGES) -> str | None:
+    """
+    如果消息数 > max_msgs + SUMMARY_TRIGGER，截断旧消息并返回摘要文本。
+    摘要只保留关键事件（战斗/升级/招募/死亡/建造）。
+    返回 None 表示不需要截断。
+    """
+    msgs = sess.get("messages", [])
+    if len(msgs) <= max_msgs + SUMMARY_TRIGGER:
+        return None  # 还没到需要截断的程度
+
+    # 保留 msgs[0]（原始 system 占位）+ 最近 max_msgs 条
+    keep_from = len(msgs) - max_msgs
+    trimmed = msgs[1:keep_from]  # 要丢弃/摘要化的旧消息
+
+    # 提取关键事件行
+    key_lines = []
+    for m in trimmed:
+        content = m.get("content", "") if isinstance(m, dict) else str(m)
+        if not content:
+            continue
+        # 只抓包含事件标签的行
+        for tag in ("[LEVEL_UP:", "[CHAR_ADD:", "[BIRTH]", "[BREED]", "[EVOLVE]", "[CONSTRUCTION",
+                     "[COMBAT_RESULT]", "[RECRUIT]", "[DEATH]", "[DAY_ADVANCE]", "[EXP]"):
+            if tag in content:
+                for line in content.split("\n"):
+                    if tag in line:
+                        key_lines.append(line.strip())
+                        break
+
+    # 原地截断消息
+    sess["messages"] = [msgs[0]] + msgs[keep_from:]
+
+    if not key_lines:
+        return None
+
+    summary = "## 历史事件摘要\n" + "\n".join(f"- {l}" for l in key_lines[-30:])  # 最多 30 条
+    return summary
+
+
+def _inject_summary(base_sys: str, sess: dict) -> str:
+    """将之前缓存的摘要注入系统提示词。"""
+    cached = sess.get(SUMMARY_CACHE_KEY, "")
+    if not cached:
+        return base_sys
+    return base_sys + f"\n\n[历史摘要]\n{cached}\n⚠️ 以上是早期游戏事件的摘要——GM 可以引用但不能重复叙述这些事件。"
+
+
+def _maybe_summarize_async(sess: dict, summary_text: str):
+    """缓存摘要供下次使用。"""
+    if summary_text:
+        sess[SUMMARY_CACHE_KEY] = summary_text
+
+
 app = FastAPI(title="Derbiren Tavern")
 sessions: dict = {}
 
@@ -1114,6 +1174,9 @@ def chat(req: ChatReq):
         hint_parts.append(line)
     hint = "\n".join(hint_parts)
 
+    # 上下文截断 —— 防止消息无限增长撞 128K 上限
+    summary_text = _trim_and_summarize(sess)
+
     msgs = sess["messages"].copy()
     # 使用会话保存的世界观重建 system prompt（角色信息动态追加）
     world = sess.get("world_setting", DEFAULT_WORLD)
@@ -1127,6 +1190,8 @@ def chat(req: ChatReq):
         nsfw_rules = "全年龄向——战斗、探索、经营、日常。严禁任何色情描写。\n当玩家使用配种功能时：魔物们会害羞地躲进育成室并关上门。GM只需描述「它们红着脸进了育成室，门关上了」然后直接跳到结果（蛋/幼崽诞生），绝不可描写交配过程。如果玩家试图窥探或引导色情内容，GM要主动规避：「育成室的门紧锁着，你听到里面传来窸窸窣窣的声音...」然后跳过。"
         nsfw_breeding = "这是宝可梦式的孵蛋系统——不描写交配过程，只叙述结果（蛋/幼崽诞生）。GM不得主动引导或描写色情内容。"
     base_sys = SYS.replace("{WORLD_SETTING}", world).replace("{NSFW_RULES}", nsfw_rules).replace("{NSFW_BREEDING}", nsfw_breeding)
+    # 注入历史摘要（截断后的旧消息压缩）
+    base_sys = _inject_summary(base_sys, sess)
     day_info = f"\n[第{day}天] 距离冒险者来袭还有{dta}天。" if dta > 0 else f"\n[第{day}天] ⚠️ 冒险者今天来袭！"
     # 防御工事信息
     con_list = [c for c in sess.get("constructions", []) if c.get("status") == "built"]
@@ -1348,7 +1413,11 @@ def chat(req: ChatReq):
         c = _get_client()
         temp = float(os.getenv("LLM_TEMPERATURE", "0.85"))
         max_tok = int(os.getenv("LLM_MAX_TOKENS", "1024"))
+        # 费用分层：非战斗 /day 用便宜模型
+        cheap_model = os.getenv("LLM_CHEAP_MODEL", "")
         m = os.getenv("LLM_MODEL", "deepseek-chat")
+        if cheap_model and day_advanced and dta > 0:
+            m = cheap_model  # 日常锻炼/探索/配种——便宜模型就够了
         r = c.chat.completions.create(model=m, messages=msgs, temperature=temp, max_tokens=max_tok)
         reply = r.choices[0].message.content or "（翻白眼）"
     except Exception as e:
@@ -1423,6 +1492,10 @@ def chat(req: ChatReq):
         _wave_reward_equipment(sess, sess["raid_wave"] - 1)  # 刚打完的波次
         _wave_reward_monster(sess, sess["raid_wave"] - 1)
 
+    # 缓存历史摘要（如果有新截断的事件）
+    if summary_text:
+        _maybe_summarize_async(sess, summary_text)
+
     sessions[sess["id"]] = sess
     _save(sess)
     return {
@@ -1487,9 +1560,8 @@ async def _run_raid_combat(sess: dict, wave_idx: int) -> dict:
     # ── 环境: 地下城主场 ──
     env = "narrow"  # 地下城狭窄洞穴
 
-    # ── AI 选择器 (有 API key 则用 DeepSeek，否则默认) ──
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    ai_picker = make_ai_picker(api_key) if api_key else make_default_picker()
+    # ── 技能选择器 (默认本地规则，不调 API — 每 tick 调 API 太慢太贵) ──
+    ai_picker = make_default_picker()
 
     # ── 运行 ──
     sim = CombatSim(our_fighters, enemy_fighters, environment=env, ai_skill_picker=ai_picker)
