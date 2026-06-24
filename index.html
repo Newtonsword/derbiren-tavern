@@ -569,21 +569,11 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
         ⚠️ 本游戏机制（魔物物种、raid波次、战斗公式、天数系统等）均围绕默认世界观「小魔王地下城」设计。自定义世界观会改变叙事风格，但不会自动匹配对应的敌人/物种/规则——请知悉后再修改。
       </div>
       <div style="margin-bottom:14px;">
-        <label style="font-size:13px;color:var(--dim);">👤 选择初始魔物</label>
-        <div style="display:flex;gap:8px;margin-top:4px;">
-          <input id="create-name" placeholder="魔物名字" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;" oninput="this.dataset.manual='1'">
-          <select id="create-species" onchange="onSpeciesChange()" style="padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;">
-          </select>
-        </div>
-        <div id="create-species-info" style="font-size:11px;color:var(--dim);margin-top:4px;"></div>
+        <label style="font-size:13px;color:var(--dim);">🌱 选择出生</label>
+        <div id="birth-list" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;max-height:300px;overflow-y:auto;padding-right:4px;"></div>
+        <div id="birth-detail" style="margin-top:8px;padding:10px 12px;background:var(--msg-gm);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;display:none;"></div>
         <div id="species-lore-panel"></div>
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:13px;color:var(--dim);cursor:pointer;user-select:none;" onclick="var el=document.getElementById('preset-list');el.style.display=el.style.display==='none'?'flex':'none'">📚 角色库 <span style="font-size:10px;">(点击展开，选预设角色)</span></label>
-        <div id="preset-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
-      </div>
-      <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
-        初始七属性各3，自由点数3。可在冒险中随时加点。
+        <input type="hidden" id="create-species" value="史莱姆">
       </div>
       <div style="display:flex;gap:8px;">
         <button class="primary" onclick="createAdventure()" style="padding:8px 24px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-family:inherit;">开始冒险</button>
@@ -689,6 +679,164 @@ const SPECIES_PRESETS = [
   {name:"野狼", coeff:1.3, desc:"普通×1.3 | 刺客·高SPD游击闪避 | 撕咬扑击短冷却，狼群战术增伤"},
   {name:"史莱姆", coeff:1.0, desc:"杂鱼×1.0 | 全能普通·进化路线最多 | 凝胶身体钝伤减半，可塑性全物种最高"},
   {name:"哥布林", coeff:1.0, desc:"杂鱼×1.0 | 战士/射手双职业 | 哥布A挥砍盾击近战，哥布B短弓淬毒远程"},
+];
+
+const BIRTH_PRESETS = [
+  {
+    id:"slime_nest",
+    name:"🫧 史莱姆巢穴",
+    desc:"你在一处潮湿的地下洞穴中醒来，四周是半透明的蓝色凝胶——一个史莱姆巢穴。一只胆大的小史莱姆正趴在你的胸口，用它Q弹的身体轻轻起伏，像是在听你的心跳。它身后还缩着一滩淡绿色的酸液史莱姆，怯生生地躲在姐姐的凝胶后面。",
+    hint:"开局获得两只史莱姆：软软(物理肉盾)+黏黏(酸液射手)，属性低但人多。",
+    species:"史莱姆", coeff:1.0,
+    primary:{
+      name:"软软",
+      stats:{END:2,STR:2,SPD:2,DEF:2,INT:1,MP:2,WIL:1},
+      skills:[
+        {name:"撞击",type:"钝击",formula:"10+1.0×耐力+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"70+1.0×耐力",category:"主动"},
+        {name:"缩壳",type:"防御",formula:"8+1.0×耐力/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"凝胶身体",effect:"钝伤减半"}],
+    },
+    twin:{
+      name:"黏黏",
+      stats:{END:1,STR:1,SPD:3,DEF:1,INT:2,MP:2,WIL:2},
+      skills:[
+        {name:"酸液喷射",type:"刺击",formula:"12+2.0×智力+0.5×速度",cost:"蓝6",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
+        {name:"分裂",type:"防御",formula:"下次受击减半后回复8+1.0×耐力",cost:"耐力10",interval:"12.0s(冷却)",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"酸性体质",effect:"受击时对攻击者造成2+0.3×智力酸蚀伤害"}],
+    },
+  },
+  {
+    id:"goblin_outpost",
+    name:"🗡️ 哥布林前哨",
+    desc:"你被一群哥布林的嘈杂声吵醒——它们正为一块发霉的面包吵架。看到你睁开眼睛，它们立刻安静了。一个瘦小的哥布林战士怯生生地把面包递到你面前，他弟弟则在后方拉开弹弓警戒。",
+    hint:"开局获得两只哥布林：哥布A(近战战士)+哥布B(远程射手)，属性低但兄弟齐心。",
+    species:"哥布林", coeff:1.0,
+    primary:{
+      name:"哥布A",
+      stats:{END:2,STR:3,SPD:2,DEF:2,INT:1,MP:1,WIL:1},
+      skills:[
+        {name:"挥砍",type:"斩击",formula:"12+2.0×力量+0.5×速度",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.5×力量+0.5×速度",category:"主动"},
+        {name:"盾击",type:"钝击",formula:"10+1.5×力量+0.5×耐力",cost:"耐力14",interval:"4.0s",hit_formula:"75+1.5×力量",category:"主动"},
+        {name:"格挡",type:"防御",formula:"10+1.5×耐力+1.0×力量/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"战斗怒吼",effect:"战斗开始时STR+1"},{name:"工程天赋",effect:"工程建造速度+0.5天/每日"}],
+    },
+    twin:{
+      name:"哥布B",
+      stats:{END:1,STR:2,SPD:4,DEF:1,INT:1,MP:1,WIL:2},
+      skills:[
+        {name:"短弓射击",type:"刺击",formula:"12+2.0×速度+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"75+2.0×速度",category:"主动"},
+        {name:"淬毒箭",type:"刺击",formula:"18+2.5×速度+1.0×智力",cost:"耐力16",interval:"6.0s",cooldown:"8s",hit_formula:"80+2.0×速度",category:"主动"},
+        {name:"闪避步法",type:"防御",formula:"10+2.0×速度/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"远程狙击",effect:"远程攻击伤害+15%，命中+10%"},{name:"工程天赋",effect:"工程建造速度+0.5天/每日"}],
+    },
+  },
+  {
+    id:"dungeon_foundling",
+    name:"🌑 地下城弃婴",
+    desc:"你在废墟最深处的月光井中发现一只浑身漆黑的猫龙幼崽——它蜷在井底，左眼粉右眼绿，正用最后一点魔力维持尾巴尖的火焰。看到你时，它没有逃跑，只是虚弱地「咪」了一声。",
+    hint:"开局获得一只猫龙「影爪」(精英2.5×)，魔战士，暗影主场。",
+    species:"猫龙", coeff:2.5,
+    primary:{
+      name:"影爪",
+      stats:{END:3,STR:5,SPD:5,DEF:3,INT:4,MP:3,WIL:2},
+      skills:[
+        {name:"暗影吐息",type:"法术",formula:"22+2.5×智力",cost:"蓝14",interval:"4.5s",cooldown:"8s",hit_formula:"85+2.0×智力",category:"主动"},
+        {name:"利爪",type:"斩击",formula:"18+2.0×力量+1.5×速度",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
+        {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"80+1.5×速度",category:"主动"},
+        {name:"灵巧格挡",type:"防御",formula:"15+2.0×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"暗影亲和",effect:"黑暗环境不受命中惩罚，法术伤害+10%"}],
+    },
+  },
+  {
+    id:"volcano_orphan",
+    name:"🌋 火山遗孤",
+    desc:"你跟随一股硫磺味爬上一座死火山口，在余烬中发现一枚破裂的龙蛋。一只瘦小的红色幼龙正从蛋壳里挣扎出来——比同龄龙小一圈，但喷出的第一口龙息直接把旁边的岩石烧成了岩浆。它歪头看着你，打了个嗝，冒出黑烟。",
+    hint:"开局获得一只幼龙「赤焰」(精英2.5×)，高INT龙息轰炸，鳞甲天生。",
+    species:"幼龙", coeff:2.5,
+    primary:{
+      name:"赤焰",
+      stats:{END:4,STR:2,SPD:3,DEF:4,INT:6,MP:4,WIL:2},
+      skills:[
+        {name:"龙息",type:"法术",formula:"25+3.0×智力",cost:"蓝16",interval:"5.0s",cooldown:"8s",hit_formula:"90",category:"主动"},
+        {name:"尾击",type:"钝击",formula:"18+2.0×力量+0.5×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"75+2.0×速度",category:"主动"},
+        {name:"龙鳞格挡",type:"防御",formula:"20+2.0×耐力+1.0×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"鳞甲天生",effect:"DEF等效+1，钝伤减伤+10%"}],
+    },
+  },
+  {
+    id:"underground_river",
+    name:"🌊 暗河漂流",
+    desc:"你在一条地下暗河边捡到一个奇怪的生物——一团暗紫色的软体，数条触手无力地漂在水面上，荧光纹路微弱地跳动着。你用指尖碰了碰一条触手，吸盘轻轻嘬住你的手指，传来微弱的脉搏——它还活着。",
+    hint:"开局获得一只触手怪「墨墨」(精锐1.8×)，全能辅助，精神攻击。",
+    species:"触手怪", coeff:1.8,
+    primary:{
+      name:"墨墨",
+      stats:{END:2,STR:2,SPD:4,DEF:2,INT:2,MP:3,WIL:5},
+      skills:[
+        {name:"缠绕",type:"钝击",formula:"8+1.0×速度+0.5×精神",cost:"耐力12",interval:"4.0s",hit_formula:"80+2.0×速度",category:"主动"},
+        {name:"鞭打",type:"钝击",formula:"12+1.5×速度+0.5×精神",cost:"耐力10",interval:"2.5s",hit_formula:"75+1.5×速度+0.5×精神",category:"主动"},
+        {name:"触须护盾",type:"防御",formula:"10+1.5×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"精神触须",effect:"攻击命中时减少目标 自身精神×0.5 精神条"}],
+    },
+  },
+  {
+    id:"ancient_hall",
+    name:"🗿 古殿苏醒",
+    desc:"你推开一扇千年未开的石门，一座蹲伏在祭坛上的石像鬼雕像突然裂开——灰色的石壳片片剥落，露出一双无瞳的石眼。它从祭坛跃下，石翼张开，沉默地挡在你和黑暗之间。",
+    hint:"开局获得一只石像鬼「岩盾」(精锐1.8×)，重甲飞行坦克，全游最高防御。",
+    species:"石像鬼", coeff:1.8,
+    primary:{
+      name:"岩盾",
+      stats:{END:6,STR:4,SPD:2,DEF:7,INT:1,MP:1,WIL:4},
+      skills:[
+        {name:"俯冲",type:"钝击",formula:"22+2.0×速度+1.0×力量",cost:"耐力16",interval:"4.0s",hit_formula:"75+3.0×速度",category:"主动"},
+        {name:"碎石",type:"钝击",formula:"16+1.5×力量+0.5×耐力",cost:"耐力20",interval:"5.0s",cooldown:"8s",hit_formula:"85+1.0×速度",category:"主动"},
+        {name:"石翼守护",type:"防御",formula:"20+2.5×耐力+1.5×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"石化皮肤",effect:"减伤+8%，受击概率石化攻击者(-3SPD)"}],
+    },
+  },
+  {
+    id:"snowfield_wolf",
+    name:"🐺 雪原独狼",
+    desc:"风雪中，一只灰白色的独狼拦住了你的去路——但它没有龇牙，只是用那双绿光眼睛盯着你，然后转身走了几步，回头看。它被狼群驱逐了，现在需要一个新主人。",
+    hint:"开局获得一只野狼「灰牙」(普通1.3×)，高SPD游击刺客。",
+    species:"野狼", coeff:1.3,
+    primary:{
+      name:"灰牙",
+      stats:{END:3,STR:4,SPD:6,DEF:2,INT:1,MP:1,WIL:3},
+      skills:[
+        {name:"撕咬",type:"刺击",formula:"15+2.0×力量+1.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×速度+1.0×力量",category:"主动"},
+        {name:"扑击",type:"钝击",formula:"18+1.5×力量+2.0×速度",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×速度+1.0×力量",category:"主动"},
+        {name:"影步",type:"防御",formula:"闪避+25(单次)",cost:"耐力15",interval:"6.0s",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"狼群战术",effect:"队友在场时伤害+10%"}],
+    },
+  },
+  {
+    id:"bloody_meadow",
+    name:"🐇 血色草丛",
+    desc:"一只雪白的小兔子蹦到你脚边，用毛茸茸的脑袋蹭你的小腿。你弯腰想摸它——它抬起头，嘴角咧到耳根，露出两排尖锐的獠牙，黑豆眼在瞬间变成血红。然后它又恢复了萌样，继续蹭你。",
+    hint:"开局获得一只杀人兔「跳跳」(精锐1.8×)，全游最高速度，一击必杀刺客。",
+    species:"杀人兔", coeff:1.8,
+    primary:{
+      name:"跳跳",
+      stats:{END:2,STR:3,SPD:7,DEF:2,INT:1,MP:1,WIL:4},
+      skills:[
+        {name:"致命突袭",type:"刺击",formula:"18+3.0×速度+0.5×力量",cost:"耐力10",interval:"2.0s",cooldown:"6s",hit_formula:"70+3.5×速度",category:"主动"},
+        {name:"连咬",type:"斩击",formula:"14+1.5×速度+1.0×力量",cost:"耐力8",interval:"1.8s",cooldown:"0.5s",hit_formula:"75+2.0×速度",category:"主动"},
+        {name:"幻影步",type:"防御",formula:"闪避+30(单次)",cost:"耐力12",interval:"5.0s",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"偷袭",effect:"战斗首次攻击伤害×2"},{name:"闪避本能",effect:"闪避+10"}],
+    },
+  },
 ];
 
 const CHARACTER_PRESETS = [
@@ -865,14 +1013,45 @@ async function loadOrCreateSession() {
 }
 
 async function newAdventure() {
-  // 显示创建 Modal
   document.getElementById('create-modal').classList.add('show');
-  // 填充物种下拉
-  const sel = document.getElementById('create-species');
-  sel.innerHTML = SPECIES_PRESETS.map(s => `<option value="${s.name}" data-coeff="${s.coeff}">${s.name}</option>`).join('');
-  onSpeciesChange();
-  // 渲染角色库
-  renderPresets();
+  renderBirths();
+}
+
+function renderBirths() {
+  const list = document.getElementById('birth-list');
+  let selectedId = list.dataset.selected || '';
+  list.innerHTML = BIRTH_PRESETS.map((b,i) => {
+    const sel = b.id === selectedId ? 'border-color:var(--accent);background:#2a1a18;' : '';
+    const chars = b.twin ? `${b.primary.name} + ${b.twin.name}` : b.primary.name;
+    return `<div onclick="selectBirth('${b.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:8px 10px;background:var(--input-bg);font-size:12px;line-height:1.4;transition:.15s;${sel}"
+      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if('${b.id}'!==document.getElementById('birth-list').dataset.selected)this.style.borderColor='var(--border)'">
+      <div style="font-weight:bold;color:var(--gold);margin-bottom:2px;">${b.name}</div>
+      <div style="color:var(--dim);font-size:11px;">🐾 ${chars} · ${b.species} · ×${b.coeff}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectBirth(birthId) {
+  const list = document.getElementById('birth-list');
+  list.dataset.selected = birthId;
+  // 高亮选中
+  list.querySelectorAll('div > div').forEach((el,i) => {
+    el.style.borderColor = BIRTH_PRESETS[i].id === birthId ? 'var(--accent)' : 'var(--border)';
+    el.style.background = BIRTH_PRESETS[i].id === birthId ? '#2a1a18' : 'var(--input-bg)';
+  });
+  // 显示详情
+  const b = BIRTH_PRESETS.find(b => b.id === birthId);
+  if (!b) return;
+  const detail = document.getElementById('birth-detail');
+  detail.style.display = 'block';
+  detail.innerHTML = `
+    <div style="color:var(--text);margin-bottom:6px;">${b.desc}</div>
+    <div style="color:#c9a050;font-size:11px;">💡 ${b.hint}</div>
+  `;
+  // 存出生数据供 createAdventure 使用
+  document.getElementById('create-species').value = b.species;
+  document.getElementById('create-species').dataset.birthId = birthId;
+  loadSpeciesLore(b.species);
 }
 
 function renderPresets() {
@@ -952,27 +1131,21 @@ function closeCreateModal() {
 async function createAdventure() {
   const world = document.getElementById('create-world').value.trim() || '小魔王地下城。';
   const playerName = document.getElementById('create-player-name').value.trim() || '小魔王';
-  const name = document.getElementById('create-name').value.trim() || species;
-  const sel = document.getElementById('create-species');
-  const opt = sel.options[sel.selectedIndex];
-  const species = opt.value;
-  const coeff = parseFloat(opt.dataset.coeff || 1.3);
-  // 读取预设属性
-  let charStats = null, charSkills = null, charPassives = null;
+  const speciesEl = document.getElementById('create-species');
+  const birthId = speciesEl.dataset.birthId || 'slime_nest';
+  const birth = BIRTH_PRESETS.find(b => b.id === birthId) || BIRTH_PRESETS[0];
+  const species = birth.species;
+  const coeff = birth.coeff;
+  const name = birth.primary.name;
+  const charStats = birth.primary.stats;
+  const charSkills = birth.primary.skills;
+  const charPassives = birth.primary.passives;
   let twinStats = null, twinSkills = null, twinPassives = null;
-  try {
-    const preset = JSON.parse(document.getElementById('create-name').dataset.preset || 'null');
-    if (preset) {
-      charStats = preset.stats || preset;  // 兼容旧格式（直接是stats对象）
-      charSkills = preset.skills || null;
-      charPassives = preset.passives || null;
-      if (preset.twin) {
-        twinStats = preset.twin.stats || null;
-        twinSkills = preset.twin.skills || null;
-        twinPassives = preset.twin.passives || null;
-      }
-    }
-  } catch(e) {}
+  if (birth.twin) {
+    twinStats = birth.twin.stats;
+    twinSkills = birth.twin.skills;
+    twinPassives = birth.twin.passives;
+  }
 
   document.getElementById('create-modal').classList.remove('show');
 
