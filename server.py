@@ -904,7 +904,7 @@ class SkillAddReq(BaseModel):
 
 # ── 解析 CHAR_ADD / LEVEL_UP ──
 
-def _validate_narrative(text: str, chars: list) -> str:
+def _validate_narrative(text: str, chars: list, sess: dict) -> str:
     """检查 AI 叙述是否与角色数据一致，不一致则追加系统提示"""
     if not text:
         return text
@@ -1355,7 +1355,7 @@ def chat(req: ChatReq):
         reply = f"🔥💢 API 错误：{str(e)[:150]}"
 
     # 自动检查 AI 叙述一致性——说了升级/加角色但没用标签？
-    reply = _validate_narrative(reply, chars)
+    reply = _validate_narrative(reply, chars, sess)
 
     # 解析 CHAR_ADD 和 LEVEL_UP 和 CONSTRUCTION
     clean_reply, char_data, level_ups, con_discovers, con_upgrades = _parse_char_add(reply)
