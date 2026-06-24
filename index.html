@@ -574,6 +574,10 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
         <div id="birth-detail" style="margin-top:8px;padding:10px 12px;background:var(--msg-gm);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;display:none;"></div>
         <div id="species-lore-panel"></div>
         <input type="hidden" id="create-species" value="史莱姆">
+        <div style="margin-top:8px;">
+          <label style="font-size:12px;color:var(--dim);cursor:pointer;user-select:none;" onclick="var el=document.getElementById('preset-list');el.style.display=el.style.display==='none'?'flex':'none'">📚 角色图鉴 <span style="font-size:10px;">(点击展开)</span></label>
+          <div id="preset-list" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        </div>
       </div>
       <div style="display:flex;gap:8px;">
         <button class="primary" onclick="createAdventure()" style="padding:8px 24px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-family:inherit;">开始冒险</button>
@@ -1015,6 +1019,7 @@ async function loadOrCreateSession() {
 async function newAdventure() {
   document.getElementById('create-modal').classList.add('show');
   renderBirths();
+  renderPresets();
 }
 
 function renderBirths() {
@@ -1023,10 +1028,13 @@ function renderBirths() {
   list.innerHTML = BIRTH_PRESETS.map((b,i) => {
     const sel = b.id === selectedId ? 'border-color:var(--accent);background:#2a1a18;' : '';
     const chars = b.twin ? `${b.primary.name} + ${b.twin.name}` : b.primary.name;
-    return `<div onclick="selectBirth('${b.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:8px 10px;background:var(--input-bg);font-size:12px;line-height:1.4;transition:.15s;${sel}"
-      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="if('${b.id}'!==document.getElementById('birth-list').dataset.selected)this.style.borderColor='var(--border)'">
+    const stats = b.primary.stats;
+    const statStr = Object.entries(stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
+    return `<div class="birth-card" data-birth="${b.id}" onclick="selectBirth('${b.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:8px 10px;background:var(--input-bg);font-size:12px;line-height:1.5;transition:.15s;${sel}"
+      onmouseover="if(this.style.borderColor!=='var(--accent)')this.style.borderColor='var(--accent)'" onmouseout="if(this.dataset.birth!==document.getElementById('birth-list').dataset.selected)this.style.borderColor='var(--border)'">
       <div style="font-weight:bold;color:var(--gold);margin-bottom:2px;">${b.name}</div>
       <div style="color:var(--dim);font-size:11px;">🐾 ${chars} · ${b.species} · ×${b.coeff}</div>
+      <div style="margin-top:3px;font-size:11px;">${statStr}</div>
     </div>`;
   }).join('');
 }
@@ -1034,18 +1042,25 @@ function renderBirths() {
 function selectBirth(birthId) {
   const list = document.getElementById('birth-list');
   list.dataset.selected = birthId;
-  // 高亮选中
-  list.querySelectorAll('div > div').forEach((el,i) => {
-    el.style.borderColor = BIRTH_PRESETS[i].id === birthId ? 'var(--accent)' : 'var(--border)';
-    el.style.background = BIRTH_PRESETS[i].id === birthId ? '#2a1a18' : 'var(--input-bg)';
+  // 高亮选中 — 直接按 class 选卡片
+  list.querySelectorAll('.birth-card').forEach(card => {
+    const isSel = card.dataset.birth === birthId;
+    card.style.borderColor = isSel ? 'var(--accent)' : 'var(--border)';
+    card.style.background = isSel ? '#2a1a18' : 'var(--input-bg)';
   });
   // 显示详情
   const b = BIRTH_PRESETS.find(b => b.id === birthId);
   if (!b) return;
   const detail = document.getElementById('birth-detail');
   detail.style.display = 'block';
+  const chars = b.twin
+    ? `<b>${b.primary.name}</b>（${b.species}）+ <b>${b.twin.name}</b>（${b.species}）`
+    : `<b>${b.primary.name}</b>（${b.species}）`;
+  const twinStats = b.twin ? `<br>${b.twin.name}: ${Object.entries(b.twin.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}` : '';
   detail.innerHTML = `
-    <div style="color:var(--text);margin-bottom:6px;">${b.desc}</div>
+    <div style="color:var(--text);margin-bottom:6px;line-height:1.7;">${b.desc}</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:4px;">🎯 获得角色：${chars}</div>
+    <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${b.primary.name}: ${Object.entries(b.primary.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}${twinStats}</div>
     <div style="color:#c9a050;font-size:11px;">💡 ${b.hint}</div>
   `;
   // 存出生数据供 createAdventure 使用
@@ -1069,34 +1084,17 @@ function renderPresets() {
 
 function selectPreset(idx) {
   const p = CHARACTER_PRESETS[idx];
-  const nameInput = document.getElementById('create-name');
-  nameInput.value = p.name;
-  nameInput.dataset.manual = '1';
-  const sel = document.getElementById('create-species');
-  for (let i = 0; i < sel.options.length; i++) {
-    if (sel.options[i].value === p.species) { sel.selectedIndex = i; break; }
-  }
-  onSpeciesChange();
-  // 存选中的预设数据（含技能）+ twin 数据
-  const presetData = {stats:p.stats, skills:p.skills||[], passives:p.passives||[]};
-  if (p.twin) {
-    presetData.twin = p.twin;
-  }
-  nameInput.dataset.preset = JSON.stringify(presetData);
-}
-
-function onSpeciesChange() {
-  const sel = document.getElementById('create-species');
-  const opt = sel.options[sel.selectedIndex];
-  const species = opt.value;
-  const preset = SPECIES_PRESETS.find(s => s.name === species);
-  document.getElementById('create-species-info').textContent = preset ? preset.desc : '';
-  loadSpeciesLore(species);
-  // 自动填充魔物名（可手动改）
-  const nameInput = document.getElementById('create-name');
-  if (!nameInput.dataset.manual) {
-    nameInput.value = opt.value;
-  }
+  // 在图鉴中展示角色详情（不影响出生选择）
+  const detail = document.getElementById('birth-detail');
+  const statStr = Object.entries(p.stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
+  detail.style.display = 'block';
+  detail.innerHTML = `
+    <div style="color:var(--gold);font-weight:bold;margin-bottom:4px;">📖 ${p.name}（${p.species} · ×${p.coeff}）</div>
+    <div style="color:var(--text);margin-bottom:6px;line-height:1.7;">${p.desc}</div>
+    <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${statStr}</div>
+    <div style="color:var(--dim);font-size:11px;">📋 技能：${(p.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(p.passives||[]).map(s=>s.name).join('、') || '无'}</div>
+    <div style="color:var(--dim);font-size:10px;margin-top:4px;">💡 此为图鉴参考。要使用此角色请选择对应的出生。</div>
+  `;
 }
 
 let _speciesLore = null;
