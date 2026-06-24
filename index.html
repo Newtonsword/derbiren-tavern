@@ -785,6 +785,18 @@ const CHARACTER_PRESETS = [
     ],
   },
   {
+    name:"史莱姆「黏黏」", species:"史莱姆", coeff:1.0,
+    stats:{END:1,STR:1,SPD:3,DEF:1,INT:2,MP:2,WIL:2},
+    desc:"软软的妹妹——一滩淡绿色的酸液史莱姆，比姐姐更胆小但吐酸水特别准。平时躲在软软身后，但一旦被惹毛就会把对方盔甲溶个洞。",
+    skills:[
+      {name:"酸液喷射",type:"刺击",formula:"12+2.0×智力+0.5×速度",cost:"蓝6",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
+      {name:"分裂",type:"防御",formula:"下次受击减半后回复8+1.0×耐力",cost:"耐力10",interval:"12.0s(冷却)",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"酸性体质",effect:"受击时对攻击者造成2+0.3×智力酸蚀伤害"},
+    ],
+  },
+  {
     name:"哥布林战士「哥布A」", species:"哥布林", coeff:1.0,
     stats:{END:2,STR:3,SPD:2,DEF:2,INT:1,MP:1,WIL:1},
     desc:"一只被同族赶出来的瘦小哥布林，捡了把生锈的短剑当宝贝。虽然笨但很勇——每次冲上去之前都会大喊一声给自己壮胆。",
