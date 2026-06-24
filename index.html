@@ -1089,6 +1089,28 @@ function toggleBirth(birthId) {
 
   // 加载物种资料到卡片内的面板
   loadSpeciesLoreForBirth(b.species, birthId);
+
+  // 自动展开角色图鉴并显示该出生对应的角色
+  const presetList = document.getElementById('preset-list');
+  presetList.style.display = 'flex';
+  const primaryIdx = CHARACTER_PRESETS.findIndex(p => p.name.includes(b.primary.name));
+  if (primaryIdx >= 0) selectPreset(primaryIdx);
+  // 双胞胎：追加第二个角色的信息
+  if (b.twin) {
+    const twinIdx = CHARACTER_PRESETS.findIndex(p => p.name.includes(b.twin.name));
+    if (twinIdx >= 0) {
+      const tp = CHARACTER_PRESETS[twinIdx];
+      const twinStatStr = Object.entries(tp.stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
+      const presetDetail = document.getElementById('preset-detail');
+      presetDetail.innerHTML += `
+        <hr style="border-color:var(--border);margin:8px 0;">
+        <div style="color:var(--gold);font-weight:bold;margin-bottom:4px;">📖 ${tp.name}（${tp.species} · ×${tp.coeff}）</div>
+        <div style="color:var(--text);margin-bottom:6px;line-height:1.7;">${tp.desc}</div>
+        <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${twinStatStr}</div>
+        <div style="color:var(--dim);font-size:11px;">📋 技能：${(tp.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(tp.passives||[]).map(s=>s.name).join('、') || '无'}</div>
+      `;
+    }
+  }
 }
 
 function loadSpeciesLoreForBirth(species, birthId) {
