@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 import httpx
 
-from combat import Fighter, CombatSim, fighter_from_tavern_char, make_default_picker, make_ai_picker
+from combat import Fighter, CombatSim, fighter_from_tavern_char, make_default_picker, make_ai_picker, calc_equipment_score, calc_all_equipment_scores, get_reward_tier, get_explore_tier, filter_equipment_by_tier, pick_random_equipment, get_xp_reward
 from combat.skill import parse_tavern_skills
 
 load_dotenv()
@@ -169,6 +169,9 @@ _equipment_by_source = {"starting": [], "exploration": [], "wave": []}
 for e in _equipment_pool:
     src = e.get("source", "wave")
     _equipment_by_source.setdefault(src, []).append(e)
+
+# 预计算装备效能分 (用于奖励天花板检查)
+_equipment_scores = calc_all_equipment_scores(_equipment_pool)
 _constructions_pool = json.loads((BASE / "constructions.json").read_text("utf-8")) if (BASE / "constructions.json").exists() else []
 
 RECRUIT_EVENTS = [
@@ -1243,20 +1246,14 @@ def chat(req: ChatReq):
         if active and active.get("pregnant"):
             due = active["pregnant"]["due_day"]
             day_msg = (day_msg or "") + f"\n🤰 {active['name']} 正在怀孕中（预产期第{due}天）——只能进行轻度日常活动，若参战伤害-60%。"
-        # 日常活动 → 给活跃角色加经验
-        exp_gain = max(3, int((30 - sess["day"] * 0.5) / max(1, active["level"] * 0.3))) if active else 0
+        # 日常活动 → 给活跃角色加经验 (按天数分层)
+        tier = get_explore_tier(sess.get("day", 1))
+        exp_gain = random.randint(tier.xp_min, tier.xp_max) if active else 0
         old_level = active["level"] if active else 1
         if active and action in ('锻炼','训练','train'):
             active["exp"] = active.get("exp", 0) + exp_gain
-            # 检查升级 (简化：每100×等级 exp 升一级)
-            need_exp = 100 * active["level"]
-            while active["exp"] >= need_exp:
-                active["level"] += 1
-                active["exp"] -= need_exp
-                active["free_points"] = active.get("free_points", 0) + 1
-                active["pending_skill_points"] = active.get("pending_skill_points", 0) + 1
-                need_exp = 100 * active["level"]
-            # 猫龙 Lv.10 进化事件
+            _check_levelup(active)
+            chars_updated = True
             if active and active.get("species") == "猫龙" and active["level"] >= 10 and not active.get("evolved"):
                 active["evolved"] = True
                 active["evolve_forms"] = ["龙人形态", "巨猫龙形态"]
@@ -1488,9 +1485,17 @@ def chat(req: ChatReq):
         sess["days_until_attack"] = reset_days
         sess["raid_wave"] = sess.get("raid_wave", 1) + 1
         chars_updated = True  # 确保前端刷新
-        # 波次奖励：解锁高级装备 + 概率获得高级魔物
-        _wave_reward_equipment(sess, sess["raid_wave"] - 1)  # 刚打完的波次
-        _wave_reward_monster(sess, sess["raid_wave"] - 1)
+        # 波次奖励：解锁高级装备 + 概率获得高级魔物 + 经验值
+        wave_num = sess["raid_wave"] - 1  # 刚打完的波次
+        _wave_reward_equipment(sess, wave_num)
+        _wave_reward_monster(sess, wave_num)
+        # 全队经验值 (所有我方可获得经验的角色)
+        xp = get_xp_reward(sess.get("day", 1), wave_num)
+        for c in sess.get("characters", []):
+            c["exp"] = c.get("exp", 0) + xp
+            # 检查升级
+            _check_levelup(c)
+        _log_event(sess, "wave_xp", f"全队获得 {xp} 经验值", {"xp": xp})
 
     # 缓存历史摘要（如果有新截断的事件）
     if summary_text:
@@ -1619,39 +1624,53 @@ def _daily_recovery_all(sess: dict):
         c["current_spirit"] = None
         c["current_armor"] = None
 
+
+def _check_levelup(char: dict):
+    """检查角色是否升级，升级后增加 free_points + pending_skill_points"""
+    level = char.get("level", 1)
+    exp = char.get("exp", 0)
+    need = 100 * level  # 每级需要 100*等级 经验
+    if exp >= need and level < 99:
+        char["level"] = level + 1
+        char["exp"] = exp - need
+        char["free_points"] = char.get("free_points", 3) + 1
+        char["pending_skill_points"] = char.get("pending_skill_points", 0) + 1
+        # 递归检查是否连升多级
+        _check_levelup(char)
+
 # ── 事件日志 ──
 
 # ── 波次奖励 & 探索系统 ──
 
 def _wave_reward_equipment(sess, wave):
-    """波次胜利后解锁并发放高级装备"""
-    if wave == 1:
-        # 第1波：解锁 uncommon 及以下装备，随机给2件
-        pool = [e for e in _equipment_pool if e.get("source") in ("wave", "exploration") and e["rarity"] in ("common", "uncommon")]
-    elif wave == 2:
-        # 第2波：解锁 rare 及以下
-        pool = [e for e in _equipment_pool if e.get("source") in ("wave", "exploration") and e["rarity"] in ("common", "uncommon", "rare")]
-    else:
-        # 第3波+：解锁所有
-        pool = [e for e in _equipment_pool if e.get("source") in ("wave", "exploration")]
-    
+    """波次胜利后按层级解锁并发放装备 (使用效能分天花板)"""
+    day = sess.get("day", 1)
+    tier = get_reward_tier(day, wave)
+
+    # 从 wave + exploration 池中过滤
+    pool = [e for e in _equipment_pool if e.get("source") in ("wave", "exploration")]
+    filtered = filter_equipment_by_tier(pool, tier, _equipment_scores)
+
     # 解锁这些装备
     unlocked = sess.setdefault("unlocked_equipment", [])
-    for e in pool:
+    for e in filtered:
         if e["id"] not in unlocked:
             unlocked.append(e["id"])
-    
-    # 随机给2-3件装备到随机角色
-    num = random.randint(2, min(3, len(pool)))
+
+    # 按 tier 决定给几件
     chars = sess.get("characters", [])
-    if chars and pool:
-        given = random.sample(pool, min(num, len(pool)))
+    if chars and filtered:
+        given = pick_random_equipment(filtered, tier, _equipment_scores)
         for item in given:
             target = random.choice(chars)
             slot = item["slot"]
             target.setdefault("equipment", {"weapon": None, "armor": None, "accessory": None})
             target["equipment"][slot] = item["id"]
-        _log_event(sess, "wave_reward", f'波次{wave}奖励：获得 {", ".join(i["name"] for i in given)}', {"wave": wave, "items": [i["name"] for i in given]})
+        if given:
+            _log_event(sess, "wave_reward",
+                f'波次{wave}奖励 (Day{day}, 效能上限{tier.max_equipment_score}): '
+                f'获得 {", ".join(i["name"] + f"({calc_equipment_score(i)})" for i in given)}',
+                {"wave": wave, "items": [i["name"] for i in given]})
 
 
 def _gen_random_wave(wave_num):
@@ -1758,26 +1777,27 @@ def explore_dungeon(sid: str, req: ExploreRequest):
     explored.append(req.char_id)
     
     day = s.get("day", 1)
-    # 探索概率：随着天数增加，好装备概率略微上升但始终不高
-    # 60% 空手而归，25% 获得装备，15% 获得垃圾魔物
+    tier = get_explore_tier(day)
+    # 探索概率：60% 空手，25% 装备，15% 魔物
     roll = random.random()
-    
+
     if roll < 0.60:
         # 空手
         _log_event(s, "explore", f'{char["name"]} 探索归来——什么也没找到')
         _save(s)
         return {"result": "nothing", "msg": f'{char["name"]}在黑暗中摸索了半天，什么都没发现。'}
-    
+
     elif roll < 0.85:
-        # 获得装备 —— 从 exploration 池中选
+        # 获得装备 —— 按探索层级过滤
         pool = [e for e in _equipment_pool if e.get("source") == "exploration"]
-        # 后期有小概率出 wave 池装备
-        if day > 15 and random.random() < 0.15:
+        # 15% 概率混入 wave 池低级装备
+        if random.random() < 0.15:
             pool += [e for e in _equipment_by_source.get("wave", []) if e["rarity"] in ("common", "uncommon")]
-        if not pool:
+        filtered = filter_equipment_by_tier(pool, tier, _equipment_scores)
+        if not filtered:
             _save(s)
             return {"result": "nothing", "msg": "探索了一番，但地下城能捡的破烂都捡完了。"}
-        item = random.choice(pool)
+        item = random.choice(filtered)
         # 解锁并装备
         unlocked = s.setdefault("unlocked_equipment", [])
         if item["id"] not in unlocked:
@@ -1786,7 +1806,8 @@ def explore_dungeon(sid: str, req: ExploreRequest):
         slot = item["slot"]
         old = char["equipment"].get(slot)
         char["equipment"][slot] = item["id"]
-        msg = f'{char["name"]}在探索中发现了 {item["name"]}！'
+        score = calc_equipment_score(item)
+        msg = f'{char["name"]}在探索中发现了 {item["name"]}（效能分:{score}）！'
         if old:
             old_item = next((e for e in _equipment_pool if e["id"] == old), None)
             msg += f'（替换了{old_item["name"] if old_item else "旧装备"}）'

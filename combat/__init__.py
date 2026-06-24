@@ -32,7 +32,14 @@ from .skill import (
     fighter_from_tavern_char,
 )
 from .sim import CombatSim, CombatResult, CombatLogEntry
-from .ai import build_skill_context, deepseek_skill_picker, _fallback_pick
+from .ai import build_skill_context, deepseek_skill_picker, _scored_pick, _fallback_pick
+from .equipment_scaling import (
+    RewardTier, RARITY_MULT, RARITY_ORDER,
+    calc_equipment_score, calc_all_equipment_scores,
+    get_reward_tier, get_explore_tier,
+    filter_equipment_by_tier, pick_random_equipment,
+    get_xp_reward,
+)
 
 # 便捷函数: 制作 AI 选技回调 (带 API key)
 def make_ai_picker(api_key: str = "", model: str = "deepseek-chat"):
@@ -53,6 +60,11 @@ __all__ = [
     "parse_tavern_skill", "parse_tavern_skills", "parse_skill_dict",
     "fighter_from_tavern_char",
     "CombatSim", "CombatResult", "CombatLogEntry",
-    "deepseek_skill_picker", "build_skill_context",
+    "deepseek_skill_picker", "build_skill_context", "_scored_pick",
     "make_ai_picker", "make_default_picker",
+    "RewardTier", "RARITY_MULT", "RARITY_ORDER",
+    "calc_equipment_score", "calc_all_equipment_scores",
+    "get_reward_tier", "get_explore_tier",
+    "filter_equipment_by_tier", "pick_random_equipment",
+    "get_xp_reward",
 ]

@@ -185,7 +185,21 @@ class CombatSim:
 
         skill = act.skill
         if act.phase == "windup":
-            # 判定帧 —— 伤害生效
+            # 判定帧 —— 伤害/效果生效
+            stype = skill.get("type", "slash")
+
+            # 防御技：增加格挡值而非攻击
+            if stype == "defense":
+                block_val = self._calc_skill_damage(fighter, skill)
+                fighter.block_value = block_val
+                fighter.blocking = True
+                self._add_log(self.tick,
+                    f"🛡️ {fighter.name} [{skill['name']}] 格挡值 +{block_val:.0f}",
+                    "block")
+                act.phase = "recovery"
+                act.timer = int(skill.get("recovery", 0.5) / TICK)
+                return
+
             enemies = self.team1 if fighter.team == 0 else self.team0
             target = self._pick_target(fighter, enemies, skill)
             if target and not target.lost:
@@ -265,12 +279,15 @@ class CombatSim:
         if not formula:
             base = 30 + 2 * fighter.str + 1 * fighter.spd
         else:
+            # 统一格式化：× → *
+            formula = formula.replace("×", "*").replace(" ", "")
             ns = {
                 "END": fighter.end, "STR": fighter.str, "SPD": fighter.spd,
                 "DEF": fighter.df, "INT": fighter.int_, "WIL": fighter.wil,
                 "MP": fighter.mp,
                 "耐力": fighter.end, "力量": fighter.str, "速度": fighter.spd,
                 "防御": fighter.df, "智力": fighter.int_, "精神": fighter.wil,
+                "法量": fighter.mp,
                 "min": min, "max": max, "abs": abs, "round": round,
             }
             try:
