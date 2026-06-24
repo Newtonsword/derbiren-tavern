@@ -1255,6 +1255,22 @@ async function addCharManually() {
   } catch(e) { alert('添加失败: ' + e.message); }
 }
 
+async function renameChar(cid) {
+  const c = state.characters.find(x => x.id === cid);
+  if (!c) return;
+  const newName = prompt(`给「${c.name}」改名：`, c.name);
+  if (!newName || newName === c.name) return;
+  // 用 /改名 命令直接调用 API
+  const msg = `/改名 旧名=${c.name} 新名=${newName}`;
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: msg}),
+    });
+    if (res.ok) await refreshCharacters();
+  } catch(e) { alert('改名失败: ' + e.message); }
+}
+
 async function renderCharDetail() {
   const c = getActiveChar();
   if (!c) return;
@@ -1331,7 +1347,7 @@ async function renderCharDetail() {
   statsArea.innerHTML = `
     ${draftBanner}
     <div class="stats-section">
-      <h3>🔮 ${c.name} · ${c.species} · Lv.${c.level}</h3>
+      <h3>🔮 ${c.name} <button onclick="renameChar('${c.id}')" title="改名" style="background:none;border:none;cursor:pointer;font-size:14px;padding:0 4px;opacity:0.5;">✏️</button> · ${c.species} · Lv.${c.level}</h3>
       ${c.evolved ? `
         <div style="background:#1a1228;border:1px solid #8b5cf6;border-radius:6px;padding:6px 10px;margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="color:#8b5cf6;font-size:13px;">✨ 已进化</span>
