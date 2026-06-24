@@ -50,6 +50,12 @@ class AtomicAction(Enum):
     CONSUME_STAMINA = auto()     # 消耗体力
     CONSUME_MANA = auto()        # 消耗蓝量
     DODGE_NEXT = auto()          # 闪避下次攻击
+    # 被动专用
+    DAMAGE_MULTIPLIER = auto()   # 伤害倍率 (value=倍率加成, 如0.25=+25%)
+    BLOCK_MULTIPLIER = auto()    # 格挡值倍率
+    DR_BY_TYPE = auto()          # 按伤害类型的减伤 (condition指定类型)
+    HIT_RATE_MOD = auto()        # 命中率修正
+    DODGE_RATE_MOD = auto()      # 闪避率修正
 
 @dataclass
 class BuffDef:
@@ -140,6 +146,20 @@ class BuffManager:
     def has(self, name: str) -> bool:
         return any(b.definition.name == name for b in self.buffs)
 
+    def get_passive_value(self, action: AtomicAction, context: dict = None) -> float:
+        """获取某类被动 buff 的合计值，支持条件评估"""
+        total = 0.0
+        context = context or {}
+        for b in self.buffs:
+            bd = b.definition
+            if bd.action != action:
+                continue
+            # 条件评估
+            if bd.condition and not _eval_condition(bd.condition, context):
+                continue
+            total += bd.value * b.stacks
+        return total
+
     def to_dict(self) -> list[dict]:
         return [{
             "name": b.definition.name,
@@ -161,3 +181,109 @@ class BuffManager:
                     source_id=d.get("source", ""),
                 )
                 self.buffs.append(inst)
+
+
+# ══════════════════════════════════════════
+# 条件评估引擎
+# ══════════════════════════════════════════
+
+def _eval_condition(cond: str, ctx: dict) -> bool:
+    """评估 buff 触发条件。ctx 由调用方提供 (环境/HP/队友数等)"""
+    if not cond:
+        return True
+
+    # hp_below_X% → ctx["hp_ratio"] < X/100
+    import re
+    m = re.search(r'hp_below_(\d+)', cond)
+    if m:
+        ratio = ctx.get("hp_ratio", 1.0)
+        return ratio < int(m.group(1)) / 100.0
+
+    # dmg_type=X → ctx["dmg_type"] == X
+    m = re.search(r'dmg_type=(\w+)', cond)
+    if m:
+        return ctx.get("dmg_type", "") == m.group(1)
+
+    # isolated → ctx["isolated"] == True
+    if cond == "isolated":
+        return ctx.get("isolated", False)
+
+    # dark_environment → ctx["environment"] == "dark" or "narrow"
+    if cond == "dark_environment":
+        env = ctx.get("environment", "")
+        return env in ("dark", "narrow")
+
+    # first_attack → ctx["first_attack"] == True
+    if cond == "first_attack":
+        return ctx.get("first_attack", False)
+
+    # ranged_attack → ctx["attack_type"] == "ranged"
+    if cond == "ranged_attack":
+        return ctx.get("attack_type", "") == "ranged"
+
+    # pack_hunting → ctx["ally_count"] gives multiplier per ally
+    if cond == "pack_hunting":
+        return ctx.get("ally_count", 0) > 0
+
+    return True
+
+
+# ══════════════════════════════════════════
+# 被动技能库 —— 所有被动效果的 BuffDef 定义
+# ══════════════════════════════════════════
+
+PASSIVE_LIBRARY: dict[str, list[BuffDef]] = {
+    # ── 重战士 ──
+    "铁壁": [
+        BuffDef(name="铁壁", trigger=TriggerType.PASSIVE, action=AtomicAction.BLOCK_MULTIPLIER,
+                value=0.20, description="格挡值+20%", duration=0),
+    ],
+    # ── 弓箭手 ──
+    "鹰眼": [
+        BuffDef(name="鹰眼", trigger=TriggerType.PASSIVE, action=AtomicAction.HIT_RATE_MOD,
+                value=0.5, description="远程命中SPD系数+0.5", duration=0,
+                condition="ranged_attack"),
+    ],
+    # ── 哥布林 ──
+    "硬皮": [
+        BuffDef(name="硬皮", trigger=TriggerType.ON_HIT, action=AtomicAction.DR_BY_TYPE,
+                value=0.10, description="钝伤减伤10%", duration=0,
+                condition="dmg_type=blunt"),
+    ],
+    # ── 野狼 ──
+    "孤狼": [
+        BuffDef(name="孤狼", trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER,
+                value=0.15, description="孤立时伤害+15%", duration=0,
+                condition="isolated"),
+    ],
+    "狼群本能": [
+        BuffDef(name="狼群本能", trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER,
+                value=0.08, description="每个同伴+8%伤害", duration=0,
+                condition="pack_hunting"),
+    ],
+    # ── 猫龙 ──
+    "夜视": [
+        BuffDef(name="夜视·命中", trigger=TriggerType.PASSIVE, action=AtomicAction.HIT_RATE_MOD,
+                value=15.0, description="黑暗环境命中+15%", duration=0,
+                condition="dark_environment"),
+        BuffDef(name="夜视·闪避", trigger=TriggerType.PASSIVE, action=AtomicAction.DODGE_RATE_MOD,
+                value=15.0, description="黑暗环境闪避+15%", duration=0,
+                condition="dark_environment"),
+    ],
+    # ── 杀人兔 ──
+    "狂暴": [
+        BuffDef(name="狂暴", trigger=TriggerType.ON_LOW_HP, action=AtomicAction.DAMAGE_MULTIPLIER,
+                value=0.25, description="HP<50%时伤害+25%", duration=0,
+                condition="hp_below_50"),
+    ],
+    # ── 触手怪 ──
+    "再生": [
+        BuffDef(name="再生", trigger=TriggerType.ON_TICK, action=AtomicAction.HEAL_HP,
+                value=0, description="每3秒恢复END×2 HP", duration=-1,  # -1=永久
+                interval=3.0),
+    ],
+}
+
+def get_passive_buffs(name: str) -> list[BuffDef]:
+    """根据被动技能名获取 BuffDef 列表。复杂被动→多个简单 BuffDef 组合。"""
+    return PASSIVE_LIBRARY.get(name, [])

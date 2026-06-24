@@ -143,14 +143,22 @@ class Fighter:
 
     # ── 被动技能初始化 ──
     def _init_passives(self):
-        """将技能列表中 type='被动' 的技能转为 buff"""
+        """将技能列表中 type='被动' 的技能转为 buff —— 从 PASSIVE_LIBRARY 查找"""
+        from .buff import get_passive_buffs
         for sk in self.skills:
-            if sk.get("type") != "被动" and sk.get("category") != "被动":
+            cat = sk.get("category", sk.get("type", ""))
+            if "被动" not in cat:
                 continue
-            effect = sk.get("effect", sk.get("special", ""))
-            if not effect:
-                continue
-            self._parse_passive_effect(sk["name"], effect)
+            name = sk.get("name", "")
+            buffs = get_passive_buffs(name)
+            if buffs:
+                for bd in buffs:
+                    self.buffs.apply(bd, source_id=self.char_id)
+            else:
+                # 没有预定义的被动 → 尝试旧式文本解析
+                effect = sk.get("effect", sk.get("special", ""))
+                if effect:
+                    self._parse_passive_effect(name, effect)
 
     def _parse_passive_effect(self, name: str, effect: str):
         """解析被动效果文字 → 转为 BuffDef"""
@@ -190,12 +198,20 @@ class Fighter:
         mod = level_mod(attacker.lv, self.lv) if attacker else 1.0
         raw *= mod * self.dmg_multiplier()
 
+        # 被动: 按伤害类型减伤 (硬皮: 钝伤-10%)
+        dr = self.buffs.get_passive_value(AtomicAction.DR_BY_TYPE, {"dmg_type": dmg_type})
+        if dr:
+            raw *= (1.0 - dr)
+
         # 格挡
         blocked = 0.0
         if self.blocking:
-            blocked = min(self.block_value * TICK, raw)
+            # 被动: 格挡值倍率 (铁壁: +20%)
+            block_mult = self.buffs.get_passive_value(AtomicAction.BLOCK_MULTIPLIER)
+            effective_block = self.block_value * (1.0 + block_mult)
+            blocked = min(effective_block * TICK, raw)
             raw -= blocked
-            if raw > self.block_value / 5 and blocked > 0:
+            if raw > effective_block / 5 and blocked > 0:
                 self.blocking = False
                 self.state = "stunned"
                 self.stunned = 3  # 0.3s 硬直

@@ -113,6 +113,15 @@ class CombatSim:
                 f.tick_stun()
                 f.buffs.tick(TICK)
 
+                # ON_TICK 被动 (再生等持续恢复)
+                for b in f.buffs.get_triggered(TriggerType.ON_TICK):
+                    if b.action == AtomicAction.HEAL_HP:
+                        # 再生: 恢复 END×2 HP
+                        heal = f.end * 2
+                        f.hp = min(f.max_hp, f.hp + heal)
+                        self._add_log(self.tick,
+                            f"💚 {f.name} [再生] HP+{heal:.0f} → {f.hp:.0f}", "heal")
+
                 # 体力/蓝量自然恢复 (少量)
                 f.stamina = min(f.max_stamina, f.stamina + 0.1)
                 f.mana = min(f.max_mana, f.mana + 0.05)
@@ -246,28 +255,33 @@ class CombatSim:
 
     # ── 伤害公式计算 ──
     def _calc_skill_damage(self, fighter: Fighter, skill: dict) -> float:
-        """根据技能公式计算原始伤害"""
+        """根据技能公式计算原始伤害 (含被动伤害倍率)"""
         formula = skill.get("formula", skill.get("dmg_formula", ""))
         if not formula:
-            # 兜底公式
-            return 30 + 2 * fighter.str + 1 * fighter.spd
+            base = 30 + 2 * fighter.str + 1 * fighter.spd
+        else:
+            ns = {
+                "END": fighter.end, "STR": fighter.str, "SPD": fighter.spd,
+                "DEF": fighter.df, "INT": fighter.int_, "WIL": fighter.wil,
+                "MP": fighter.mp,
+                "耐力": fighter.end, "力量": fighter.str, "速度": fighter.spd,
+                "防御": fighter.df, "智力": fighter.int_, "精神": fighter.wil,
+                "min": min, "max": max, "abs": abs, "round": round,
+            }
+            try:
+                base = float(eval(formula, {"__builtins__": {}}, ns))
+            except Exception:
+                base = 30 + 2 * fighter.str + 1 * fighter.spd
 
-        # 安全 eval —— 只允许属性名和基本运算符
-        ns = {
-            "END": fighter.end, "STR": fighter.str, "SPD": fighter.spd,
-            "DEF": fighter.df, "INT": fighter.int_, "WIL": fighter.wil,
-            "MP": fighter.mp,
-            "耐力": fighter.end, "力量": fighter.str, "速度": fighter.spd,
-            "防御": fighter.df, "智力": fighter.int_, "精神": fighter.wil,
-            "min": min, "max": max, "abs": abs, "round": round,
-        }
-        try:
-            return float(eval(formula, {"__builtins__": {}}, ns))
-        except Exception:
-            return 30 + 2 * fighter.str + 1 * fighter.spd
+        # 被动伤害倍率 (孤狼/狂暴/狼群本能等)
+        ctx = self._build_dmg_context(fighter)
+        dmg_mult = fighter.buffs.get_passive_value(AtomicAction.DAMAGE_MULTIPLIER, ctx)
+        if dmg_mult:
+            base *= (1.0 + dmg_mult)
+        return base
 
     def _calc_hit_chance(self, attacker: Fighter, target: Fighter, skill: dict) -> float:
-        """计算命中率 (5%~95%)"""
+        """计算命中率 (5%~95%, 含被动命中/闪避修正)"""
         hit_formula = skill.get("hit_formula", "")
         if hit_formula:
             ns = {
@@ -280,16 +294,25 @@ class CombatSim:
             except Exception:
                 base_hit = 85
         else:
-            # 默认: 速度主导
             base_hit = 75 + attacker.spd * 2.5
+
+        # 被动命中修正 (鹰眼/夜视等)
+        hit_ctx = self._build_hit_context(attacker, skill)
+        hit_mod = attacker.buffs.get_passive_value(AtomicAction.HIT_RATE_MOD, hit_ctx)
+        base_hit += hit_mod
 
         # 目标闪避 (SPD × 1.5)
         dodge = target.spd * 1.5
 
+        # 被动闪避修正 (夜视等)
+        dodge_ctx = self._build_dodge_context(target)
+        dodge_mod = target.buffs.get_passive_value(AtomicAction.DODGE_RATE_MOD, dodge_ctx)
+        dodge += dodge_mod
+
         # 环境修正
         if self.environment == "narrow":
             if skill.get("type") == "spirit":
-                dodge += 5  # 狭窄环境精神攻击更难躲
+                dodge += 5
 
         hit = base_hit - dodge
         return max(5, min(95, hit))
@@ -327,3 +350,26 @@ class CombatSim:
         t0 = ", ".join(f"{f.name}(Lv.{f.lv})" for f in self.team0)
         t1 = ", ".join(f"{f.name}(Lv.{f.lv})" for f in self.team1)
         return f"[{t0}] vs [{t1}]"
+
+    # ── 被动条件上下文构建 ──
+    def _build_dmg_context(self, fighter: Fighter) -> dict:
+        """构建伤害被动条件上下文 (孤狼/狂暴/狼群)"""
+        allies = self.team0 if fighter.team == 0 else self.team1
+        live_allies = [a for a in allies if not a.lost and a.char_id != fighter.char_id]
+        return {
+            "hp_ratio": fighter.hp / fighter.max_hp if fighter.max_hp else 1.0,
+            "isolated": len(live_allies) == 0,
+            "ally_count": len(live_allies),
+            "environment": self.environment,
+        }
+
+    def _build_hit_context(self, fighter: Fighter, skill: dict) -> dict:
+        """构建命中被动条件上下文 (鹰眼/夜视)"""
+        return {
+            "environment": self.environment,
+            "attack_type": "ranged" if skill.get("type") in ("pierce",) and skill.get("ranged") else "melee",
+        }
+
+    def _build_dodge_context(self, fighter: Fighter) -> dict:
+        """构建闪避被动条件上下文 (夜视)"""
+        return {"environment": self.environment}
