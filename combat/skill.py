@@ -172,17 +172,37 @@ def parse_skill_dict(skill_dict: dict) -> dict:
     }
 
 
-def fighter_from_tavern_char(char: dict, team: int = 0) -> dict:
+def fighter_from_tavern_char(char: dict, team: int = 0, equipment_pool: list | None = None) -> dict:
     """
     将 tavern 角色数据转换为 Fighter 构造参数
+    
+    equipment_pool: equipment.json 的完整列表，用于查询装备属性
     """
     stats = char.get("stats", {})
-    equipment = char.get("equipment", {})
-    skills = char.get("skills", [])
+    equipped = char.get("equipment", {})
+    skills = list(char.get("skills", []))
 
     # 计算装备属性加成
     equip_bonus = {}
-    # (实际项目中从 equipment.json 查询，此处留接口)
+    equip_skills = []  # 装备技能(已解析)
+    if equipment_pool:
+        pool_by_id = {e["id"]: e for e in equipment_pool}
+        for slot_key in ("weapon", "armor", "accessory"):
+            eq_id = equipped.get(slot_key)
+            if eq_id and eq_id in pool_by_id:
+                eq = pool_by_id[eq_id]
+                # 累加属性
+                for k, v in eq.get("stats_bonus", {}).items():
+                    equip_bonus[k] = equip_bonus.get(k, 0) + v
+                for k, v in eq.get("secondary_bonus", {}).items():
+                    equip_bonus[k] = equip_bonus.get(k, 0) + v
+                # 装备技能
+                eq_skill = eq.get("skill")
+                if eq_skill and isinstance(eq_skill, dict):
+                    parsed = parse_skill_dict(eq_skill)
+                    if parsed:
+                        parsed["source"] = f"装备:{eq['name']}"
+                        equip_skills.append(parsed)
 
     # 物种系数
     species = char.get("species", "普通")
@@ -196,9 +216,13 @@ def fighter_from_tavern_char(char: dict, team: int = 0) -> dict:
     # 转换技能
     combat_skills = []
     for sk in skills:
-        parsed = parse_skill_dict(sk)
+        if isinstance(sk, str):
+            parsed = parse_tavern_skill(sk)
+        else:
+            parsed = parse_skill_dict(sk)
         if parsed:
             combat_skills.append(parsed)
+    combat_skills.extend(equip_skills)
 
     return {
         "id": char.get("id", ""),

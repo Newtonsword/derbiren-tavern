@@ -15,7 +15,7 @@ from openai import OpenAI
 import httpx
 
 from combat import Fighter, CombatSim, fighter_from_tavern_char, make_default_picker, make_ai_picker
-from combat.skill import parse_tavern_skills, parse_skill_dict
+from combat.skill import parse_tavern_skills
 
 load_dotenv()
 
@@ -1168,6 +1168,8 @@ def chat(req: ChatReq):
         day_msg = ""  # 初始化为空，各阶段追加
         # 工程建造进度推进
         _advance_constructions(sess)
+        # 每日恢复 → HP/护甲/体力/精神回满
+        _daily_recovery_all(sess)
         # 检查怀孕到期 → 自动生产
         births = _check_births(sess)
         if births:
@@ -1445,8 +1447,8 @@ async def _run_raid_combat(sess: dict, wave_idx: int) -> dict:
     # ── 构建我方 Fighter 列表 ──
     our_fighters = []
     for c in chars:
-        cfg = fighter_from_tavern_char(c, team=0)
-        skills = [parse_skill_dict(sk) for sk in c.get("skills", [])]
+        cfg = fighter_from_tavern_char(c, team=0, equipment_pool=_equipment_pool)
+        skills = cfg.get("skills", [])
         # 补格挡技能（如果没有）
         if not any(s.get("type") == "defense" for s in skills):
             skills.append({"name": "格挡", "type": "defense", "formula": "0",

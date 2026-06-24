@@ -1275,10 +1275,18 @@ async function renderCharDetail() {
     }
   }
   // 衍生值（仅角色级——技能命中/间隔见各技能详情）
-  const HP = st.END * 200;
-  const stamina = st.END * 50;
-  const mana = st.MP * 20;
-  const spirit = st.WIL * 10;
+  const maxHP = st.END * 200;
+  const HP = (c.current_hp != null) ? c.current_hp : maxHP;
+  const maxStamina = st.END * 50;
+  const staminaVal = (c.current_stamina != null) ? c.current_stamina : maxStamina;
+  const maxMana = st.MP * 20;
+  const manaVal = (c.current_mana != null) ? c.current_mana : maxMana;
+  const maxSpirit = st.WIL * 10;
+  const spiritVal = (c.current_spirit != null) ? c.current_spirit : maxSpirit;
+  const hpDisplay = (c.current_hp != null && c.current_hp < maxHP) ? `${HP}/${maxHP}` : `${HP}`;
+  const staminaDisplay = (c.current_stamina != null && c.current_stamina < maxStamina) ? `${staminaVal}/${maxStamina}` : `${staminaVal}`;
+  const manaDisplay = (c.current_mana != null && c.current_mana < maxMana) ? `${manaVal}/${maxMana}` : `${manaVal}`;
+  const spiritDisplay = (c.current_spirit != null && c.current_spirit < maxSpirit) ? `${spiritVal}/${maxSpirit}` : `${spiritVal}`;
   const isMonster = ['猫龙','幼龙','触手怪','石像鬼','杀人兔','野狼','史莱姆','哥布林'].includes(c.species);
   const defEff = isMonster ? (st.DEF + st.END * 0.5).toFixed(1) : st.DEF;
   const defBuffer = defEff * 50;  // 防御缓冲=有效DEF×50（常驻额外HP）
@@ -1334,10 +1342,10 @@ async function renderCharDetail() {
     <div class="stats-section" style="border-top:1px solid var(--border);padding-top:10px;">
       <h3>📐 衍生数值${isDraft ? '<span style="color:var(--gold);font-size:11px;"> — 预览</span>' : ''}</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;line-height:1.8;">
-        <div>❤️ 生命值 <span style="color:var(--accent);">${HP}</span></div>
-        <div>🏃 体力 <span style="color:var(--gold);">${stamina}</span></div>
-        <div>💎 魔法储量 <span style="color:#4b9eef;">${mana}</span></div>
-        <div>🧠 精神条 <span style="color:#8b5cf6;">${spirit}</span></div>
+        <div>❤️ 生命值 <span style="color:var(--accent);">${hpDisplay}</span></div>
+        <div>🏃 体力 <span style="color:var(--gold);">${staminaDisplay}</span></div>
+        <div>💎 魔法储量 <span style="color:#4b9eef;">${manaDisplay}</span></div>
+        <div>🧠 精神条 <span style="color:#8b5cf6;">${spiritDisplay}</span></div>
         <div>🛡️ 统一护盾 <span style="color:#c9a050;">${defBuffer}</span><span style="font-size:10px;color:var(--dim);"> +装备护甲</span></div>
         <div>💨 基础闪避 <span style="color:#5a9e4b;">+${dodge}</span></div>
         <div style="grid-column:1/-1;font-size:10px;color:var(--dim);margin-top:2px;">
@@ -1587,7 +1595,7 @@ async function loadLibrary() {
           <div style="display:none;padding:8px 10px;border-top:1px solid var(--border);">
             <div style="color:var(--dim);margin-bottom:6px;line-height:1.8;">
               ${translateStats(c.stats)}
-              <div style="font-size:10px;margin-top:2px;">HP=${(c.stats.END||3)*200} | 体力=${(c.stats.END||3)*50} | 蓝量=${(c.stats.MP||3)*20} | 精神条=${(c.stats.WIL||3)*10} | 护盾=${((c.stats.DEF||3)+((c.stats.END||3)*0.5))*50} | 闪避=${((c.stats.SPD||3)*2.5+((c.stats.DEF||3)+(c.stats.END||3)*0.5)*0.5).toFixed(1)}</div>
+              <div style="font-size:10px;margin-top:2px;">HP=${c.current_hp!=null?Math.round(c.current_hp)+'/'+(c.stats.END||3)*200:(c.stats.END||3)*200} | 体力=${c.current_stamina!=null?Math.round(c.current_stamina)+'/'+(c.stats.END||3)*50:(c.stats.END||3)*50} | 蓝量=${c.current_mana!=null?Math.round(c.current_mana)+'/'+(c.stats.MP||3)*20:(c.stats.MP||3)*20} | 精神条=${c.current_spirit!=null?Math.round(c.current_spirit)+'/'+(c.stats.WIL||3)*10:(c.stats.WIL||3)*10} | 护盾=${((c.stats.DEF||3)+((c.stats.END||3)*0.5))*50} | 闪避=${((c.stats.SPD||3)*2.5+((c.stats.DEF||3)+(c.stats.END||3)*0.5)*0.5).toFixed(1)}</div>
             </div>
             ${c.skills?.length ? '<div style="font-size:12px;color:var(--accent);margin-bottom:4px;">⚔️ 技能</div>' + c.skills.map(sk => `
               <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
