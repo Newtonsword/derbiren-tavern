@@ -649,15 +649,15 @@ SPECIES_STARTER_SKILLS = {
     },
     "哥布林": {
         "skills": [
-            {"name":"匕首","type":"刺击","formula":"12+1.5×速度+1.0×力量","cost":"耐力8","interval":"2.0s","hit_formula":"70+2.0×速度","category":"主动"},
-            {"name":"陷阱","type":"钝击","formula":"15+1.0×智力(固定)","cost":"耐力20","interval":"8.0s","hit_formula":"120","category":"主动"},
-            {"name":"魔法护盾","type":"防御","formula":"8+1.0×智力+0.5×法量/秒","cost":"蓝0.8/0.1s","interval":"持续","hit_formula":"","category":"主动"},
+            {"name":"挥砍","type":"斩击","formula":"12+2.0×力量+0.5×速度","cost":"耐力10","interval":"3.0s","hit_formula":"70+1.5×力量+0.5×速度","category":"主动"},
+            {"name":"盾击","type":"钝击","formula":"10+1.5×力量+0.5×耐力","cost":"耐力14","interval":"4.0s","hit_formula":"75+1.5×力量","category":"主动"},
+            {"name":"格挡","type":"防御","formula":"10+1.5×耐力+1.0×力量/秒","cost":"耐力0.4/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
-        "passives": [{"name":"狡诈","effect":"先手时命中+15%"}, {"name":"工程天赋","effect":"工程建造速度+0.5天/每日"}],
-        # 双倍开局时第二只哥布林用弓箭手技能组（战士+弓箭手搭配）
+        "passives": [{"name":"战斗怒吼","effect":"战斗开始时STR+1"}, {"name":"工程天赋","effect":"工程建造速度+0.5天/每日"}],
+        # 第二只哥布林用弓箭手技能组（战士+射手搭配）
         "alt_skills": [
-            {"name":"短弓射击","type":"刺击","formula":"15+2.0×速度+0.5×力量","cost":"耐力8","interval":"3.0s","hit_formula":"75+2.5×速度","category":"主动"},
-            {"name":"淬毒箭","type":"刺击","formula":"20+2.5×速度+1.0×智力","cost":"耐力18","interval":"6.0s","hit_formula":"80+2.0×速度","category":"主动"},
+            {"name":"短弓射击","type":"刺击","formula":"12+2.0×速度+0.5×力量","cost":"耐力8","interval":"3.0s","hit_formula":"75+2.0×速度","category":"主动"},
+            {"name":"淬毒箭","type":"刺击","formula":"18+2.5×速度+1.0×智力","cost":"耐力16","interval":"6.0s","hit_formula":"80+2.0×速度","category":"主动"},
             {"name":"闪避步法","type":"防御","formula":"10+2.0×速度/秒","cost":"耐力0.4/0.1s","interval":"持续","hit_formula":"","category":"主动"},
         ],
         "alt_passives": [{"name":"远程狙击","effect":"远程攻击伤害+15%，命中+10%"}, {"name":"工程天赋","effect":"工程建造速度+0.5天/每日"}],
@@ -2446,7 +2446,7 @@ def _species_passive(char: dict) -> dict:
         "杀人兔": {"name":"闪避本能","effect":"闪避率+15%，先手必暴","desc":"极限速度带来超高闪避"},
         "野狼":   {"name":"狼群战术","effect":"场上每多一名同伴，自身伤害+8%","desc":"狼群协作天性"},
         "史莱姆": {"name":"凝胶身体","effect":"钝伤减半，斩击/刺击受伤+25%但可适应进化","desc":"Q弹的身体吸收钝器冲击"},
-        "哥布林": {"name":"战术大脑","effect":"每隔4s额外一次战术行动（陷阱/投毒/佯攻）","desc":"狡诈的头脑在战斗中占尽先机"},
+        "哥布林": {"name":"战斗怒吼","effect":"战斗开始时STR+1","desc":"打之前先嚎一嗓子——不一定有用但气势不能输"},
     }
     
     p = passive_map.get(species, {"name":"战斗本能","effect":f"STR+{max(1,lv//3)} SPD+{max(1,lv//3)}","desc":"基础战斗本能"})
