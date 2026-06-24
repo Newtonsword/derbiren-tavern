@@ -88,19 +88,13 @@ def parse_tavern_skills(skills_raw: str) -> list[dict]:
 
 def parse_skill_dict(skill_dict: dict) -> dict:
     """
-    从 tavern 的 skill 字典转换为战斗引擎格式
-    tavern skill 格式 (来自 skill_library.json):
-    {
-      "name": "利爪",
-      "type": "斩击",
-      "category": "主动",
-      "formula": "30+2.0×力量+1.5×速度",
-      "hit_formula": "85+2.5×速度",
-      "cost": "耐力:22",
-      "cooldown": "3.5s",
-      "description": "..."
-    }
+    从 tavern 的 skill 字典转换为战斗引擎格式。
+    也接受字符串格式（自动委托给 parse_tavern_skill）。
     """
+    if isinstance(skill_dict, str):
+        return parse_tavern_skill(skill_dict)
+    if not isinstance(skill_dict, dict):
+        return None
     name = skill_dict.get("name", "???")
     stype_raw = skill_dict.get("type", "斩击")
     category = skill_dict.get("category", "主动")

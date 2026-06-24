@@ -132,14 +132,21 @@ class BuffManager:
         self.buffs = [b for b in self.buffs if not b.expired]
 
     def get_triggered(self, trigger: TriggerType, context: dict = None) -> list[BuffInstance]:
-        """获取匹配触发条件且满足概率的 buff 列表"""
-        import random
+        """获取匹配触发条件且满足概率/间隔的 buff 列表"""
+        import random, time
         result = []
+        now = time.time()
         for b in self.buffs:
             if b.definition.trigger != trigger:
                 continue
             if b.definition.chance < 1.0 and random.random() > b.definition.chance:
                 continue
+            # 间隔检查 (ON_TICK 专用)
+            if b.definition.interval > 0:
+                elapsed = now - b.last_tick
+                if elapsed < b.definition.interval:
+                    continue
+                b.last_tick = now
             result.append(b)
         return result
 
@@ -258,7 +265,7 @@ PASSIVE_LIBRARY: dict[str, list[BuffDef]] = {
     ],
     "狼群本能": [
         BuffDef(name="狼群本能", trigger=TriggerType.PASSIVE, action=AtomicAction.DAMAGE_MULTIPLIER,
-                value=0.08, description="每个同伴+8%伤害", duration=0,
+                value=0.0, description="每个同伴+8%伤害(由引擎动态计算)", duration=0,
                 condition="pack_hunting"),
     ],
     # ── 猫龙 ──

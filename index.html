@@ -1259,10 +1259,17 @@ async function renderCharDetail() {
       const eqId = c.equipment[slot];
       if (!eqId) continue;
       const eq = eqAll.find(e => e.id === eqId);
-      if (!eq || !eq.attribute_bonus) continue;
-      for (const [zhName, val] of Object.entries(eq.attribute_bonus)) {
-        const key = ZH2KEY[zhName];
-        if (key) { st[key] = (st[key]||3) + val; equipBonuses[key] += val; }
+      if (!eq) continue;
+      // equipment.json 用 stats_bonus (英文短键) + secondary_bonus
+      const bonuses = {...(eq.stats_bonus || {}), ...(eq.secondary_bonus || {})};
+      for (const [key, val] of Object.entries(bonuses)) {
+        // key 可能是 END/STR/... 或 耐力/力量/...
+        const attrKey = ZH2KEY[key] || key;
+        const validKeys = ATTRS.map(a=>a.key);
+        if (validKeys.includes(attrKey)) {
+          st[attrKey] = (st[attrKey]||3) + val;
+          equipBonuses[attrKey] = (equipBonuses[attrKey]||0) + val;
+        }
       }
     }
   }

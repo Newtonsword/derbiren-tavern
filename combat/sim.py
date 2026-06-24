@@ -276,6 +276,11 @@ class CombatSim:
         # 被动伤害倍率 (孤狼/狂暴/狼群本能等)
         ctx = self._build_dmg_context(fighter)
         dmg_mult = fighter.buffs.get_passive_value(AtomicAction.DAMAGE_MULTIPLIER, ctx)
+        # 狼群本能: 每个同伴×8%
+        if ctx.get("ally_count", 0) > 0:
+            for b in fighter.buffs.buffs:
+                if b.definition.condition == "pack_hunting":
+                    dmg_mult += 0.08 * ctx["ally_count"] * b.stacks
         if dmg_mult:
             base *= (1.0 + dmg_mult)
         return base
@@ -365,9 +370,14 @@ class CombatSim:
 
     def _build_hit_context(self, fighter: Fighter, skill: dict) -> dict:
         """构建命中被动条件上下文 (鹰眼/夜视)"""
+        # 鹰眼持有者的刺击视为远程
+        has_eagle = any(b.definition.name == "鹰眼" for b in fighter.buffs.buffs)
+        is_ranged = skill.get("ranged") or (
+            has_eagle and skill.get("type") in ("pierce",)
+        )
         return {
             "environment": self.environment,
-            "attack_type": "ranged" if skill.get("type") in ("pierce",) and skill.get("ranged") else "melee",
+            "attack_type": "ranged" if is_ranged else "melee",
         }
 
     def _build_dodge_context(self, fighter: Fighter) -> dict:

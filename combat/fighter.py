@@ -81,17 +81,22 @@ class Fighter:
 
         # ── 派生数值 (用裸属性，不受 buff 影响) ──
         self.max_hp = hp_from(self._end)
-        self.hp = cfg.get("current_hp") or self.max_hp
+        _hp = cfg.get("current_hp")
+        self.hp = _hp if _hp is not None else self.max_hp
         self.max_stamina = stam_from(self._end)
-        self.stamina = cfg.get("current_stamina") or self.max_stamina
+        _stam = cfg.get("current_stamina")
+        self.stamina = _stam if _stam is not None else self.max_stamina
         self.max_mana = mana_from(self._int)
-        self.mana = cfg.get("current_mana") or self.max_mana
+        _mana = cfg.get("current_mana")
+        self.mana = _mana if _mana is not None else self.max_mana
         self.collapse = self._wil * 50
         self.max_spirit = self._wil * 10
-        self.spirit = cfg.get("current_spirit") or self.max_spirit
+        _spirit = cfg.get("current_spirit")
+        self.spirit = _spirit if _spirit is not None else self.max_spirit
 
         self.max_armor = float(cfg.get("armor", 0) or 0)
-        self.armor = cfg.get("current_armor") or self.max_armor
+        _armor = cfg.get("current_armor")
+        self.armor = _armor if _armor is not None else self.max_armor
 
         # ── 战斗状态 ──
         self.team: int = cfg.get("team", 0)  # 0=玩家方 1=敌方
