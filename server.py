@@ -973,7 +973,7 @@ class SkillAddReq(BaseModel):
 
 # ── 解析 CHAR_ADD / LEVEL_UP ──
 
-def _validate_narrative(text: str, chars: list, sess: dict) -> str:
+def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
     """检查 AI 叙述是否与角色数据一致，不一致则追加系统提示"""
     if not text:
         return text
@@ -1198,7 +1198,19 @@ def chat(req: ChatReq):
                 eq_id = eq.get(slot_key)
                 if eq_id:
                     eq_item = next((e for e in _equipment_pool if e["id"] == eq_id), None)
-                    eq_names.append(f"{slot_key}:{eq_item['name']}" if eq_item else f"{slot_key}:?")
+                    if eq_item:
+                        eq_names.append(f"{slot_key}:{eq_item['name']}")
+                        # 装备附带的技能——写入 AI 上下文，战斗中可用
+                        if eq_item.get("skill"):
+                            sk = eq_item["skill"]
+                            line += f"\n  🔧装备技({eq_item['name']}): {sk['name']}「{sk.get('type','?')}」(主动)"
+                            line += f" 伤害={sk.get('formula','?')}"
+                            if sk.get('hit_formula'):
+                                line += f" 命中={sk.get('hit_formula','?')}"
+                            line += f" 消耗={sk.get('cost','?')} CD={sk.get('interval','?')}"
+                        # 装备的被动/特殊效果——写入 AI 上下文
+                        if eq_item.get("special"):
+                            line += f"\n  📌装备特效({eq_item['name']}): {eq_item['special']}"
             if eq_names:
                 line += f"\n  装备:{', '.join(eq_names)}"
         # 怀孕状态标记
