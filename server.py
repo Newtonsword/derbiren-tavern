@@ -1203,7 +1203,7 @@ def session_chat(sid: str, data: dict):
 
 @app.post("/api/chat")
 def chat(req: ChatReq):
-    sess = sessions.get(req.session_id) or new_session()
+    sess = sessions.get(req.session_id) or _load(req.session_id) or new_session()
     chars = sess.get("characters", [])
     active = next((c for c in chars if c["id"] == sess.get("active_char_id")), chars[0] if chars else None)
 
@@ -2272,6 +2272,7 @@ def create(req: NewSessionReq = None):
         twin_skills=req.twin_skills if req.twin_skills else None,
         twin_passives=req.twin_passives if req.twin_passives else None,
     )
+    sessions[s["id"]] = s
     _save(s)
     return {"session_id": s["id"], "characters": s["characters"], "active_char_id": s["active_char_id"], "world_setting": s["world_setting"], "day": s["day"], "days_until_attack": s["days_until_attack"]}
 
