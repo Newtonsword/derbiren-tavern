@@ -1615,6 +1615,9 @@ def chat(req: ChatReq):
         c = _get_client()
         temp = float(os.getenv("LLM_TEMPERATURE", "0.85"))
         max_tok = int(os.getenv("LLM_MAX_TOKENS", "1024"))
+        # NSFW模式色情场景需要大幅扩展篇幅（1500字+），token必须够
+        if nsfw_on:
+            max_tok = max(max_tok, 4096)
         # 费用分层：非战斗 /day 用便宜模型
         cheap_model = os.getenv("LLM_CHEAP_MODEL", "")
         m = os.getenv("LLM_MODEL", "deepseek-chat")
@@ -2094,9 +2097,18 @@ def explore_dungeon(sid: str, req: ExploreRequest):
             + (f' | {skills_raw}' if skills_raw else '')
             + ']'
         )
+        # 直接加入角色面板——不依赖前端回传
+        new_char = _make_char(name, species, 1.3, 1)
+        new_char["stats"] = stats
+        new_char["free_points"] = 0
+        if skills_raw:
+            new_char["skills"] = _make_skills_from_raw(skills_raw)
+        _assign_starter_skills(new_char)
+        _ensure_melee_skill(new_char)
+        s["characters"].append(new_char)
         _log_event(s, "explore_monster", f'{char["name"]} 探索中遇到了 {name}（{species}）', {"char": char["name"], "monster": name, "species": species})
         _save(s)
-        return {"result": "monster", "char_add": msg, "name": name, "species": species, "msg": f'{char["name"]}在探索中发现了一只迷路的{species}——{name}！它似乎愿意加入地下城。'}
+        return {"result": "monster", "name": name, "species": species, "msg": f'{char["name"]}在探索中发现了一只迷路的{species}——{name}！它似乎愿意加入地下城。', "char_add": msg}
 
 
 # ── 事件日志 ──
