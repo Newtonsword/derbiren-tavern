@@ -572,7 +572,7 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
         ⚠️ 本游戏机制（魔物物种、raid波次、战斗公式、天数系统等）均围绕默认世界观「小魔王地下城」设计。自定义世界观会改变叙事风格，但不会自动匹配对应的敌人/物种/规则——请知悉后再修改。
       </div>
       <div style="margin-bottom:12px;">
-        <label style="font-size:12px;color:var(--dim);cursor:pointer;user-select:none;" onclick="var el=document.getElementById('preset-list');el.style.display=el.style.display==='none'?'flex':'none'">📚 角色图鉴 <span style="font-size:10px;">(点击展开查看全部角色)</span></label>
+        <label style="font-size:12px;color:var(--dim);cursor:pointer;user-select:none;" onclick="var el=document.getElementById('preset-list');el.style.display=el.style.display==='none'?'flex':'none'">📚 出生库 <span style="font-size:10px;">(点击展开查看全部出生)</span></label>
         <div id="preset-list" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
         <div id="preset-detail" style="display:none;margin-top:8px;padding:10px 12px;background:var(--msg-gm);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;"></div>
       </div>
@@ -1073,13 +1073,18 @@ function toggleBirth(birthId) {
     : `<b>${b.primary.name}</b>（${b.species}）`;
   const twinStats = b.twin ? `<br>${b.twin.name}: ${Object.entries(b.twin.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}` : '';
 
+  const primarySkillsHTML = cp ? `<div style="color:var(--dim);font-size:11px;margin-top:2px;">📋 ${cp.name} 技能：${(cp.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(cp.passives||[]).map(s=>s.name).join('、') || '无'}</div>` : '';
+  const twinSkillsHTML = twinCP ? `<div style="color:var(--dim);font-size:11px;margin-top:2px;">📋 ${twinCP.name} 技能：${(twinCP.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(twinCP.passives||[]).map(s=>s.name).join('、') || '无'}</div>` : '';
+
   detail.innerHTML = `
     ${charDescHTML}
     <div style="color:var(--accent-glow);margin-bottom:4px;font-size:11px;border-top:1px solid var(--border);padding-top:6px;">📍 出生场景</div>
     <div style="color:var(--dim);margin-bottom:6px;line-height:1.7;font-size:12px;">${b.desc}</div>
     <div style="color:var(--dim);font-size:11px;margin-bottom:4px;">🎯 获得角色：${chars}</div>
     <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${b.primary.name}: ${Object.entries(b.primary.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}${twinStats}</div>
-    <div style="color:#c9a050;font-size:11px;">💡 ${b.hint}</div>
+    ${primarySkillsHTML}
+    ${twinSkillsHTML}
+    <div style="color:#c9a050;font-size:11px;margin-top:4px;">💡 ${b.hint}</div>
     <div id="birth-lore-${birthId}" style="margin-top:6px;"></div>
   `;
   detail.style.display = 'block';
@@ -1094,28 +1099,6 @@ function toggleBirth(birthId) {
 
   // 加载物种资料到卡片内的面板
   loadSpeciesLoreForBirth(b.species, birthId);
-
-  // 自动展开角色图鉴并显示该出生对应的角色
-  const presetList = document.getElementById('preset-list');
-  presetList.style.display = 'flex';
-  const primaryIdx = CHARACTER_PRESETS.findIndex(p => p.name.includes(b.primary.name));
-  if (primaryIdx >= 0) selectPreset(primaryIdx);
-  // 双胞胎：追加第二个角色的信息
-  if (b.twin) {
-    const twinIdx = CHARACTER_PRESETS.findIndex(p => p.name.includes(b.twin.name));
-    if (twinIdx >= 0) {
-      const tp = CHARACTER_PRESETS[twinIdx];
-      const twinStatStr = Object.entries(tp.stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
-      const presetDetail = document.getElementById('preset-detail');
-      presetDetail.innerHTML += `
-        <hr style="border-color:var(--border);margin:8px 0;">
-        <div style="color:var(--gold);font-weight:bold;margin-bottom:4px;">📖 ${tp.name}（${tp.species} · ×${tp.coeff}）</div>
-        <div style="color:var(--text);margin-bottom:6px;line-height:1.7;">${tp.desc}</div>
-        <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${twinStatStr}</div>
-        <div style="color:var(--dim);font-size:11px;">📋 技能：${(tp.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(tp.passives||[]).map(s=>s.name).join('、') || '无'}</div>
-      `;
-    }
-  }
 }
 
 function loadSpeciesLoreForBirth(species, birthId) {
