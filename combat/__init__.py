@@ -62,7 +62,7 @@ def make_ai_picker(api_key: str = "", model: str = "deepseek-chat"):
 # 便捷函数: 默认 AI (v2 打分系统, 不调 API)
 def make_default_picker():
     async def picker(fighter, enemies, allies):
-        return _fallback_pick(fighter, enemies)
+        return _fallback_pick(fighter, enemies, allies)
     return picker
 
 __all__ = [
