@@ -175,6 +175,9 @@ body {
   font-size: 12px; line-height: 1.7; color: var(--dim);
 }
 .skill-detail.open { display: block; }
+.eq-detail-expand.open, .eq-slot-detail-expand.open { display: block !important; }
+.eq-arrow { transition: .2s; display: inline-block; font-size: 10px; color: var(--dim); }
+.eq-arrow.open { transform: rotate(180deg); }
 .skill-detail .s-formula { color: var(--gold); font-family: monospace; }
 .skill-detail .upgrade-btn {
   margin-top: 6px; padding: 3px 12px; background: var(--accent); color: #fff;
@@ -991,6 +994,8 @@ async function init() {
 
 async function loadOrCreateSession() {
   const saved = localStorage.getItem('derbiren_sid');
+  // 防御：加载前清空，防止旧数据残留
+  state.characters = [];
   if (saved) {
     try {
       const res = await fetch('/api/session/' + saved);
@@ -1200,6 +1205,9 @@ function closeCreateModal() {
 }
 
 async function createAdventure() {
+  // 防御：清除旧角色，防止面板残留上局数据
+  state.characters = [];
+  renderAll();
   const world = document.getElementById('create-world').value.trim() || '小魔王地下城。';
   const playerName = document.getElementById('create-player-name').value.trim() || '小魔王';
   const speciesEl = document.getElementById('create-species');
@@ -1457,6 +1465,7 @@ async function sendMessage() {
       document.getElementById('sid-display').textContent = state.session_id;
     }
     if (data.characters_updated) {
+      _equipmentCache = null;  // 刷新装备缓存（波次奖励）
       await refreshCharacters();
     }
     // 更新天数显示
@@ -1483,7 +1492,12 @@ function renderAll() {
 
 function renderCharTabs() {
   const row = document.getElementById('char-tabs-row');
-  const parts = state.characters.map(c => {
+  // 防御：只渲染当前会话的角色（过滤掉可能的脏数据）
+  const validChars = (state.characters || []).filter(c => c && c.id && c.name);
+  if (validChars.length !== state.characters.length) {
+    state.characters = validChars;
+  }
+  const parts = validChars.map(c => {
     const active = c.id === state.active_char_id ? ' active' : '';
     const badge = c.pending_skill_points > 0 ? `<span class="badge">${c.pending_skill_points}</span>` : '';
     return `<button class="char-tab${active}" onclick="selectChar('${c.id}')">${c.name} Lv.${c.level}${badge}</button>`;
@@ -2712,7 +2726,7 @@ async function renderEquipment() {
       </div>`;
     }
     const rarityClass = 'rarity-' + (item.rarity || 'common');
-    const bonusStr = item.stats_bonus ? Object.entries(item.stats_bonus)
+    const bonusStr = item.attribute_bonus ? Object.entries(item.attribute_bonus)
       .filter(([k,v]) => v !== 0)
       .map(([k,v]) => `${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ') : '';
     let skillHtml = '';
@@ -2720,14 +2734,22 @@ async function renderEquipment() {
       const sk = item.skill;
       skillHtml = `<div style="font-size:11px;color:var(--accent);margin-top:2px;">⚡ ${sk.name}「${sk.type}」| 公式:${sk.formula} | 命中:${sk.hit_formula} | 消耗:${sk.cost} | 使用:${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ' | 冷却:'+sk.cooldown : ''}${sk.special?' | '+sk.special:''}${sk.description?'<br>📝 '+sk.description:''}</div>`;
     }
-    let detailHtml = `<div style="font-size:12px;color:var(--good);margin-top:2px;">📊 ${bonusStr}</div>`;
+    const HDR = 'font-size:12px;color:var(--gold);font-weight:bold;margin-top:6px;border-bottom:1px solid #333;padding-bottom:2px;';
+    let detailHtml = `<div style="${HDR}">【主属性】</div>`;
+    detailHtml += `<div style="font-size:12px;color:var(--good);margin-left:4px;">${bonusStr || '无'}</div>`;
+    detailHtml += `<div style="${HDR}">【副属性】</div>`;
     if (item.secondary_bonus && Object.values(item.secondary_bonus).some(v=>v!==0)) {
       const secStr = Object.entries(item.secondary_bonus).filter(([k,v])=>v!==0).map(([k,v])=>`${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ');
-      detailHtml += `<div style="font-size:11px;color:var(--gold);">🔸 副属性: ${secStr}</div>`;
+      detailHtml += `<div style="font-size:12px;color:var(--gold);margin-left:4px;">${secStr}</div>`;
+    } else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
+    detailHtml += `<div style="${HDR}">【技能】</div>`;
+    if (item.skill) { detailHtml += skillHtml; }
+    else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
+    if (item.special) {
+      detailHtml += `<div style="${HDR}">【特殊效果】</div>`;
+      detailHtml += `<div style="font-size:11px;color:#8b5cf6;margin-left:4px;">✨ ${item.special}</div>`;
     }
-    detailHtml += skillHtml;
-    if (item.special) detailHtml += `<div style="font-size:11px;color:#8b5cf6;">✨ ${item.special}</div>`;
-    detailHtml += `<div style="font-size:11px;color:var(--dim);margin-top:2px;">📦 来源: ${item.source==='starting'?'开局':item.source==='exploration'?'探索':item.source==='wave'?'波次奖励':'未知'} | 品级: ${RARITY_NAMES[item.rarity]||item.rarity}</div>`;
+    detailHtml += `<div style="font-size:11px;color:var(--dim);margin-top:4px;">📦 来源: ${item.source==='starting'?'开局':item.source==='exploration'?'探索':item.source==='wave'?'波次奖励':'未知'} | 品级: ${RARITY_NAMES[item.rarity]||item.rarity}</div>`;
     return `<div class="eq-slot-card" style="cursor:pointer;" onclick="this.querySelector('.eq-slot-detail-expand')?.classList.toggle('open')">
       <span class="slot-icon">${slotIcons[slot]}</span>
       <span class="slot-label">${name}</span>
@@ -2765,29 +2787,35 @@ async function renderEquipment() {
     const equippedByNames = allEquippedBy[item.id] || [];
     const equipLabel = isEquipped ? '已装备' + (equippedByNames.length ? '·' + equippedByNames.join('、') : '') : '装备';
     const rarityClass = 'rarity-' + (item.rarity || 'common');
-    const bonusStr = item.stats_bonus ? Object.entries(item.stats_bonus)
+    const bonusStr = item.attribute_bonus ? Object.entries(item.attribute_bonus)
       .filter(([k,v]) => v !== 0)
       .map(([k,v]) => `${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ') : '';
     const slotTag = SLOT_NAMES[item.slot] ? ({weapon:'🗡️', armor:'🛡️', accessory:'💍'}[item.slot]+SLOT_NAMES[item.slot]) : item.slot;
-    let detailHtml = `<div style="font-size:12px;color:var(--good);">📊 ${bonusStr || '无属性加成'}</div>`;
+    const HDR = 'font-size:12px;color:var(--gold);font-weight:bold;margin-top:6px;border-bottom:1px solid #333;padding-bottom:2px;';
+    let detailHtml = `<div style="${HDR}">【主属性】</div>`;
+    detailHtml += `<div style="font-size:12px;color:var(--good);margin-left:4px;">${bonusStr || '无'}</div>`;
+    detailHtml += `<div style="${HDR}">【副属性】</div>`;
     if (item.secondary_bonus && Object.values(item.secondary_bonus).some(v=>v!==0)) {
       const secStr = Object.entries(item.secondary_bonus).filter(([k,v])=>v!==0).map(([k,v])=>`${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ');
-      detailHtml += `<div style="font-size:11px;color:var(--gold);">🔸 副属性: ${secStr}</div>`;
-    }
+      detailHtml += `<div style="font-size:12px;color:var(--gold);margin-left:4px;">${secStr}</div>`;
+    } else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
+    detailHtml += `<div style="${HDR}">【技能】</div>`;
     if (item.skill) {
       const sk = item.skill;
       detailHtml += `<div style="font-size:11px;color:var(--accent);margin-top:4px;">⚡ 技能: ${sk.name}「${sk.type}」<br>　 伤害公式: ${sk.formula}<br>　 命中公式: ${sk.hit_formula}<br>　 消耗: ${sk.cost} | 使用: ${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ' | 冷却: '+sk.cooldown : ''}${sk.special?'<br>　 特殊: '+sk.special:''}${sk.description?'<br>　 📝 '+sk.description:''}</div>`;
-    }
+    } else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
     if (item.special) {
-      detailHtml += `<div style="font-size:11px;color:#8b5cf6;margin-top:4px;">✨ ${item.special}</div>`;
+      detailHtml += `<div style="${HDR}">【特殊效果】</div>`;
+      detailHtml += `<div style="font-size:11px;color:#8b5cf6;margin-left:4px;">✨ ${item.special}</div>`;
     }
     detailHtml += `<div style="font-size:11px;color:var(--dim);margin-top:4px;">📦 来源: ${item.source==='starting'?'开局赠送':item.source==='exploration'?'探索发现':item.source==='wave'?'波次奖励':'未知'} | 品级: ${RARITY_NAMES[item.rarity]||item.rarity}</div>`;
-    return `<div class="eq-item-card" onclick="this.querySelector('.eq-detail-expand')?.classList.toggle('open')">
+    return `<div class="eq-item-card" onclick="const d=this.nextElementSibling;const a=this.querySelector('.eq-arrow');if(d){d.classList.toggle('open');if(a)a.classList.toggle('open',d.classList.contains('open'));}" style="cursor:pointer;">
       <span class="rarity-badge ${rarityClass}">${RARITY_NAMES[item.rarity]||item.rarity}</span>
       <span class="slot-tag">${slotTag}</span>
       <span class="item-name">${item.name}</span>
       <span class="slot-desc" style="flex:1;">${item.description||''}</span>
       ${bonusStr ? `<span class="item-bonus">${bonusStr}</span>` : ''}
+      <span class="eq-arrow">▼</span>
       <button class="equip-btn ${isEquipped?'equipped':''}"
         onclick="event.stopPropagation();equipItem('${c.id}','${item.id}')"
         ${isEquipped?'disabled':''}>${equipLabel}</button>
