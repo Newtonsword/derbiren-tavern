@@ -1518,6 +1518,16 @@ def chat(req: ChatReq):
                     f"⚠️ 请 GM 叙述这段招募事件，然后系统会自动将 {mon['name']}（{mon['species']}）加入角色面板。"
                 )
                 _log_event(sess, "recruit", f"招募了 {mon['name']}（{mon['species']}）", {"char": mon['name'], "species": mon['species']})
+                # 直接加入角色面板——不依赖 CHAR_ADD 预解析
+                new_recruit = _make_char(mon['name'], mon['species'], 1.3, 1)
+                new_recruit["stats"] = mon['stats']
+                new_recruit["free_points"] = 0
+                if mon.get("skills_raw"):
+                    new_recruit["skills"] = _make_skills_from_raw(mon["skills_raw"])
+                _assign_starter_skills(new_recruit)
+                _ensure_melee_skill(new_recruit)
+                chars.append(new_recruit)
+                chars_updated = True
         day_msg += f'[DAY_ADVANCE] 第{sess["day"]}天。{activity_desc}。' + recruit_msg + (f' ⚠️ 冒险者将在{dta}天后来袭！' if dta > 0 else ' ⚠️ 冒险者今天来袭！准备战斗！')
         # 第0天 → 程序模拟战斗（不再是 AI 叙事）
         if dta == 0:
