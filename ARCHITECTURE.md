@@ -1233,5 +1233,12 @@ pip install fastapi uvicorn openai httpx python-dotenv pytest
 | `REVIEW_MODEL` | (空=不启用) | 审查 AI 模型名 |
 | `REVIEW_API_KEY` | 同主 API | 审查 AI 的 key |
 | `REVIEW_BASE_URL` | 同主 API | 审查 AI 的 endpoint |  
+
+### 19.9 审查AI自动补标签 + 探索兜底 + DMG兼容（2026-06-26）
+- **审查AI玩家可见**：审查发现MISSING时不再只记日志，追加 `⚠️ [系统]` 提示到 narrative 末尾
+- **探索遇敌兜底**：探索时 50% 概率代码层注入战斗事件（7种随机敌人），不再全靠AI自觉
+- **DMG全角冒号**：`[DMG:]` 检查兼容全角 `[DMG：]`
+- **命令解析全面改用 `in`**：所有动作检测统一使用 `'动作' in action`，无遗留 startswith 前缀 bug
+
 *德比伦 & Newt 共同撰写*  
 *有任何问题——@Derbiren on QQ*
