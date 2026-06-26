@@ -1648,14 +1648,14 @@ def chat(req: ChatReq):
                 # 跳过后续探索逻辑
             else:
                 sess["_explored_count"] = explored + 1
-                # 探索遇敌代码兜底：50%概率触发战斗事件
-                if random.random() < 0.5:
-                    encounter_pool = ["暗影蝙蝠","洞穴巨鼠","岩石傀儡","毒雾团","幽灵","迷路的骷髅兵","血腥藤蔓"]
-                    encounter = random.choice(encounter_pool)
-                    recruit_msg += f"\n[ENCOUNTER] 探索途中遭遇了{encounter}的伏击！必须战斗。"
-                    _log_event(sess, "explore_encounter", f'探索遭遇{encounter}', {"enemy": encounter})
-        # 巡逻触发招募事件
+        # 巡逻触发招募事件 & 探索遇敌
         recruit_msg = ""
+        # 探索遇敌代码兜底：50%概率触发战斗事件
+        if '探索' in action and sess.get("_explored_count", 0) <= 1 and random.random() < 0.5:
+            encounter_pool = ["暗影蝙蝠","洞穴巨鼠","岩石傀儡","毒雾团","幽灵","迷路的骷髅兵","血腥藤蔓"]
+            encounter = random.choice(encounter_pool)
+            recruit_msg = f"\n[ENCOUNTER] 探索途中遭遇了{encounter}的伏击！必须战斗。"
+            _log_event(sess, "explore_encounter", f'探索遭遇{encounter}', {"enemy": encounter})
         if '巡逻' in action and _recruit_pool:
             recruited = sess.get("recruited", [])
             available = [m for m in _recruit_pool if m["name"] not in recruited]
