@@ -1088,14 +1088,16 @@ NSFW 规则包含大量**负面约束**来控制 AI 的色情描写质量：
 ### 18.1 项目路径
 
 ```
-C:\Users\niutun\derbiren-tavern
+C:\Users\niutun\AppData\Local\hermes\output\derbiren-tavern
 ```
+
+⚠️ 不是 `C:\Users\niutun\derbiren-tavern`——项目在 hermes output 目录下。
 
 ### 18.2 常用命令
 
 ```bash
-# 启动服务器
-cd C:\Users\niutun\derbiren-tavern && python server.py
+# 启动服务器（注意用项目自带 venv）
+cd C:\Users\niutun\AppData\Local\hermes\output\derbiren-tavern && .\venv\Scripts\python.exe server.py
 # → http://127.0.0.1:8099
 
 # 运行全部测试
@@ -1187,6 +1189,49 @@ pip install fastapi uvicorn openai httpx python-dotenv pytest
 
 ---
 
-*最后更新: 2026-06-23*  
+*最后更新: 2026-06-12*
+
+---
+
+## 19. 近期变更日志（2026-06-12）
+
+### 19.1 API 字段迁移
+- `/api/chat` 从 `action`+`location` → `message` 字段（FastAPI 422 时会精确提示缺失字段）
+- `/api/session/new` 新增 `world_name` 返回字段
+
+### 19.2 起名系统
+- 招募魔物后不再直接加入面板——生成 3 个名字选项（含默认名），玩家选择或自定义
+- 跳过起名直接行动 → 自动使用默认名（第一个选项）
+- 新增 `_generate_name_options()` 函数 + `_SPECIES_NAME_POOL` 字典
+
+### 19.3 审查 AI
+- 主 AI 回复后，用独立快速模型（`REVIEW_MODEL`）二次检查遗漏标签
+- `.env` 配置：`REVIEW_MODEL=deepseek-chat`，默认同主 API
+- 审查失败不阻塞主流程（try/except pass），结果写入事件日志
+
+### 19.4 探索限制
+- 每天最多 1 次探索（`_explored_count` 计数，每日重置）
+- 每次探索最多 1 个产出（装备/蓝图/角色三选一）
+- SYS prompt 明确约束
+
+### 19.5 取消自动回血
+- `_daily_recovery_all()` 仅在 `/day 休息` 时调用
+- 战斗后不自动恢复——受伤必须专门休息
+
+### 19.6 探索危险性提升
+- SYS prompt：「探索时地下城黑暗深处引来更多攻击性怪物，GM应频繁触发遭遇战」
+
+### 19.7 命令前缀 Bug 批量修复
+- `action.startswith('巡逻')` → `'巡逻' in action`
+- `action.startswith('配种')` → `'配种' in action`
+- `action.startswith('净化')` → `'净化' in action`
+- 根因：`/day N 动作` 解析后 action=`"N 动作"`，`startswith` 被数字前缀骗了
+
+### 19.8 新环境变量
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `REVIEW_MODEL` | (空=不启用) | 审查 AI 模型名 |
+| `REVIEW_API_KEY` | 同主 API | 审查 AI 的 key |
+| `REVIEW_BASE_URL` | 同主 API | 审查 AI 的 endpoint |  
 *德比伦 & Newt 共同撰写*  
 *有任何问题——@Derbiren on QQ*

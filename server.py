@@ -86,6 +86,7 @@ app = FastAPI(title="Derbiren Tavern")
 sessions: dict = {}
 
 _client: OpenAI | None = None
+_review_client: OpenAI | None = None
 
 def _get_client():
     global _client
@@ -98,6 +99,44 @@ def _get_client():
             http_client=hc,
         )
     return _client
+
+def _get_review_client():
+    """审查 AI 客户端——默认同主模型，可通过 REVIEW_* 环境变量覆盖"""
+    global _review_client
+    if _review_client is None:
+        verify = os.getenv("SSL_VERIFY", "false" if platform.system() == "Windows" else "true").lower() == "true"
+        hc = httpx.Client(verify=verify)
+        _review_client = OpenAI(
+            api_key=os.getenv("REVIEW_API_KEY", os.getenv("OPENAI_API_KEY", "")),
+            base_url=os.getenv("REVIEW_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com")),
+            http_client=hc,
+        )
+    return _review_client
+
+# ── 起名选项生成 ──
+_SPECIES_NAME_POOL = {
+    "史莱姆": ["软软", "弹弹", "啵啵", "黏黏", "果冻"],
+    "哥布林": ["哥布A", "哥布B", "铁头", "绿皮", "短剑"],
+    "蝙蝠": ["吱吱", "翼影", "夜风", "黑翼", "回声"],
+    "蛇": ["沙沙", "鳞光", "冷牙", "盘影", "翠尾"],
+    "野狼": ["灰牙", "白爪", "独嚎", "裂风", "幽影"],
+    "杀人兔": ["跳跳", "红眼", "飞踢", "棉球", "暴雪"],
+    "触手怪": ["墨墨", "暗触", "深渊", "缠绕", "吸盘"],
+    "猫龙": ["影爪", "焰尾", "暗鳞", "龙瞳", "冥火"],
+    "幼龙": ["赤焰", "龙崽", "炉石", "熔渣", "余烬"],
+    "石像鬼": ["岩盾", "碎岩", "石翼", "灰烬", "守望"],
+}
+
+def _generate_name_options(species: str, default_name: str) -> list[str]:
+    """为指定物种生成3个起名选项，default_name 必定在列表中"""
+    pool = _SPECIES_NAME_POOL.get(species, [default_name])
+    # 确保默认名在列表中
+    if default_name not in pool:
+        pool = [default_name] + pool
+    # 随机选3个（保持默认名在第一位）
+    others = [n for n in pool if n != default_name]
+    random.shuffle(others)
+    return [default_name] + others[:2]
 
 # ── 系统提示词 ──
 
@@ -244,10 +283,10 @@ SYS = """你是一个文字冒险游戏的 GM，负责主持「小魔王地下�
 玩家输入 /day 或 /次日 或 /过天 即可推进到下一天，每天可选择一项活动：
 - 锻炼（默认）：魔物获得经验，早期升级快后期慢。经验公式：基础≈30-天数×0.5，除以(等级×0.3)，最低3点
 - 巡逻：可能发现道具、遭遇落单冒险者
-- 休息：恢复体力和精神
+- 休息：恢复体力和精神，HP/护甲/体力/精神回满。注意：战斗后不会自动回血——如果受伤了必须专门休息一天才能恢复。
 - 研究：可能解锁新技能线索
 - 净化：消耗1天，移除选中魔物的负面诅咒/减益效果（战斗中受到的debuff也会清除）
-- 探索：派遣魔物深入地下城未知区域——可能找到装备、发现新的工程蓝图、或找到提升已有工事上限的改造方案
+- 探索：派遣魔物深入地下城未知区域——可能找到装备、发现新的工程蓝图、或找到提升已有工事上限的改造方案。每天只能探索一次，每次最多获得一件物品或招募一个角色（不会同时获得多项）。⚠️ 探索时地下城的黑暗深处会引来更多攻击性怪物——GM应频繁触发遭遇战，且探索不要深入太远，不要轻易进入未探明的深层区域。
 - 配种：魔物没有生殖隔离——任何两只魔物都可以尝试繁衍，同物种100%成功，跨物种成功率随物种差距增大而降低（80%/50%/30%），猫龙参与跨物种配种时成功率+20%。魔王本人也可以参与配种，受孕率100%。被选中的魔物可能会害羞但绝不会拒绝。母方进入怀孕期（稀有度越低越快：哥布林/史莱姆1天，猫龙4天），怀孕期间战斗伤害-60%。到期自动生下后代，继承双亲属性平均+随机突变+各取一个技能。\n- 杂交亚种：跨物种配种可能产生亚种——哥布林基因污染后代必为纯种哥布林；猫龙参与跨物种70%概率出组合式亚种（猫/龙+对方首字，如猫鸟、龙狼）；其他物种30%概率出「混血{物种}」。{NSFW_BREEDING}
 当玩家输入 /day 时，系统会自动推进天数并计算经验，GM 收到 [DAY_ADVANCE] 消息后需叙述这一天发生的事。
 如果消息包含 [EVENT] 和 [CHAR_ADD] 标签，说明发生了招募事件——叙述如何遇到这只魔物、它加入的过程，系统会自动解析标签添加角色。
@@ -281,7 +320,7 @@ SYS = """你是一个文字冒险游戏的 GM，负责主持「小魔王地下�
   例：[CONSTRUCTION_DISCOVER: 毒藤缠绕 | 🌿 | 地面陷阱 | 用地下城深处找到的变异藤蔓种子培育的活体陷阱——踩中会被缠住 | 定身5秒+每秒5毒伤 | 2 | 3]
 - 提升上限：[CONSTRUCTION_UPGRADE: 已有工事名称 | 新上限数值]
   例：[CONSTRUCTION_UPGRADE: 尖刺陷阱 | 5]
-⚠️ 工程发现通过探索随机触发，GM决定何时发现、发现什么——但每个探索日最多1个工程发现。
+⚠️ 工程发现通过探索随机触发，GM决定何时发现、发现什么——但每个探索日最多1个工程发现，且整个探索日最多产出1个结果（1件装备、1个蓝图、或1个角色——三选一）。
 类型可选：防御工事/地面陷阱/天花板陷阱/环境工事/功能设施
 
 【战斗输出格式】
@@ -1059,6 +1098,33 @@ def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
         # 警告写入事件日志而非泄漏到叙事文本
         for w in warnings:
             _log_event(sess, "system_warn", w[:200], {"warning": w[:200]})
+    
+    # ── AI 审查层：用快速模型二次检查遗漏 ──
+    review_model = os.getenv("REVIEW_MODEL", "")
+    if review_model:
+        try:
+            rc = _get_review_client()
+            review_prompt = (
+                "你是一个游戏系统审查员。检查以下 GM 叙述是否遗漏了必要的系统标签。\n\n"
+                "规则：\n"
+                "1. 如果叙述中描述了新魔物加入/投靠/遇到，但没有 [CHAR_ADD: 名字 | 物种 | ...] 标签 → 报告缺失\n"
+                "2. 如果叙述中描述了角色升级/变强，但没有 [LEVEL_UP: 名字 | 新等级] 标签 → 报告缺失\n"
+                "3. 如果叙述中描述了对敌人造成伤害，但没有 [DMG: ...] 计算块 → 报告缺失\n\n"
+                "只需回复：'OK'（没问题）或 'MISSING: <具体缺什么>'。不要解释。\n\n"
+                f"当前队伍角色：{', '.join(c['name'] + '(' + c['species'] + ')' for c in chars)}\n\n"
+                f"GM叙述：\n{text[-2000:]}"
+            )
+            rr = rc.chat.completions.create(
+                model=review_model,
+                messages=[{"role": "user", "content": review_prompt}],
+                temperature=0.1, max_tokens=200,
+            )
+            review_result = rr.choices[0].message.content or ""
+            if review_result.strip().upper() != "OK" and "MISSING" in review_result.upper():
+                _log_event(sess, "review_ai", review_result[:300], {"review": review_result[:300]})
+        except Exception:
+            pass  # 审查失败不阻塞主流程
+    
     return text
 
 CHAR_ADD_RE = re.compile(
@@ -1305,6 +1371,69 @@ def chat(req: ChatReq):
     chars_updated = False
     day_advanced = False
     user_msg = req.message.strip()
+    # ── 起名响应处理 ──
+    pending = sess.get("_pending_recruit")
+    if pending and user_msg:
+        choice = user_msg.strip()
+        options = pending["name_options"]
+        chosen_name = None
+        if choice in ("1", "2", "3"):
+            idx = int(choice) - 1
+            if idx < len(options):
+                chosen_name = options[idx]
+        elif choice == "0" or choice.lower() in ("自定义", "自己起", "其他"):
+            sess["_pending_recruit"]["awaiting_custom"] = True
+            return {
+                "narrative": "好的，请直接输入你想起的名字吧～",
+                "session_id": sess["id"], "title": sess["title"],
+                "day": sess.get("day", 1), "days_until_attack": sess.get("days_until_attack", 5),
+                "characters_updated": False,
+            }
+        elif pending.get("awaiting_custom"):
+            chosen_name = choice[:8]
+        elif len(choice) <= 8 and choice not in ("是", "否", "好", "行", "可以", "不要", "算了"):
+            chosen_name = choice
+        
+        if chosen_name:
+            new_recruit = _make_char(chosen_name, pending["species"], 1.3, 1)
+            new_recruit["stats"] = pending["stats"]
+            new_recruit["free_points"] = 0
+            if pending.get("skills_raw"):
+                new_recruit["skills"] = _make_skills_from_raw(pending["skills_raw"])
+            _assign_starter_skills(new_recruit)
+            _ensure_melee_skill(new_recruit)
+            chars.append(new_recruit)
+            chars_updated = True
+            _log_event(sess, "recruit", f"招募了 {chosen_name}（{pending['species']}）", {"char": chosen_name, "species": pending["species"]})
+            del sess["_pending_recruit"]
+            sessions[sess["id"]] = sess
+            _save(sess)
+            return {
+                "narrative": f"✨ {chosen_name}（{pending['species']}）加入了地下城！已加入角色面板。",
+                "session_id": sess["id"], "title": sess["title"],
+                "day": sess.get("day", 1), "days_until_attack": sess.get("days_until_attack", 5),
+                "characters_updated": True,
+            }
+    # ── 待起名自动回退：玩家跳过起名直接行动 → 用默认名 ──
+    pending_auto = sess.get("_pending_recruit")
+    if pending_auto:
+        options = pending_auto["name_options"]
+        fallback_name = options[0]  # 第一个是默认名
+        new_recruit = _make_char(fallback_name, pending_auto["species"], 1.3, 1)
+        new_recruit["stats"] = pending_auto["stats"]
+        new_recruit["free_points"] = 0
+        if pending_auto.get("skills_raw"):
+            new_recruit["skills"] = _make_skills_from_raw(pending_auto["skills_raw"])
+        _assign_starter_skills(new_recruit)
+        _ensure_melee_skill(new_recruit)
+        chars.append(new_recruit)
+        chars_updated = True
+        _log_event(sess, "recruit_auto", f"自动起名 {fallback_name}（{pending_auto['species']}）", {"char": fallback_name, "species": pending_auto["species"]})
+        del sess["_pending_recruit"]
+        # 把提示追加到用户消息前
+        req.message = f"[系统：{fallback_name}（{pending_auto['species']}）已自动加入队伍。]\n" + (user_msg if user_msg else "/day")
+        user_msg = req.message.strip()
+    
     # ── 超时撤退/继续打检测 ──
     _last_vic = sess.get("_last_combat_victor")
     if sess.get("days_until_attack", 5) == 0 and _last_vic == -1:
@@ -1368,8 +1497,10 @@ def chat(req: ChatReq):
         day_msg = ""  # 初始化为空，各阶段追加
         # 工程建造进度推进
         _advance_constructions(sess)
-        # 每日恢复 → HP/护甲/体力/精神回满
-        _daily_recovery_all(sess)
+        # 休息时恢复HP/护甲/体力/精神
+        if '休息' in action:
+            _daily_recovery_all(sess)
+            day_msg = (day_msg or '') + '\n💤 魔物们好好休息了一天，体力完全恢复了。'
         # 检查怀孕到期 → 自动生产
         births = _check_births(sess)
         if births:
@@ -1410,7 +1541,7 @@ def chat(req: ChatReq):
             '探索':'派出魔物深入地下城未知区域探索',
         }.get(action, f'进行了{action}')
         # 净化：清除活跃角色的负面状态
-        if action.startswith('净化') and active:
+        if '净化' in action and active:
             removed = []
             if active.get('cursed'): del active['cursed']; removed.append('诅咒')
             if active.get('debuff'): del active['debuff']; removed.append('减益')
@@ -1419,7 +1550,7 @@ def chat(req: ChatReq):
                 day_msg = f'[PURIFY] {active["name"]} 被净化了——移除了 {", ".join(removed)}。'
                 _log_event(sess, "purify", f'{active["name"]} 净化了 {", ".join(removed)}', {"char": active["name"]})
         # 配种：解析 父=xxx 母=yyy（无生殖隔离，跨物种成功率降低，魔王操魔物100%受孕）
-        if action.startswith('配种'):
+        if '配种' in action:
             import re as _re
             father_name = _re.search(r'父[=＝]([^\s母]+)', user_msg)
             mother_name = _re.search(r'母[=＝]([^\s父]+)', user_msg)
@@ -1500,34 +1631,41 @@ def chat(req: ChatReq):
                 day_msg = '⚠️ 请至少指定一只魔物参与配种，用 /day 配种 父=名字 母=名字（魔王本人用「小魔王」）'
         # 重置每日探索记录
         sess["explored_today"] = []
+        sess["_explored_count"] = 0
+        # 探索限制：每天最多一次
+        if '探索' in action:
+            explored = sess.setdefault("_explored_count", 0)
+            if explored >= 1:
+                day_msg = (day_msg or "") + "\n⚠️ 今天已经探索过了——地下城的未知区域需要时间恢复。明天再来吧。"
+                activity_desc = "想再次探索但被未知的力量阻止了"
+                # 跳过后续探索逻辑
+            else:
+                sess["_explored_count"] = explored + 1
         # 巡逻触发招募事件
         recruit_msg = ""
-        if action.startswith('巡逻') and _recruit_pool:
+        if '巡逻' in action and _recruit_pool:
             recruited = sess.get("recruited", [])
             available = [m for m in _recruit_pool if m["name"] not in recruited]
             if available and random.random() < 0.35:  # 35% 概率触发招募
                 mon = random.choice(available)
                 sess.setdefault("recruited", []).append(mon["name"])
+                # 生成起名选项
+                name_options = _generate_name_options(mon["species"], mon["name"])
+                # 暂存——等玩家选名字后才加入角色栏
+                sess["_pending_recruit"] = {
+                    "species": mon["species"],
+                    "stats": mon["stats"],
+                    "skills_raw": mon.get("skills_raw", ""),
+                    "name_options": name_options,
+                }
                 event_text = random.choice(RECRUIT_EVENTS).format(species=mon["species"])
+                name_list = "、".join(f"{i+1}.{n}" for i, n in enumerate(name_options))
                 recruit_msg = (
                     f"\n[EVENT] 招募事件！{event_text}\n"
-                    f"[CHAR_ADD: {mon['name']} | {mon['species']} | "
-                    f"END:{mon['stats']['END']} STR:{mon['stats']['STR']} SPD:{mon['stats']['SPD']} "
-                    f"DEF:{mon['stats']['DEF']} INT:{mon['stats']['INT']} MP:{mon['stats']['MP']} "
-                    f"WIL:{mon['stats']['WIL']} | {mon['skills_raw']}]\n"
-                    f"⚠️ 请 GM 叙述这段招募事件，然后系统会自动将 {mon['name']}（{mon['species']}）加入角色面板。"
+                    f"[NAME_CHOICE] 请为新来的{mon['species']}起名！可选：{name_list}，或输入自定义名字。\n"
+                    f"⚠️ 请 GM 叙述这段招募事件（150字左右），结尾询问玩家要选哪个名字。"
                 )
-                _log_event(sess, "recruit", f"招募了 {mon['name']}（{mon['species']}）", {"char": mon['name'], "species": mon['species']})
-                # 直接加入角色面板——不依赖 CHAR_ADD 预解析
-                new_recruit = _make_char(mon['name'], mon['species'], 1.3, 1)
-                new_recruit["stats"] = mon['stats']
-                new_recruit["free_points"] = 0
-                if mon.get("skills_raw"):
-                    new_recruit["skills"] = _make_skills_from_raw(mon["skills_raw"])
-                _assign_starter_skills(new_recruit)
-                _ensure_melee_skill(new_recruit)
-                chars.append(new_recruit)
-                chars_updated = True
+                _log_event(sess, "recruit_pending", f"待起名: {mon['species']}", {"species": mon["species"], "options": name_options})
         day_msg += f'[DAY_ADVANCE] 第{sess["day"]}天。{activity_desc}。' + recruit_msg + (f' ⚠️ 冒险者将在{dta}天后来袭！' if dta > 0 else ' ⚠️ 冒险者今天来袭！准备战斗！')
         # 第0天 → 程序模拟战斗（不再是 AI 叙事）
         if dta == 0:
@@ -1536,7 +1674,7 @@ def chat(req: ChatReq):
             sess["_last_combat_victor"] = combat_result["victor_team"]
             combat_narrative = _build_combat_narrative(combat_result, sess["raid_wave"])
             # 将战斗结果追加到 day_msg，AI 只需润色叙事
-            day_msg += f"\n\n[COMBAT_RESULT]\n{combat_narrative}\n\n⚠️ 以上是程序生成的战斗日志。请 GM 将其润色为一段精彩的战斗叙事（150-250字），不需要再计算伤害——所有数值已经由程序判定完毕。战斗结果：{'我方胜利' if combat_result['victor_team'] == 0 else ('敌方胜利' if combat_result['victor_team'] == 1 else '平局——双方僵持不下，战斗超时')}。"
+            day_msg += f"\n\n[COMBAT_RESULT]\n{combat_narrative}\n\n⚠️ 以上是程序生成的战斗日志。请 GM 将其润色为一段精彩的战斗叙事（150-250字），但必须保留原始的 🎯 命中判定块和 [DMG] 伤害计算块——不要删除或改写这些数值反馈。"
             if combat_result['victor_team'] == -1:
                 day_msg += "\n\n⚔️ 双方都精疲力竭。你可以选择：【撤退】（放弃战斗，不给奖励，冒险者几天后再来）或【继续打】（下轮重新触发战斗）。"
         if active and action in ('锻炼','训练','train'):
@@ -2284,7 +2422,7 @@ def create(req: NewSessionReq = None):
     )
     sessions[s["id"]] = s
     _save(s)
-    return {"session_id": s["id"], "characters": s["characters"], "active_char_id": s["active_char_id"], "world_setting": s["world_setting"], "day": s["day"], "days_until_attack": s["days_until_attack"]}
+    return {"session_id": s["id"], "characters": s["characters"], "active_char_id": s["active_char_id"], "world_name": s["world_setting"][:50], "world_setting": s["world_setting"], "day": s["day"], "days_until_attack": s["days_until_attack"]}
 
 @app.put("/api/session/{sid}/world")
 def upd_world(sid: str, data: dict):
