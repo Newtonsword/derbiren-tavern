@@ -1240,11 +1240,16 @@ pip install fastapi uvicorn openai httpx python-dotenv pytest
 - **DMG全角冒号**：`[DMG:]` 检查兼容全角 `[DMG：]`
 - **命令解析全面改用 `in`**：所有动作检测统一使用 `'动作' in action`，无遗留 startswith 前缀 bug
 
-### 19.10 探索遇敌检测优化（2026-06-26）
+### 19.10 探索遇敌检测优化 + ConsequenceManager 重构（2026-06-26）
 - **`[ENCOUNTER]` 标签废弃**：该标签是 prompt 内部标记，AI 输出已改写，检测不可靠
-- **改用战斗词检测**：`FIGHT_WORDS` 列表（24 个关键词：战斗/遭遇/伏击/暗影/蝙蝠/傀儡…），匹配率稳定
+- **改用战斗词检测**：`FIGHT_WORDS` 列表（24 个关键词），匹配率稳定
 - **新增回归测试** `tests/test_explore_encounter.py`：10 次探索，预期 ≥50% 战斗叙述 + ≥50% 审查触发
-- **recruit_msg 初始化顺序修复**：遇敌注入代码中 `recruit_msg` 在声明前被引用导致 500，已调整声明顺序
+- **recruit_msg 初始化顺序修复**：遇敌注入代码中 `recruit_msg` 在声明前被引用导致 500，已调整
+- **ConsequenceManager 统一事件触发**：新建 `consequence_manager.py`，Rule/Condition/Probability/Effect 模式
+  - 已迁移：探索遇敌（50%）、巡逻招募（35%）
+  - 端到端验证：探索 9/10 战斗叙述、招募 2/10 触发
+  - 设计文档：`plans/consequence_manager.md`
+  - 收益：6 行调用替代 35 行硬编码，可注入 seed，概率集中管理
 
 *德比伦 & Newt 共同撰写*  
 *有任何问题——@Derbiren on QQ*
