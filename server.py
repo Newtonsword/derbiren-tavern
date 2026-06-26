@@ -1069,7 +1069,7 @@ def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
     # 说战斗/攻击但没用 [DMG] 块？
     fight_words = ['挥爪', '咬', '扑', '撞', '斩', '刺', '射', '撕', '魔法', '吐息', '龙息','抓','踢','打','攻击','发起']
     has_fight_talk = any(w in text for w in fight_words)
-    has_dmg_block = '[DMG:' in text
+    has_dmg_block = '[DMG:' in text or '[DMG：' in text
     if has_fight_talk and not has_dmg_block:
         warnings.append('⚠️ 系统：检测到战斗描述但未使用 [DMG] 计算块——伤害未按公式计算，结果无效。')
 
@@ -1122,6 +1122,13 @@ def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
             review_result = rr.choices[0].message.content or ""
             if review_result.strip().upper() != "OK" and "MISSING" in review_result.upper():
                 _log_event(sess, "review_ai", review_result[:300], {"review": review_result[:300]})
+                # 在叙事中追加玩家可见的系统提示
+                if "CHAR_ADD" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到角色加入未标记——角色可能未加入面板。请检查 /panel。"
+                elif "LEVEL_UP" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到升级未标记——等级可能未更新。请检查 /panel。"
+                elif "DMG" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到战斗伤害未计算——战斗结果无效。"
         except Exception:
             pass  # 审查失败不阻塞主流程
     
@@ -1641,6 +1648,12 @@ def chat(req: ChatReq):
                 # 跳过后续探索逻辑
             else:
                 sess["_explored_count"] = explored + 1
+                # 探索遇敌代码兜底：50%概率触发战斗事件
+                if random.random() < 0.5:
+                    encounter_pool = ["暗影蝙蝠","洞穴巨鼠","岩石傀儡","毒雾团","幽灵","迷路的骷髅兵","血腥藤蔓"]
+                    encounter = random.choice(encounter_pool)
+                    recruit_msg += f"\n[ENCOUNTER] 探索途中遭遇了{encounter}的伏击！必须战斗。"
+                    _log_event(sess, "explore_encounter", f'探索遭遇{encounter}', {"enemy": encounter})
         # 巡逻触发招募事件
         recruit_msg = ""
         if '巡逻' in action and _recruit_pool:
