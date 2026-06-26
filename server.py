@@ -14,6 +14,8 @@ from pydantic import BaseModel
 from openai import OpenAI
 import httpx
 
+from consequence_manager import ConsequenceManager, explore_encounter_rule, patrol_recruit_rule
+
 from combat import Fighter, CombatSim, fighter_from_tavern_char, make_default_picker, make_ai_picker, calc_equipment_score, calc_all_equipment_scores, get_reward_tier, get_explore_tier, filter_equipment_by_tier, pick_random_equipment, get_xp_reward
 from combat.skill import parse_tavern_skills
 
@@ -220,6 +222,11 @@ RECRUIT_EVENTS = [
     "你的魔物们在巡逻时叼回来一只{species}幼崽。他们说是在废弃矿道里找到的孤儿。",
     "地下城的某个角落传来微弱的气息——一只{species}正在那里筑巢。也许可以邀请它加入。",
 ]
+
+# 统一事件触发管理器（替代散落的 random() 硬编码）
+_consequence_mgr = ConsequenceManager()
+_consequence_mgr.register(explore_encounter_rule())
+_consequence_mgr.register(patrol_recruit_rule())
 
 SYS = """你是一个文字冒险游戏的 GM，负责主持「小魔王地下城」（Monster Dungeon Tavern）的游戏叙事。
 
@@ -1648,23 +1655,28 @@ def chat(req: ChatReq):
                 # 跳过后续探索逻辑
             else:
                 sess["_explored_count"] = explored + 1
-        # 巡逻触发招募事件 & 探索遇敌
+        # 巡逻触发招募事件 & 探索遇敌（ConsequenceManager 统一管理）
         recruit_msg = ""
-        # 探索遇敌代码兜底：50%概率触发战斗事件
-        if '探索' in action and sess.get("_explored_count", 0) <= 1 and random.random() < 0.5:
-            encounter_pool = ["暗影蝙蝠","洞穴巨鼠","岩石傀儡","毒雾团","幽灵","迷路的骷髅兵","血腥藤蔓"]
-            encounter = random.choice(encounter_pool)
-            recruit_msg = f"\n[ENCOUNTER] 探索途中遭遇了{encounter}的伏击！必须战斗。"
-            _log_event(sess, "explore_encounter", f'探索遭遇{encounter}', {"enemy": encounter})
+        available = []
         if '巡逻' in action and _recruit_pool:
             recruited = sess.get("recruited", [])
             available = [m for m in _recruit_pool if m["name"] not in recruited]
-            if available and random.random() < 0.35:  # 35% 概率触发招募
-                mon = random.choice(available)
+        
+        ctx = {
+            "action": action,
+            "_explored_count": sess.get("_explored_count", 0),
+            "available_recruits": available,
+        }
+        events = _consequence_mgr.evaluate(ctx)
+        for evt in events:
+            if evt.name == "explore_encounter":
+                enc = evt.data["enemy"]
+                recruit_msg = f"\n[ENCOUNTER] 探索途中遭遇了{enc}的伏击！必须战斗。"
+                _log_event(sess, "explore_encounter", f'探索遭遇{enc}', {"enemy": enc})
+            elif evt.name == "patrol_recruit":
+                mon = evt.data["monster"]
                 sess.setdefault("recruited", []).append(mon["name"])
-                # 生成起名选项
                 name_options = _generate_name_options(mon["species"], mon["name"])
-                # 暂存——等玩家选名字后才加入角色栏
                 sess["_pending_recruit"] = {
                     "species": mon["species"],
                     "stats": mon["stats"],
