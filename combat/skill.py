@@ -231,11 +231,17 @@ def fighter_from_tavern_char(char: dict, team: int = 0, equipment_pool: list | N
             eq_id = equipped.get(slot_key)
             if eq_id and eq_id in pool_by_id:
                 eq = pool_by_id[eq_id]
-                # 累加属性
-                for k, v in eq.get("stats_bonus", {}).items():
-                    equip_bonus[k] = equip_bonus.get(k, 0) + v
-                for k, v in eq.get("secondary_bonus", {}).items():
-                    equip_bonus[k] = equip_bonus.get(k, 0) + v
+                # 累加属性——兼容多种字段名（attribute_bonus 是标准字段，stats_bonus/secondary_bonus 为历史兼容）
+                bonus_sources = [
+                    eq.get("attribute_bonus", {}),
+                    eq.get("stats_bonus", {}),
+                    eq.get("secondary_bonus", {}),
+                ]
+                for src in bonus_sources:
+                    if not isinstance(src, dict):
+                        continue
+                    for k, v in src.items():
+                        equip_bonus[k] = equip_bonus.get(k, 0) + v
                 # 装备技能
                 eq_skill = eq.get("skill")
                 if eq_skill and isinstance(eq_skill, dict):

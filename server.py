@@ -1392,7 +1392,13 @@ def session_chat(sid: str, data: dict):
 
 @app.post("/api/chat")
 def chat(req: ChatReq):
-    sess = sessions.get(req.session_id) or _load(req.session_id) or new_session()
+    # 带 session_id 但找不到 → 404（防止静默开新档丢失上下文）；不带 → 新建（前端首条消息入口）
+    if req.session_id:
+        sess = sessions.get(req.session_id) or _load(req.session_id)
+        if not sess:
+            raise HTTPException(404, "会话不存在")
+    else:
+        sess = new_session()
     chars = sess.get("characters", [])
     active = next((c for c in chars if c["id"] == sess.get("active_char_id")), chars[0] if chars else None)
 
@@ -2474,6 +2480,9 @@ def dev_action(sid: str, data: dict):
 
     elif action == "set_day":
         day = data.get("day", 1)
+        # 换天时清空每日探索记录（与 /day 正常流程一致，防止跨天后探索被误拒）
+        s["explored_today"] = []
+        s["_explored_count"] = 0
         s["day"] = max(1, day)
         s["days_until_attack"] = data.get("dta", 5)
         s["raid_wave"] = data.get("wave", 1)
@@ -2527,7 +2536,9 @@ def roll_dice(req: ChatReq):
 
 @app.get("/api/session/{sid}")
 def get_sess(sid: str):
-    s = sessions.get(sid) or _load(sid) or new_session()
+    s = sessions.get(sid) or _load(sid)
+    if not s:
+        raise HTTPException(404, "会话不存在")
     return {
         "session_id": s["id"], "title": s["title"],
         "world_setting": s.get("world_setting", DEFAULT_WORLD),
@@ -3257,11 +3268,21 @@ def generate_equipment(req: EquipGenReq):
         eq = json.loads(text)
         eq["id"] = "eq_gen_" + uuid.uuid4().hex[:8]
         eq["source"] = "generated"
-        eq["type"] = {"weapon":"武器","armor":"防具","accessory":"饰品"}.get(eq.get("slot","armor"), "防具")
+        # 兜底校验：AI 输出可能缺字段，缺了就补默认值，防止下游（穿戴/装备池）拿不到 name/slot
+        eq.setdefault("name", f"未知装备{req.rarity}")
+        eq.setdefault("slot", req.slot)
+        eq.setdefault("rarity", req.rarity)
+        eq.setdefault("description", "")
+        eq.setdefault("stats", {})
+        eq.setdefault("attribute_bonus", {})
+        eq.setdefault("special", None)
+        eq["type"] = {"weapon": "武器", "armor": "防具", "accessory": "饰品"}.get(eq.get("slot", "armor"), "防具")
         # 保存到装备池
         _equipment_pool.append(eq)
         _equipment_by_source.setdefault("generated", []).append(eq)
         return {"ok": True, "equipment": eq}
+    except json.JSONDecodeError:
+        raise HTTPException(500, f"装备生成失败: AI 返回的不是合法 JSON")
     except Exception as e:
         raise HTTPException(500, f"装备生成失败: {str(e)[:200]}")
 
