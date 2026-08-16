@@ -71,6 +71,32 @@ def test_engine_damage_formula():
     assert abs(d15 - (18 + 2*15 + 1.5*5)) < 0.01
     print("  ✅ 数值精确: STR3=31.5 STR15=55.5（公式 18+2×力量+1.5×速度）")
 
+def test_engine_team_assignment():
+    """回归：双方对轰而不是打自己人——team 归属必须正确传入"""
+    a = make_char("A", "人类", 5,
+                  {"END": 10, "STR": 10, "SPD": 10, "DEF": 8, "INT": 5, "MP": 8, "WIL": 6},
+                  SAMPLE_SKILLS)
+    b = make_char("B", "人类", 5,
+                  {"END": 10, "STR": 10, "SPD": 10, "DEF": 8, "INT": 5, "MP": 8, "WIL": 6},
+                  SAMPLE_SKILLS)
+    fa = Fighter(fighter_from_tavern_char(a, team=0), SAMPLE_SKILLS)
+    fb = Fighter(fighter_from_tavern_char(b, team=1), SAMPLE_SKILLS)
+    sim = CombatSim([fa], [fb])
+    res = asyncio.run(sim.run())
+    # 检查日志：A 攻击的目标是 B（名字含 B），B 攻击的目标是 A（名字含 A）
+    logs = [e.get("msg", "") if isinstance(e, dict) else getattr(e, "msg", "") for e in res.log]
+    hit_logs = [l for l in logs if "攻击" in str(l)]
+    self_hits = [l for l in hit_logs if str(l).count("A") == 1 or str(l).count("B") == 1]
+    # 攻击日志格式: "⚔️ X [攻击] N → Y HP-..." 攻击者和目标不应相同
+    import re as _re
+    bad = []
+    for l in hit_logs:
+        m = _re.search(r"([AB]) \[攻击\].*?→ ([AB])", str(l))
+        if m and m.group(1) == m.group(2):
+            bad.append(l)
+    print(f"  ✅ 团队回归: 攻击日志 {len(hit_logs)} 条, 自打 {len(bad)} 条")
+    assert not bad, f"出现自打: {bad[:3]}"
+
 def test_char_add_persists():
     """端到端：模拟 [CHAR_ADD] 标签 → 程序真的把角色加进 chars 列表"""
     chars = [make_char("吱吱", "猫龙", 1, {"END": 5, "STR": 5, "SPD": 6, "DEF": 3, "INT": 3, "MP": 4, "WIL": 4}, [])]
