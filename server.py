@@ -1079,8 +1079,8 @@ def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
     if has_char_talk and not has_char_tag:
         warnings.append('💡 系统：检测到新角色描述但未使用 [CHAR_ADD] 标签——面板不会显示。下次请带上标签。')
 
-    # 说战斗/攻击但没用 [DMG] 块？
-    fight_words = ['挥爪', '咬', '扑', '撞', '斩', '刺', '射', '撕', '魔法', '吐息', '龙息','抓','踢','打','攻击','发起']
+    # 说战斗/攻击但没用 [DMG] 块？——只检测明确的战斗动作词，避免日常闲聊误报
+    fight_words = ['挥爪命中', '咬中', '撕开', '扑倒', '斩击', '刺中', '射中', '吐息喷', '龙息命中', '撕咬命中', '攻击命中', '打中', '击中', '造成伤害', '造成了伤害', '利爪撕', '甩尾拍']
     has_fight_talk = any(w in text for w in fight_words)
     has_dmg_block = '[DMG:' in text or '[DMG：' in text
     if has_fight_talk and not has_dmg_block:
@@ -1122,7 +1122,8 @@ def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
                 "规则：\n"
                 "1. 如果叙述中描述了新魔物加入/投靠/遇到/招募/出生，但没有 [CHAR_ADD: 名字 | 物种 | ...] 标签 → MISSING:CHAR_ADD\n"
                 "2. 如果叙述中描述了角色升级/变强/获得新技能，但没有 [LEVEL_UP: 名字 | 新等级] 标签 → MISSING:LEVEL_UP\n"
-                "3. 如果叙述中描述了对敌人造成伤害/战斗中有攻击动作，但没有 [DMG: ...] 计算块 → MISSING:DMG\n"
+                "3. 如果叙述中描述了对敌人造成伤害/战斗中有攻击动作（如挥爪命中、咬中、刺中、斩击命中并产生了实际伤害），但没有 [DMG: ...] 计算块 → MISSING:DMG\n"
+                "   注意：日常闲聊、叙述未来打算（“我要去打他”“明天抓他”）、描述过去事件但不产生当前伤害，都不算需要 DMG 的战斗。只有本次叙述中发生了实际攻击并造成了伤害，才需要 DMG。\n"
                 "4. 如果叙述中发现了新装备/捡到物品/获得武器防具，但没有 [EQUIP] 相关标签 → MISSING:EQUIP\n"
                 "5. 如果叙述中发现了新工事/建筑蓝图/升级了已有工事，但没有 [CONSTRUCTION_DISCOVER] 或 [CONSTRUCTION_UPGRADE] → MISSING:CONSTRUCTION\n"
                 "6. 如果叙述中有角色死亡/阵亡/牺牲，但没有 [DEATH] 标签 → MISSING:DEATH\n"
