@@ -502,7 +502,7 @@ power_score = Σ(属性加成) × rarity_mult + skill_bonus + special_bonus
 - 同物种：100% 受孕
 - 魔王×魔物：100% 受孕
 - 跨物种：根据物种系数差距，30%-80% 不等
-- 怀孕天数：1-4 天（根据母方物种系数）
+- 怀孕天数：1-4 天（按稀有度分档：杂鱼1天/普通2天/精锐3天/精英4天，由程序自动计算）
 - 怀孕期间：战斗伤害 -60%，无法闪避
 - 后代命名：父母名首字拼接 + 「崽」
 
@@ -1250,6 +1250,22 @@ pip install fastapi uvicorn openai httpx python-dotenv pytest
   - 端到端验证：探索 9/10 战斗叙述、招募 2/10 触发
   - 设计文档：`plans/consequence_manager.md`
   - 收益：6 行调用替代 35 行硬编码，可注入 seed，概率集中管理
+
+### 19.11 NPC 独立心智 + 世界权限模型（2026-08-17 P0 深化）
+- **新增 `npc_persona.py`**：每个魔物角色拥有独立人格（personality/memory/goal/secret/mood/relationship）
+  - `ensure_persona`：角色创建时自动分配性格（按物种倾向+随机池）
+  - `extract_npc_target`：从玩家消息提取 `@角色名`
+  - `build_npc_system_prompt`：@角色对话时切换成该角色的独立 system prompt（NPC agent 化，不再 GM 一人分饰）
+  - `update_npc_memory/mood`：跨回合记忆与心情
+  - `personas_to_context`：GM 视角注入所有角色人设摘要，扮演更一致
+- **接入点**：`_make_char` 创建角色即初始化 persona；`chat()` 检测 `@角色名` 切换 NPC 视角；GM 消息注入 `[角色人设]` 摘要
+- **世界权限模型（引擎裁决）**：新增 `_engine_adjudicate` + `_inject_propose_notes`
+  - AI（GM/NPC）不能凭空修改世界状态；想改必须 `[PROPOSE_CHANGE: ...]` 标签提议
+  - 引擎逐项裁决：允许的（招募/升级/改名/蓝图→映射原有标签流程）执行；禁止的（HP/背包/金币/删角色/未知变更）直接拒绝
+  - 裁决结果以「[引擎裁决]（仅你可见）」注入下一轮 AI 上下文，玩家看不到
+- **SYS 提示词新增权限铁律**：GM 明确「无任何修改游戏数据权限」，必须走标签/propose
+- **测试**：`tests/test_p0_deepen.py` 15 个（persona 创建/提取/查找/prompt/记忆 + 裁决 allow/deny/unknown + server 集成点）
+- **端到端验证**：@吱吱 对话返回傲娇猫龙人格回复；GM 视角叙述贴角色人设
 
 *德比伦 & Newt 共同撰写*  
 *有任何问题——@Derbiren on QQ*

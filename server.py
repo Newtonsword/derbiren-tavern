@@ -16,6 +16,8 @@ import httpx
 
 from consequence_manager import ConsequenceManager, explore_encounter_rule, patrol_recruit_rule
 
+from npc_persona import ensure_persona, extract_npc_target, find_char_by_name, build_npc_system_prompt, update_npc_memory, update_npc_mood, personas_to_context
+
 from combat import Fighter, CombatSim, fighter_from_tavern_char, make_default_picker, make_ai_picker, calc_equipment_score, calc_all_equipment_scores, get_reward_tier, get_explore_tier, filter_equipment_by_tier, pick_random_equipment, get_xp_reward
 from combat.skill import parse_tavern_skills
 
@@ -147,11 +149,11 @@ RAID_WAVES = [
     # 每个敌人: {name, level, species, stats, skills_raw}
     {
         "wave": 1,
-        "desc": "一个3级菜鸟冒险者——刚拿到公会执照，连剑都拿不稳。",
+        "desc": "一个4级菜鸟冒险者——刚拿到公会执照，连剑都拿不稳。",
         "enemies": [{
-            "name": "菜鸟冒险者", "species": "人类", "level": 3,
-            "stats": {"END":3,"STR":3,"SPD":3,"DEF":2,"INT":2,"MP":2,"WIL":3},
-            "skills_raw": "挥砍:斩击:15+2.0×力量+0.5×速度:耐力14:3.0s"
+            "name": "菜鸟冒险者", "species": "人类", "level": 4,
+            "stats": {"END":4,"STR":5,"SPD":4,"DEF":3,"INT":2,"MP":2,"WIL":3},
+            "skills_raw": "挥砍:斩击:20+2.0×力量+0.5×速度:耐力14:3.0s"
         }],
         "reset_days": 5,
     },
@@ -183,19 +185,19 @@ RAID_WAVES = [
     },
     {
         "wave": 3,
-        "desc": "三个10级冒险者——战士+弓箭手+法师的标准小队，公会下了血本。",
+        "desc": "三个高级冒险者——战士+弓箭手+法师的标准小队，公会下了血本。",
         "enemies": [{
-            "name": "老练战士", "species": "人类", "level": 10,
-            "stats": {"END":7,"STR":9,"SPD":7,"DEF":6,"INT":3,"MP":3,"WIL":6},
-            "skills_raw": "重斩:斩击:30+2.5×力量+1.0×耐力:耐力22:4.0s:85+2.5×力量; 盾击:钝击:18+1.5×耐力+1.0×力量:耐力16:3.5s:80+1.5×耐力"
+            "name": "老练战士", "species": "人类", "level": 11,
+            "stats": {"END":8,"STR":10,"SPD":6,"DEF":7,"INT":3,"MP":3,"WIL":7},
+            "skills_raw": "重斩:斩击:35+2.5×力量+1.0×耐力:耐力22:4.0s:80+2.5×力量; 盾击:钝击:20+1.5×耐力+1.0×力量:耐力16:3.5s:75+1.5×耐力"
         },{
             "name": "老练弓箭手", "species": "人类", "level": 10,
-            "stats": {"END":5,"STR":5,"SPD":10,"DEF":3,"INT":4,"MP":4,"WIL":5},
-            "skills_raw": "精准射击:刺击:25+3.0×速度+1.0×智力:耐力12:3.0s:85+3.0×速度; 淬毒箭:刺击:18+2.0×速度+1.5×智力:蓝10:5.0s:80+2.5×速度"
+            "stats": {"END":5,"STR":5,"SPD":11,"DEF":3,"INT":4,"MP":4,"WIL":5},
+            "skills_raw": "精准射击:刺击:28+3.0×速度+1.0×智力:耐力12:3.0s:85+3.0×速度; 淬毒箭:刺击:20+2.0×速度+1.5×智力:蓝10:4.5s:80+2.5×速度"
         },{
-            "name": "老练法师", "species": "人类", "level": 10,
-            "stats": {"END":4,"STR":2,"SPD":5,"DEF":2,"INT":10,"MP":8,"WIL":7},
-            "skills_raw": "火球术:法术:25+3.0×智力:蓝16:4.0s:85+3.0×智力; 魔法盾:防御:8+1.0×智力+0.5×法量/秒:蓝8:5.0s"
+            "name": "老练法师", "species": "人类", "level": 11,
+            "stats": {"END":4,"STR":2,"SPD":5,"DEF":2,"INT":12,"MP":9,"WIL":8},
+            "skills_raw": "火球术:法术:30+3.5×智力+1.0×法量:蓝16:3.5s:85+3.0×智力; 魔法盾:防御:10+1.5×智力+0.5×法量/秒:蓝8:5.0s"
         }],
         "reset_days": 10,
     },
@@ -239,6 +241,9 @@ SYS = """你是一个文字冒险游戏的 GM，负责主持「小魔王地下�
 【GM 职责】
 - 玩家是一只被赶鸭子上架的小魔王，管理着地下城。你是旁观的叙述者。
 - ⚠️ 你只能使用 [队伍] 中列出的角色。禁止提到任何不在队伍列表中的名字或物种。禁止凭空创造魔物同伴、NPC跟班、或路人角色——除非系统给了 [CHAR_ADD] 标签。
+- ⚠️【世界权限铁律——P0】你**没有任何修改游戏数据的权限**。角色属性/技能/装备/HP/金币/背包/队伍成员，全部由系统（引擎）管理。你**禁止**在叙述中宣称「某某获得了新装备」「某某属性提升了」「某某学会了技能」——除非你同时输出了对应的 [标签]（[CHAR_ADD]/[LEVEL_UP]/[CHAR_RENAME] 等）让系统真正执行。
+- ⚠️ 如果你认为世界应该发生某个变更（比如剧情需要新角色登场/角色升级/发现蓝图），使用 [PROPOSE_CHANGE: 你要提议的变更] 标签向系统提议，由系统裁决。**被拒绝的提议不要重复提，也不要装作已经生效**。
+- ⚠️ 绝对禁区（propose 也会被拒绝）：修改玩家/角色的 HP、血量、背包、金币、直接修改属性、删除角色。这些只有系统能改。
 - 主动推进剧情：冒险者入侵、魔物子民来报、地下城事件
 - 当收到 [START] 消息时，生成开场第一段话：用「{PLAYER_NAME}」称呼玩家。先介绍地下城的处境（冒险者公会虎视眈眈、地下城破败需要经营），然后明确告知「据侦察，冒险者公会将在5天后发动第一次进攻」。再描述初始魔物「{CHAR_NAME}」（{CHAR_SPECIES}）的状态——正呆呆地望着玩家、摇尾巴、蹭腿之类的互动小动作。简要提一句它的战斗特点。最后提示玩家可以输入 /day 锻炼 来推进天数、备战冒险者。结尾给出 2-3 个自然的方向选择。
 - 遇到不确定的结果时掷骰判定，调用下方骰子规则
@@ -294,7 +299,7 @@ SYS = """你是一个文字冒险游戏的 GM，负责主持「小魔王地下�
 - 研究：可能解锁新技能线索
 - 净化：消耗1天，移除选中魔物的负面诅咒/减益效果（战斗中受到的debuff也会清除）
 - 探索：派遣魔物深入地下城未知区域——可能找到装备、发现新的工程蓝图、或找到提升已有工事上限的改造方案。每天只能探索一次，每次最多获得一件物品或招募一个角色（不会同时获得多项）。⚠️ 探索时地下城的黑暗深处会引来更多攻击性怪物——GM应频繁触发遭遇战，且探索不要深入太远，不要轻易进入未探明的深层区域。
-- 配种：魔物没有生殖隔离——任何两只魔物都可以尝试繁衍，同物种100%成功，跨物种成功率随物种差距增大而降低（80%/50%/30%），猫龙参与跨物种配种时成功率+20%。魔王本人也可以参与配种，受孕率100%。被选中的魔物可能会害羞但绝不会拒绝。母方进入怀孕期（稀有度越低越快：哥布林/史莱姆1天，猫龙4天），怀孕期间战斗伤害-60%。到期自动生下后代，继承双亲属性平均+随机突变+各取一个技能。\n- 杂交亚种：跨物种配种可能产生亚种——哥布林基因污染后代必为纯种哥布林；猫龙参与跨物种70%概率出组合式亚种（猫/龙+对方首字，如猫鸟、龙狼）；其他物种30%概率出「混血{物种}」。{NSFW_BREEDING}
+- 配种：魔物没有生殖隔离——任何两只魔物都可以尝试繁衍，同物种100%成功，跨物种成功率随物种差距增大而降低（80%/50%/30%），猫龙参与跨物种配种时成功率+20%。魔王本人也可以参与配种，受孕率100%。被选中的魔物可能会害羞但绝不会拒绝。母方进入怀孕期（程序自动计算天数：杂鱼1天/普通2天/精锐3天/精英4天），怀孕期间战斗伤害-60%。到期程序自动触发生产——GM只需叙述过程，不要自行决定孕期长短或出生时机。后代由程序自动生成：继承双亲属性平均+随机突变+各取一个技能。\n- 杂交亚种：跨物种配种可能产生亚种——哥布林基因污染后代必为纯种哥布林；猫龙参与跨物种70%概率出组合式亚种（猫/龙+对方首字，如猫鸟、龙狼）；其他物种30%概率出「混血{物种}」。{NSFW_BREEDING}
 当玩家输入 /day 时，系统会自动推进天数并计算经验，GM 收到 [DAY_ADVANCE] 消息后需叙述这一天发生的事。
 如果消息包含 [EVENT] 和 [CHAR_ADD] 标签，说明发生了招募事件——叙述如何遇到这只魔物、它加入的过程，系统会自动解析标签添加角色。
 当玩家输入 /day 时，系统会自动推进天数并计算经验，GM 收到 [DAY_ADVANCE] 消息后需叙述这一天发生的事。
@@ -650,6 +655,7 @@ def _make_char(name="小魔王", species="人类", coeff=1.3, level=1) -> dict:
     c["species"] = species
     c["species_coeff"] = coeff
     c["level"] = level
+    ensure_persona(c, species)  # NPC 独立心智：性格/记忆/目标/秘密
     return c
 
 def _skill_id() -> str:
@@ -1114,10 +1120,15 @@ def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
             review_prompt = (
                 "你是一个游戏系统审查员。检查以下 GM 叙述是否遗漏了必要的系统标签。\n\n"
                 "规则：\n"
-                "1. 如果叙述中描述了新魔物加入/投靠/遇到，但没有 [CHAR_ADD: 名字 | 物种 | ...] 标签 → 报告缺失\n"
-                "2. 如果叙述中描述了角色升级/变强，但没有 [LEVEL_UP: 名字 | 新等级] 标签 → 报告缺失\n"
-                "3. 如果叙述中描述了对敌人造成伤害，但没有 [DMG: ...] 计算块 → 报告缺失\n\n"
-                "只需回复：'OK'（没问题）或 'MISSING: <具体缺什么>'。不要解释。\n\n"
+                "1. 如果叙述中描述了新魔物加入/投靠/遇到/招募/出生，但没有 [CHAR_ADD: 名字 | 物种 | ...] 标签 → MISSING:CHAR_ADD\n"
+                "2. 如果叙述中描述了角色升级/变强/获得新技能，但没有 [LEVEL_UP: 名字 | 新等级] 标签 → MISSING:LEVEL_UP\n"
+                "3. 如果叙述中描述了对敌人造成伤害/战斗中有攻击动作，但没有 [DMG: ...] 计算块 → MISSING:DMG\n"
+                "4. 如果叙述中发现了新装备/捡到物品/获得武器防具，但没有 [EQUIP] 相关标签 → MISSING:EQUIP\n"
+                "5. 如果叙述中发现了新工事/建筑蓝图/升级了已有工事，但没有 [CONSTRUCTION_DISCOVER] 或 [CONSTRUCTION_UPGRADE] → MISSING:CONSTRUCTION\n"
+                "6. 如果叙述中有角色死亡/阵亡/牺牲，但没有 [DEATH] 标签 → MISSING:DEATH\n"
+                "7. 如果叙述中有怀孕/生育/孵化/后代诞生，但没有 [BIRTH] 或 [BREED] 标签 → MISSING:BIRTH\n"
+                "8. 如果叙述中有角色进化/形态变化/转职，但没有 [EVOLVE] 标签 → MISSING:EVOLVE\n\n"
+                "只需回复：'OK'（没问题）或 'MISSING: 类型'。不要解释。\n\n"
                 f"当前队伍角色：{', '.join(c['name'] + '(' + c['species'] + ')' for c in chars)}\n\n"
                 f"GM叙述：\n{text[-2000:]}"
             )
@@ -1136,6 +1147,16 @@ def _validate_narrative(text: str, chars: list, sess: dict = None) -> str:
                     text += "\n\n⚠️ [系统] 审查AI检测到升级未标记——等级可能未更新。请检查 /panel。"
                 elif "DMG" in review_result.upper():
                     text += "\n\n⚠️ [系统] 审查AI检测到战斗伤害未计算——战斗结果无效。"
+                elif "EQUIP" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到装备获取未标记——装备可能未入背包。请检查 /panel。"
+                elif "CONSTRUCTION" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到工事/建筑变更未标记——工事列表可能未更新。请检查 /panel。"
+                elif "DEATH" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到角色死亡未标记——角色面板可能未更新。请检查 /panel。"
+                elif "BIRTH" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到生育/孵化未标记——后代可能未加入面板。请检查 /panel。"
+                elif "EVOLVE" in review_result.upper():
+                    text += "\n\n⚠️ [系统] 审查AI检测到进化未标记——角色形态可能未更新。请检查 /panel。"
         except Exception:
             pass  # 审查失败不阻塞主流程
     
@@ -1231,6 +1252,93 @@ def _parse_char_add(text: str) -> tuple:
         text = text[:um.start()] + text[um.end():]
 
     return text.strip(), char_data, level_ups, renames, con_discovers, con_upgrades
+
+# ══════════════════════════════════════════════
+# 世界权限模型（P0-2）—— propose_change 引擎裁决
+# ══════════════════════════════════════════════
+# AI（GM/NPC）不能凭空修改世界状态。想改必须通过 [PROPOSE_CHANGE: ...] 标签提议，
+# 由引擎逐项裁决：允许的（新角色/升级/装备等走原有标签流程）执行，
+# 禁止的（改玩家 HP/背包/直接加属性/删除角色）直接拒绝并提示。
+# 参考：gamentic 的 propose_change 权限模型（角色只能提议、引擎裁决，且存在禁区）。
+
+PROPOSE_CHANGE_RE = re.compile(
+    r'\[PROPOSE_CHANGE:\s*(.+?)\s*\]',
+    re.IGNORECASE
+)
+
+# 引擎裁决结果标记（注入 AI 输出，让它知道什么被允许/拒绝）
+PROPOSE_ALLOWED = "✅ 系统已批准：{msg}"
+PROPOSE_DENIED = "❌ 系统已拒绝：{msg}（{reason}）"
+
+# 禁区关键词——任何提及这些的 propose 一律拒绝
+FORBIDDEN_PROPOSE_TERMS = [
+    "hp", "血量", "生命", "当前hp", "maxhp", "最大生命",
+    "背包", "inventory", "金币", "gold", "金钱",
+    "删除角色", "remove", "kill char", "移除角色",
+    "直接加属性", "直接修改属性", "force stats",
+]
+
+# 允许的 propose 类型（映射到已有标签/流程）
+ALLOWED_PROPOSE_TYPES = [
+    ("招募", "CHAR_ADD"), ("新角色", "CHAR_ADD"), ("加入", "CHAR_ADD"),
+    ("升级", "LEVEL_UP"), ("升到", "LEVEL_UP"),
+    ("改名", "CHAR_RENAME"), ("更名", "CHAR_RENAME"),
+    ("发现蓝图", "CONSTRUCTION_DISCOVER"), ("蓝图", "CONSTRUCTION_DISCOVER"),
+    ("工事升级", "CONSTRUCTION_UPGRADE"), ("上限提升", "CONSTRUCTION_UPGRADE"),
+]
+
+
+def _engine_adjudicate(reply: str) -> str:
+    """
+    引擎裁决层：解析 AI 输出里的 [PROPOSE_CHANGE: ...] 标签。
+    返回 (clean_reply, proposals)：
+        - 允许的 proposal → 追加 ✅ 批准标记（后续仍走原有标签流程真正落地）
+        - 禁止的 proposal → 追加 ❌ 拒绝标记（不执行，提示 AI）
+    原标签从回复中移除（避免泄漏给玩家）。
+    """
+    if "[PROPOSE_CHANGE:" not in reply:
+        return reply, []
+
+    proposals = []
+    for m in PROPOSE_CHANGE_RE.finditer(reply):
+        raw = m.group(1).strip()
+        raw_l = raw.lower()
+
+        # 1. 禁区检查——提及任何禁区词 → 拒绝
+        forbidden_hit = next((t for t in FORBIDDEN_PROPOSE_TERMS if t in raw_l), None)
+        if forbidden_hit:
+            proposals.append(("deny", raw, f"涉及禁区内容「{forbidden_hit}」——玩家状态/背包/角色删除不允许 AI 修改"))
+            continue
+
+        # 2. 允许类型检查——匹配已支持的标签流程
+        allowed_hit = next((kw for kw, _ in ALLOWED_PROPOSE_TYPES if kw in raw), None)
+        if allowed_hit:
+            tag_type = dict(ALLOWED_PROPOSE_TYPES)[allowed_hit]
+            proposals.append(("allow", raw, f"匹配{tag_type}流程（仍需带对应标签落地）"))
+            continue
+
+        # 3. 未匹配——保守拒绝（不确定就不执行）
+        proposals.append(("deny", raw, "未匹配任何已支持的变更类型——引擎拒绝未知变更"))
+
+    # 从回复中移除 propose 标签
+    clean = PROPOSE_CHANGE_RE.sub("", reply)
+
+    # 把裁决结果注入回 AI 上下文（作为系统提示追加，下轮 AI 能看到）
+    notes = []
+    for verdict, raw, reason in proposals:
+        if verdict == "allow":
+            notes.append(PROPOSE_ALLOWED.format(msg=raw))
+        else:
+            notes.append(PROPOSE_DENIED.format(msg=raw, reason=reason))
+    return clean, notes
+
+
+def _inject_propose_notes(clean_reply: str, notes: list) -> str:
+    """把裁决结果以（AI 可见、玩家隐藏）的方式注入。"""
+    if not notes:
+        return clean_reply
+    hidden = "\n".join(notes)
+    return clean_reply + f"\n\n[引擎裁决]（仅你可见，不要念出来）\n{hidden}"
 
 def _make_skills_from_raw(raw: str) -> list:
     """从原始技能字符串解析技能列表"""
@@ -1614,18 +1722,17 @@ def chat(req: ChatReq):
                     partner_species = partner.get("species", "魔王") if partner else "魔王"
                     # 受孕判定
                     if random.random() < success_rate:
-                        # 计算怀孕天数：按怀孕方物种稀有度
+                        # 计算怀孕天数：按稀有度分档
+                        # 杂鱼(coeff≤1.0):1天 | 普通(1.0~1.3):2天 | 精锐(1.3~1.9):3天 | 精英(≥1.9):4天
                         coeff = carrier.get("species_coeff", 1.3)
-                        if coeff <= 0.9:
-                            gest_days = 1
-                        elif coeff <= 1.0:
-                            gest_days = 1
-                        elif coeff <= 1.2:
-                            gest_days = 2
+                        if coeff <= 1.0:
+                            gest_days = 1    # 哥布林、史莱姆
                         elif coeff <= 1.3:
-                            gest_days = 4
+                            gest_days = 2    # 野狼
+                        elif coeff <= 1.9:
+                            gest_days = 3    # 触手怪、石像鬼、杀人兔
                         else:
-                            gest_days = 3
+                            gest_days = 4    # 猫龙、幼龙
                         due_day = sess["day"] + gest_days
                         carrier["pregnant"] = {
                             "father_name": partner_name,
@@ -1779,6 +1886,23 @@ def chat(req: ChatReq):
             clean_msg = "（系统通知：" + "；".join(hints) + "。请 GM 叙述。）"
         req.message = clean_msg
 
+    # ── NPC 独立心智：@角色名 对话切换到该角色视角（P0-1）──
+    npc_target_name = extract_npc_target(req.message)
+    npc_target = find_char_by_name(chars, npc_target_name) if npc_target_name else None
+    if npc_target is not None:
+        # 玩家在跟某个魔物对话 → 用 NPC 独立 prompt 替代 GM 视角
+        npc_sys = build_npc_system_prompt(npc_target, base_sys, day)
+        msgs = [{"role": "system", "content": npc_sys}] + [m for m in msgs[1:] if m.get("role") != "system"]
+        # 把玩家消息改写成魔王视角的对话，让 NPC 知道自己在被魔王搭话
+        npc_msg = f"[魔王对你说] {req.message}"
+        # 记录一条记忆
+        update_npc_memory(npc_target, f"魔王对我说: {req.message[:60]}", day)
+        req.message = npc_msg
+    else:
+        # GM 视角：注入所有角色 persona 摘要，让 GM 扮演更一致
+        npc_ctx = personas_to_context(chars)
+        msgs[0] = {"role": "system", "content": msgs[0]["content"] + f"\n\n[角色人设]\n{npc_ctx}"}
+
     msgs.append({"role": "user", "content": req.message})
 
     if not os.getenv("OPENAI_API_KEY", ""):
@@ -1803,6 +1927,9 @@ def chat(req: ChatReq):
 
     # 自动检查 AI 叙述一致性——说了升级/加角色但没用标签？
     reply = _validate_narrative(reply, chars, sess)
+
+    # 世界权限模型：引擎裁决 propose_change（P0-2）——解析前先拦截 AI 的越权提议
+    reply, propose_notes = _engine_adjudicate(reply)
 
     # 解析 CHAR_ADD 和 CHAR_RENAME 和 LEVEL_UP 和 CONSTRUCTION
     clean_reply, char_data, level_ups, renames, con_discovers, con_upgrades = _parse_char_add(reply)
@@ -1867,9 +1994,12 @@ def chat(req: ChatReq):
                 chars_updated = True
                 break
 
+    # 引擎裁决笔记注入：AI 下一轮能看到裁决结果（玩家不可见）
+    stored_reply = _inject_propose_notes(clean_reply, propose_notes)
+
     sess["messages"] += [
         {"role": "user", "content": req.message},
-        {"role": "assistant", "content": clean_reply},
+        {"role": "assistant", "content": stored_reply},
     ]
     # raid 后自动重置：第0天战斗结束后，推进波次+重置倒计时
     # 超时(-1)不给奖励——双方没分出胜负
