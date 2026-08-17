@@ -96,7 +96,8 @@ def _get_client():
     global _client
     if _client is None:
         verify = os.getenv("SSL_VERIFY", "false" if platform.system() == "Windows" else "true").lower() == "true"
-        hc = httpx.Client(verify=verify)
+        # 带浏览器 UA——opencode.ai 网关有 Cloudflare 防护，默认 SDK UA 会被 1010 拦截
+        hc = httpx.Client(verify=verify, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"})
         _client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY", ""),
             base_url=os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com"),
@@ -109,7 +110,7 @@ def _get_review_client():
     global _review_client
     if _review_client is None:
         verify = os.getenv("SSL_VERIFY", "false" if platform.system() == "Windows" else "true").lower() == "true"
-        hc = httpx.Client(verify=verify)
+        hc = httpx.Client(verify=verify, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"})
         _review_client = OpenAI(
             api_key=os.getenv("REVIEW_API_KEY", os.getenv("OPENAI_API_KEY", "")),
             base_url=os.getenv("REVIEW_BASE_URL", os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com")),
