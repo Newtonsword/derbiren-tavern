@@ -1537,6 +1537,23 @@ async function renameChar(cid) {
   } catch(e) { alert('改名失败: ' + e.message); }
 }
 
+function renderExpBar(c) {
+  // 经验条：当前 exp / 下一级所需（与后端 _check_levelup 公式一致：need = 100 × 当前等级）
+  const exp = c.exp || 0;
+  const expNeed = c.level >= 99 ? 0 : 100 * c.level;
+  const pct = expNeed > 0 ? Math.min(100, Math.round(exp / expNeed * 100)) : 100;
+  const barColor = pct >= 100 ? 'linear-gradient(90deg,#8b5cf6,#c9a050)' : 'linear-gradient(90deg,#c9a050,#f0d080)';
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;" title="升级所需 = 100 × 当前等级">
+      <span style="color:var(--gold);white-space:nowrap;">⭐ 经验</span>
+      <div style="flex:1;height:10px;background:#1a1a1a;border-radius:5px;overflow:hidden;border:1px solid var(--border);">
+        <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;transition:width .3s;"></div>
+      </div>
+      <span style="color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;">${exp} / ${expNeed > 0 ? expNeed : 'MAX'}</span>
+      ${pct >= 100 && expNeed > 0 ? '<span style="color:#8b5cf6;font-size:11px;">⬆️ 可升级</span>' : ''}
+    </div>`;
+}
+
 async function renderCharDetail() {
   const c = getActiveChar();
   if (!c) return;
@@ -1614,6 +1631,7 @@ async function renderCharDetail() {
     ${draftBanner}
     <div class="stats-section">
       <h3>🔮 ${c.name} <button onclick="renameChar('${c.id}')" title="改名" style="background:none;border:none;cursor:pointer;font-size:14px;padding:0 4px;opacity:0.5;">✏️</button> · ${c.species} · Lv.${c.level}</h3>
+      ${renderExpBar(c)}
       ${c.evolved ? `
         <div style="background:#1a1228;border:1px solid #8b5cf6;border-radius:6px;padding:6px 10px;margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="color:#8b5cf6;font-size:13px;">✨ 已进化</span>

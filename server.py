@@ -2313,10 +2313,13 @@ def explore_dungeon(sid: str, req: ExploreRequest):
     roll = random.random()
 
     if roll < 0.60:
-        # 空手
-        _log_event(s, "explore", f'{char["name"]} 探索归来——什么也没找到')
+        # 空手（也给少量参与经验）
+        exp_gain = random.randint(tier.xp_min, tier.xp_max)
+        char["exp"] = char.get("exp", 0) + exp_gain
+        _check_levelup(char)
+        _log_event(s, "explore", f'{char["name"]} 探索归来——什么也没找到（经验+{exp_gain}）')
         _save(s)
-        return {"result": "nothing", "msg": f'{char["name"]}在黑暗中摸索了半天，什么都没发现。'}
+        return {"result": "nothing", "msg": f'{char["name"]}在黑暗中摸索了半天，什么都没发现。（经验+{exp_gain}）'}
 
     elif roll < 0.85:
         # 获得装备 —— 按探索层级过滤
@@ -2338,14 +2341,18 @@ def explore_dungeon(sid: str, req: ExploreRequest):
         old = char["equipment"].get(slot)
         char["equipment"][slot] = item["id"]
         score = calc_equipment_score(item)
+        exp_gain = random.randint(tier.xp_min, tier.xp_max)
+        char["exp"] = char.get("exp", 0) + exp_gain
+        _check_levelup(char)
         msg = f'{char["name"]}在探索中发现了 {item["name"]}（效能分:{score}）！'
         if old:
             old_item = next((e for e in _equipment_pool if e["id"] == old), None)
             msg += f'（替换了{old_item["name"] if old_item else "旧装备"}）'
+        msg += f'（经验+{exp_gain}）'
         _log_event(s, "explore_equip", msg, {"char": char["name"], "item": item["name"]})
         _save(s)
         return {"result": "equipment", "item": item, "msg": msg}
-    
+
     else:
         # 获得魔物 —— 每次袭击周期最多一只
         current_wave = s.get("raid_wave", 1)
@@ -2375,10 +2382,14 @@ def explore_dungeon(sid: str, req: ExploreRequest):
                 old = char["equipment"].get(slot)
                 char["equipment"][slot] = item["id"]
                 score = calc_equipment_score(item)
+                exp_gain = random.randint(tier.xp_min, tier.xp_max)
+                char["exp"] = char.get("exp", 0) + exp_gain
+                _check_levelup(char)
                 msg = f'{char["name"]}在探索中发现了 {item["name"]}（效能分:{score}）！'
                 if old:
                     old_item = next((e for e in _equipment_pool if e["id"] == old), None)
                     msg += f'（替换了{old_item["name"] if old_item else "旧装备"}）'
+                msg += f'（经验+{exp_gain}）'
                 _log_event(s, "explore_equip", msg, {"char": char["name"], "item": item["name"]})
                 _save(s)
                 return {"result": "equipment", "item": item, "msg": msg}
@@ -2416,9 +2427,12 @@ def explore_dungeon(sid: str, req: ExploreRequest):
         _assign_starter_skills(new_char)
         _ensure_melee_skill(new_char)
         s["characters"].append(new_char)
-        _log_event(s, "explore_monster", f'{char["name"]} 探索中遇到了 {name}（{species}）', {"char": char["name"], "monster": name, "species": species})
+        exp_gain = random.randint(tier.xp_min, tier.xp_max)
+        char["exp"] = char.get("exp", 0) + exp_gain
+        _check_levelup(char)
+        _log_event(s, "explore_monster", f'{char["name"]} 探索中遇到了 {name}（{species}）（经验+{exp_gain}）', {"char": char["name"], "monster": name, "species": species})
         _save(s)
-        return {"result": "monster", "name": name, "species": species, "msg": f'{char["name"]}在探索中发现了一只迷路的{species}——{name}！它似乎愿意加入地下城。', "char_add": msg}
+        return {"result": "monster", "name": name, "species": species, "msg": f'{char["name"]}在探索中发现了一只迷路的{species}——{name}！它似乎愿意加入地下城。（经验+{exp_gain}）', "char_add": msg}
 
 
 # ── 事件日志 ──
