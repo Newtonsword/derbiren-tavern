@@ -47,18 +47,30 @@
     const payload = { model, messages: full, stream: false, max_tokens: 4000, temperature: 0.9 };
     // 原生环境(Capacitor WebView)走原生 HTTP 栈，绕开浏览器 CORS 拦截；
     // 普通网页环境回退到标准 fetch。
+    const BROWSER_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
     try {
       const cap = window.Capacitor;
       if (cap && cap.getPlatform && cap.isNativePlatform && cap.isNativePlatform()) {
         const resp = await cap.Plugins.CapacitorHttp.post({
           url: endpoint,
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + key,
+            'User-Agent': BROWSER_UA
+          },
           data: payload,
           connectTimeout: 30000, readTimeout: 30000
         });
         const data = resp.data;
-        const out = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-        if (!out) throw new Error('DeepSeek 返回空');
+        if (!data) throw new Error('AI接口无响应（HTTP ' + (resp.status||'?') + '）');
+        // 容错：data 可能是字符串 JSON 或对象
+        let parsed = data;
+        if (typeof data === 'string') { try { parsed = JSON.parse(data); } catch(e) { throw new Error('AI接口返回非JSON: ' + data.slice(0,80)); } }
+        const out = parsed && parsed.choices && parsed.choices[0] && (parsed.choices[0].message && parsed.choices[0].message.content || parsed.choices[0].text);
+        if (!out) {
+          const errMsg = parsed && parsed.error ? (parsed.error.message || JSON.stringify(parsed.error)) : '无choices字段';
+          throw new Error('AI返回空: ' + errMsg + '（HTTP ' + (resp.status||'?') + '）');
+        }
         return out;
       }
     } catch (e) {
