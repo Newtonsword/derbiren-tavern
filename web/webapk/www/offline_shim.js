@@ -98,7 +98,7 @@
     }
     if (urlPath === '/api/settings' && method === 'GET') {
       const st = ls(SETTINGS_KEY, {});
-      return json(Object.assign({}, st, { has_key: !!(st.api_key || st.apiKey || st.OPENAI_API_KEY) }));
+      return json(Object.assign({}, st, { has_key: !!(st.api_key || st.key || st.apiKey || st.OPENAI_API_KEY) }));
     }
     if (urlPath === '/api/settings' && (method === 'POST' || method === 'PUT')) {
       const s = ls(SETTINGS_KEY, {});
