@@ -310,3 +310,11 @@ python tests/test_explore_encounter.py
 - **.gitignore 已加固**：加了 .env.* 和 node_modules/、backups/。.env.bak.deepseek 确认从未被 git 跟踪。
 - **本地局域网版**：`web/` 目录 `python -m http.server 8090 --bind 0.0.0.0` → `http://192.168.1.17:8090/`（手机同 WiFi）。
 - **安卓 apk**：待做（需 Java+Android SDK+gradle，环境未装）。
+
+
+**v2.37 手机版（安卓 .apk，完整引擎方案）阶段进度：**
+- **路线（用户拍板 B）**：安卓 App 内嵌 Pyodide，跑**本地版同一份 Python 引擎**（非 JS 重写）。
+- **已验证真实跑通**（Edge 无头实测）：engine.py（配种/淫趴/怀孕/生育/升级/探索/战斗纯逻辑）被 Pyodide 在浏览器完整执行。铁证日志见 web/pyodide_test.html。
+- **产物**：engine.py（引擎包装，纯粹逻辑）、web/mdt_engine.zip（72KB 自包含引擎包 14 文件）、web/engine_bridge.js（JS↔Pyodide 桥）。
+- **流程**：newGame（Python 建开局）→ processAction（配种/淫趴/探索/锻炼）→ advanceDay（生育检查）→ 存档 localStorage。**待验证**：engine_bridge.js 里 _stdout 未清空易串行 json，需在下次调用前 _clearOut()。
+- **遗留**：Java + Android SDK 未装 → apk 未打包（阶段 7）。WebView 壳未整合（阶段 6）。

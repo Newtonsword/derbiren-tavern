@@ -1,31 +1,30 @@
-# 密钥
-.env
-.env.*
-
-# Python
-venv/
+# --- Python ---
 __pycache__/
 *.pyc
-*.pyo
+.venv/
+venv/
+*.egg-info/
 
-# 存档（用户个人数据）
-saves/
+# --- Runtime data ---
+saves/*.json
+!.env.example
+.env
 
-# 操作系统
+# --- Node / Capacitor ---
+node_modules/
+web/webapk/node_modules/
+
+# --- Android build output (source is committed, builds are not) ---
+web/webapk/android/app/build/
+web/webapk/android/.gradle/
+web/webapk/android/build/
+web/webapk/android/local.properties
+web/webapk/android/.idea/
+*.apk
+release/
+
+# --- OS / IDE ---
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
 .idea/
-.key_tmp
-
-# node / electron
-node_modules/
-release/
-dist/
-app/release/
-app/node_modules/
-
-# 备份
-backups/
+.vscode/

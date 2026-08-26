@@ -127,6 +127,51 @@ def make_char(name="小魔王", species="人类", coeff=1.3, level=1):
     return c
 
 
+def new_session(world_setting=None, player_name="小魔王", char_name="小魔王", char_species="人类", char_coeff=1.3,
+                char_stats=None, char_skills=None, char_passives=None,
+                twin_stats=None, twin_skills=None, twin_passives=None):
+    """在浏览器（Pyodide）里开局，复刻 server.py new_session 的纯逻辑部分。
+    返回对齐桥里 EMPTY_SAVE 结构的 session dict（字段用 characters，process_day_action 会做 chars 兼容）。"""
+    sess = {
+        "id": "web_" + uuid.uuid4().hex[:8],
+        "title": "新冒险",
+        "world_setting": world_setting or "标准地下城世界",
+        "player_name": player_name,
+        "day": 1,
+        "days_until_attack": 5,
+        "raid_wave": 1,
+        "events": [],
+        "messages": [],
+        "characters": [],
+        "active_char_id": None,
+        "constructions": [],
+        "explored_today": [],
+        "unlocked_equipment": [],
+    }
+    main_char = make_char(char_name, char_species, char_coeff, 1)
+    if char_stats:
+        for k in ATTR_KEYS:
+            if k in char_stats and isinstance(char_stats[k], (int, float)):
+                main_char["stats"][k] = int(char_stats[k])
+        main_char["free_points"] = 0
+    assign_starter_skills(main_char, char_skills, char_passives)
+    ensure_melee_skill(main_char)
+    sess["characters"].append(main_char)
+    sess["active_char_id"] = main_char["id"]
+    # 哥布林/史莱姆开局双倍
+    if char_species in ("哥布林", "史莱姆"):
+        twin = make_char(char_name + "2号", char_species, char_coeff, 1)
+        if twin_stats:
+            for k in ATTR_KEYS:
+                if k in twin_stats and isinstance(twin_stats[k], (int, float)):
+                    twin["stats"][k] = int(twin_stats[k])
+            twin["free_points"] = 0
+        assign_starter_skills(twin, twin_skills, twin_passives)
+        ensure_melee_skill(twin)
+        sess["characters"].append(twin)
+    return sess
+
+
 def assign_starter_skills(char, provided_skills=None, provided_passives=None):
     """给角色分配初始技能（复刻 _assign_starter_skills）。"""
     skills_data = provided_skills
@@ -489,6 +534,9 @@ def run_combat(team0_chars, team1_cfgs, environment="open", max_ticks=400):
 def process_day_action(sess, action, user_msg):
     """处理一条 /day 行动，返回 (result_msg, changes_dict)。浏览器 bridge 调用此函数。
     action: 原始命令文本（含 /day 前缀或纯文本），在文本里检索配种/淫趴/探索/锻炼等。"""
+    # 兼容两种 session 字段名：server 用 characters，engine/浏览器用 chars
+    if "characters" in sess and "chars" not in sess:
+        sess["chars"] = sess["characters"]
     if "淫趴" in action or "狂欢" in action or "大乱交" in action:
         m = re.search(r'(?:参与者|参加者|参趴)[=＝]([^\s]+)', user_msg)
         if not m:

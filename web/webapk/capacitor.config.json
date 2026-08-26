@@ -1,0 +1,9 @@
+{
+  "appId": "com.monster.tavern",
+  "appName": "小魔王地下城",
+  "webDir": "www",
+  "backgroundColor": "#1a1410",
+  "android": {
+    "allowMixedContent": true
+  }
+}

@@ -1,0 +1,3589 @@
+<!DOCTYPE html>
+<!-- v=20260623-03 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- PWA 支持：手机可"添加到主屏幕"变 App 图标 -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#231e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小魔王地下城">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+
+<title>小魔王地下城 · Monster Dungeon Tavern</title>
+<style>
+:root {
+  --bg: #1a1410; --panel: #231e1a; --border: #3a3028; --text: #d4c5b2;
+  --dim: #8a7a6a; --accent: #c44b3c; --accent-glow: #e85d4a; --gold: #c9a050;
+  --good: #5a9e4b; --input-bg: #1e1914; --msg-user: #2a2520; --msg-gm: #1e1c18;
+  --badge: #e85d4a;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: "Microsoft YaHei","PingFang SC",sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100vh; display: flex; justify-content: center; align-items: center;
+}
+#app {
+  width: 100%; max-width: 750px; height: 100vh;
+  display: flex; flex-direction: column; background: var(--panel);
+  border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+}
+#topbar {
+  display: flex; align-items: center; padding: 0 10px;
+  background: #1c1814; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#topbar .logo { font-size: 18px; font-weight: bold; color: var(--accent); margin-right: 14px; }
+.tab-btn {
+  background: none; border: none; color: var(--dim); font-size: 15px;
+  padding: 12px 14px; cursor: pointer; border-bottom: 2px solid transparent;
+  transition: .15s; font-family: inherit;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent-glow); border-bottom-color: var(--accent); }
+.tab-panel { display: none; flex:1; overflow: hidden; flex-direction: column; }
+.tab-panel.active { display: flex; }
+
+#session-bar {
+  display: flex; align-items: center; gap: 8px; padding: 5px 14px;
+  font-size: 12px; color: var(--dim); background: #1a1612;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#session-bar .sid { font-family: monospace; opacity: .7; }
+#session-bar button {
+  background: none; border: 1px solid var(--border); color: var(--dim);
+  padding: 2px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; font-family: inherit;
+}
+#session-bar button:hover { color: var(--text); border-color: var(--accent); }
+
+/* 冒险 */
+#chat-log {
+  flex: 1; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;
+}
+#chat-log::-webkit-scrollbar { width: 6px; }
+#chat-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.msg {
+  max-width: 88%; padding: 10px 14px; border-radius: 8px;
+  line-height: 1.75; font-size: 14px; white-space: pre-wrap; word-break: break-word;
+  animation: fadeIn .25s ease;
+}
+.calc { font-size: 11px; color: #8a7a6a; display: block; margin: 2px 0; }
+.calc.🎯 { color: #c9a050; }
+.calc.hit { color: #5a9e4b; }
+.calc.miss { color: #c44b3c; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+.msg.gm { background: var(--msg-gm); align-self: flex-start; border-left: 3px solid var(--accent); }
+.msg.user { background: var(--msg-user); align-self: flex-end; border-right: 2px solid var(--dim); color: #c8bfb0; }
+.msg.typing { opacity: .6; font-style: italic; }
+.msg.typing::after { content: "▊"; animation: blink .6s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.welcome { text-align: center; color: var(--dim); padding: 32px 16px; font-size: 13px; line-height: 1.8; }
+.welcome .big { font-size: 32px; display: block; margin-bottom: 8px; }
+.big-adventure-btn {
+  padding: 14px 48px; background: linear-gradient(135deg, var(--accent), #d4533c);
+  color: #fff; border: none; border-radius: 8px; font-size: 18px;
+  cursor: pointer; font-family: inherit; margin-top: 12px;
+  letter-spacing: 2px; transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 2px 12px rgba(196,75,60,.3);
+}
+.big-adventure-btn:hover {
+  transform: scale(1.06); box-shadow: 0 4px 20px rgba(196,75,60,.5);
+  background: linear-gradient(135deg, var(--accent-glow), #e85d4a);
+}
+
+#input-area {
+  display: flex; padding: 10px 16px; gap: 8px;
+  border-top: 1px solid var(--border); background: #1c1814;
+}
+#input-area input {
+  flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg); color: var(--text); font-size: 14px; font-family: inherit; outline: none;
+}
+#input-area input:focus { border-color: var(--accent); }
+#send-btn {
+  padding: 10px 20px; background: var(--accent); color: #fff;
+  border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+#send-btn:hover { background: var(--accent-glow); }
+#send-btn:disabled { opacity: .4; cursor: not-allowed; }
+.msg.roll { background: #1a1c18; align-self: center; border: 1px solid var(--border);
+  font-family: monospace; font-size: 13px; text-align: center; color: var(--gold); }
+.msg.roll .big { font-size: 22px; display: block; }
+
+/* 角色面板 */
+#chars-panel { padding: 16px 16px 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.char-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.char-tab {
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 5px;
+  cursor: pointer; font-size: 13px; color: var(--dim); background: var(--input-bg);
+  font-family: inherit; position: relative; transition: .15s;
+}
+.char-tab:hover { border-color: var(--accent); color: var(--text); }
+.char-tab.active { border-color: var(--accent); color: var(--gold); background: #2a2018; }
+.char-tab .badge {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--badge); color: #fff; font-size: 10px; font-weight: bold;
+  width: 18px; height: 18px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+}
+.char-add-btn {
+  padding: 6px 10px; border: 1px dashed var(--border); border-radius: 5px;
+  background: none; color: var(--dim); cursor: pointer; font-size: 16px; font-family: inherit;
+}
+.char-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 属性加点 */
+.stats-section { padding: 4px 0; }
+.stats-section h3 { font-size: 14px; color: var(--gold); margin-bottom: 8px; }
+.free-pts { font-size: 18px; font-weight: bold; color: var(--accent-glow); margin-bottom: 8px; }
+.stat-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid rgba(58,48,40,.4);
+}
+.stat-name { width: 44px; font-weight: bold; font-size: 14px; color: var(--gold); }
+.stat-desc { flex: 1; font-size: 11px; color: var(--dim); }
+.stat-btn {
+  width: 28px; height: 28px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input-bg); color: var(--text); font-size: 15px; cursor: pointer;
+  font-family: inherit; line-height: 1;
+}
+.stat-btn:hover { border-color: var(--accent); }
+.stat-btn:disabled { opacity: .25; cursor: not-allowed; }
+.stat-btn.plus:hover { background: var(--good); border-color: var(--good); color: #fff; }
+.stat-btn.minus:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stat-val { font-size: 16px; font-weight: bold; width: 24px; text-align: center; }
+
+/* 技能区 */
+.skills-section { margin-top: 8px; }
+.skills-section h3 { font-size: 14px; color: var(--gold); margin-bottom: 8px; cursor: pointer; user-select: none; }
+.skills-section h3 .arrow { font-size: 11px; margin-right: 4px; transition: .2s; display: inline-block; }
+.skills-section h3 .arrow.open { transform: rotate(90deg); }
+.skill-row {
+  border: 1px solid var(--border); border-radius: 5px; margin-bottom: 6px;
+  background: var(--input-bg); overflow: hidden;
+}
+.skill-summary {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  cursor: pointer; user-select: none;
+}
+.skill-summary:hover { background: #231e1a; }
+.skill-summary .s-name { color: var(--gold); font-weight: bold; font-size: 13px; }
+.skill-summary .s-type { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: #2a2520; color: var(--dim); }
+.skill-summary .s-lv { font-size: 10px; color: var(--accent); margin-left: auto; }
+.skill-summary .s-arrow { font-size: 10px; color: var(--dim); transition: .2s; }
+.skill-summary .s-arrow.open { transform: rotate(90deg); }
+.skill-detail {
+  display: none; padding: 8px 10px 10px; border-top: 1px solid var(--border);
+  font-size: 12px; line-height: 1.7; color: var(--dim);
+}
+.skill-detail.open { display: block; }
+.eq-detail-expand.open, .eq-slot-detail-expand.open { display: block !important; }
+.eq-arrow { transition: .2s; display: inline-block; font-size: 10px; color: var(--dim); }
+.eq-arrow.open { transform: rotate(180deg); }
+.skill-detail .s-formula { color: var(--gold); font-family: monospace; }
+.skill-detail .upgrade-btn {
+  margin-top: 6px; padding: 3px 12px; background: var(--accent); color: #fff;
+  border: none; border-radius: 3px; cursor: pointer; font-size: 11px; font-family: inherit;
+}
+.skill-detail .upgrade-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 被动区 */
+.passives-section { margin-top: 4px; }
+.passives-section h3 { font-size: 13px; color: var(--dim); margin-bottom: 4px; cursor: pointer; }
+.passive-row {
+  font-size: 12px; color: var(--dim); padding: 3px 0;
+  display: flex; gap: 8px;
+}
+.passive-row .p-name { color: var(--text); }
+
+/* 等级提升 Modal */
+.modal-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.7); z-index: 100;
+  justify-content: center; align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  width: 90%; max-width: 520px; max-height: 80vh; overflow-y: auto; padding: 20px;
+}
+.modal-box h2 { font-size: 18px; color: var(--gold); margin-bottom: 12px; }
+.skill-option {
+  border: 1px solid var(--border); border-radius: 6px; padding: 12px;
+  margin-bottom: 8px; background: var(--input-bg);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.skill-option .so-name { color: var(--gold); font-weight: bold; font-size: 14px; }
+.skill-option .so-type { font-size: 11px; color: var(--accent); }
+.skill-option .so-desc { font-size: 12px; color: var(--dim); }
+.skill-option .so-formula { font-size: 12px; color: var(--gold); font-family: monospace; }
+.skill-option .so-meta { font-size: 11px; color: var(--dim); }
+.skill-option .pick-btn {
+  padding: 6px 16px; background: var(--accent); color: #fff;
+  border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+  align-self: flex-end; font-family: inherit;
+}
+.skill-option .pick-btn:hover { background: var(--accent-glow); }
+.modal-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.modal-actions button {
+  padding: 8px 16px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--input-bg); color: var(--text); cursor: pointer; font-size: 13px; font-family: inherit;
+}
+.modal-actions button:hover { border-color: var(--accent); }
+.modal-actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+#custom-skill-input {
+  width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--input-bg); color: var(--text); font-size: 13px; font-family: inherit;
+  margin-top: 8px; resize: vertical; min-height: 60px;
+}
+
+/* 设置 */
+#settings-panel { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+#settings-panel h2 { font-size: 16px; color: var(--gold); margin-bottom: 4px; }
+.setting-group { display: flex; flex-direction: column; gap: 6px; }
+.setting-group label { font-size: 13px; color: var(--dim); }
+.setting-group input {
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg); color: var(--text); font-size: 14px; font-family: inherit; outline: none;
+}
+.setting-group input:focus { border-color: var(--accent); }
+.setting-group .hint { font-size: 11px; color: var(--dim); }
+/* NSFW toggle switch */
+.switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background: #3a3028; border-radius: 26px; transition: 0.3s;
+}
+.slider::before {
+  content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
+  background: var(--dim); border-radius: 50%; transition: 0.3s;
+}
+input:checked + .slider { background: var(--accent); }
+input:checked + .slider::before { transform: translateX(22px); background: #fff; }
+#save-settings-btn {
+  padding: 10px 28px; background: var(--accent); color: #fff;
+  border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+#save-settings-btn:hover { background: var(--accent-glow); }
+#settings-status { font-size: 13px; min-height: 20px; }
+#settings-status.ok { color: var(--good); }
+#settings-status.err { color: var(--accent); }
+
+/* 战斗日志 */
+.log-entry {
+  border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg);
+  padding: 10px 14px; font-size: 13px;
+}
+.log-entry .log-type {
+  display: inline-block; padding: 1px 8px; border-radius: 3px;
+  font-size: 10px; font-weight: bold; margin-right: 8px;
+}
+.log-type.roll { background: #2a2520; color: var(--gold); }
+.log-type.damage { background: #3a1818; color: var(--accent); }
+.log-type.event { background: #1a2a1a; color: var(--good); }
+.log-entry .log-main { line-height: 1.8; color: var(--text); }
+.log-entry .log-detail { font-size: 11px; color: var(--dim); margin-top: 4px; font-family: monospace; }
+.log-entry .log-narr { font-size: 11px; color: var(--dim); margin-top: 2px; font-style: italic; }
+
+/* 装备页 */
+.eq-slot-card {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; background: var(--input-bg);
+  display: flex; align-items: center; gap: 10px;
+}
+.eq-slot-card .slot-icon { font-size: 22px; }
+.eq-slot-card .slot-label { font-size: 11px; color: var(--dim); width: 44px; flex-shrink: 0; }
+.eq-slot-card .slot-empty { color: var(--dim); font-size: 12px; font-style: italic; }
+.eq-slot-card .slot-name { color: var(--gold); font-weight: bold; font-size: 13px; }
+.eq-slot-card .slot-desc { font-size: 12px; color: var(--dim); flex: 1; }
+.eq-slot-card .unequip-btn {
+  padding: 4px 10px; border: 1px solid var(--accent); border-radius: 3px;
+  background: none; color: var(--accent); cursor: pointer; font-size: 11px; font-family: inherit;
+}
+.eq-slot-card .unequip-btn:hover { background: var(--accent); color: #fff; }
+.eq-item-card {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; background: var(--input-bg);
+  display: flex; align-items: center; gap: 10px; transition: .15s;
+}
+.eq-item-card:hover { border-color: var(--accent); }
+.eq-item-card .rarity-badge {
+  font-size: 10px; padding: 1px 8px; border-radius: 3px;
+  font-weight: bold; flex-shrink: 0;
+}
+.rarity-common { background: #2a2a2a; color: #8a7a6a; }
+.rarity-uncommon { background: #1a2a1a; color: #5a9e4b; }
+.rarity-rare { background: #1a1a3a; color: #4b9eef; }
+.rarity-epic { background: #2a1a2a; color: #8b5cf6; }
+.eq-item-card .slot-tag {
+  font-size: 10px; padding: 1px 6px; border-radius: 3px;
+  background: #2a2520; color: var(--accent); flex-shrink: 0;
+}
+.eq-item-card .item-name { color: var(--gold); font-weight: bold; font-size: 13px; }
+.eq-item-card .item-bonus { font-size: 11px; color: var(--good); }
+.eq-item-card .item-special { font-size: 11px; color: #8b5cf6; }
+.eq-item-card .equip-btn {
+  padding: 4px 12px; border: 1px solid var(--good); border-radius: 3px;
+  background: none; color: var(--good); cursor: pointer; font-size: 11px;
+  font-family: inherit; margin-left: auto; flex-shrink: 0;
+}
+.eq-item-card .equip-btn:hover { background: var(--good); color: #fff; }
+.eq-item-card .equip-btn.equipped {
+  border-color: var(--accent); color: var(--accent); cursor: not-allowed; opacity: .6;
+}
+.eq-filter-btn {
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--input-bg); color: var(--dim); cursor: pointer; font-size: 12px; font-family: inherit;
+}
+.eq-filter-btn:hover { border-color: var(--accent); color: var(--text); }
+.eq-filter-btn.active { border-color: var(--accent); color: var(--gold); background: #2a2018; }
+
+/* ===== 右侧折叠操作栏 ===== */
+.right-dock {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 2000;
+  width: 240px; background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transform: translateX(0);
+  box-shadow: -4px 0 14px rgba(0,0,0,.3);
+  transition: width .2s ease;
+}
+.right-dock.collapsed {
+  width: 52px;
+  box-shadow: none;
+}
+.right-dock .dock-toggle {
+  padding: 10px; text-align: right; border-bottom: 1px solid var(--border);
+  cursor: pointer; color: var(--dim); font-size: 14px; user-select: none;
+  flex-shrink: 0;
+}
+.right-dock .dock-actions {
+  display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  flex-shrink: 0;
+}
+.right-dock .dock-actions button {
+  padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg); color: var(--text); font-size: 13px;
+  cursor: pointer; font-family: inherit; text-align: left; white-space: nowrap;
+  transition: .15s;
+}
+.right-dock .dock-actions button:hover { border-color: var(--accent); }
+.right-dock .dock-body {
+  flex: 1; overflow-y: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 8px;
+  border-top: 1px solid var(--border);
+}
+.right-dock.collapsed .dock-actions { align-items: center; }
+.right-dock.collapsed .dock-actions button {
+  width: 36px; height: 36px; padding: 0; text-align: center; font-size: 16px;
+  overflow: hidden;
+}
+.right-dock.collapsed .dock-actions button .btn-txt { display: none; }
+.right-dock.collapsed .dock-body { display: none; }
+.dock-section { display: none; flex-direction: column; gap: 6px; }
+.dock-section.active { display: flex; }
+.dock-section h4 { font-size: 13px; color: var(--gold); margin: 2px 0 4px; }
+.dock-zone-btn {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg);
+  color: var(--text); cursor: pointer; font-size: 12px; transition: .15s;
+}
+.dock-zone-btn:hover { border-color: var(--accent); }
+.dock-zone-btn .zn { font-weight: bold; color: var(--gold); }
+.dock-zone-btn .zt { font-size: 10px; color: var(--dim); margin-left: auto; }
+.dock-pool {
+  display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 4px;
+  max-height: 15vh; overflow-y: auto;
+}
+.dock-pool button {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--input-bg); color: var(--text); cursor: pointer; font-size: 12px;
+  font-family: inherit;
+}
+.dock-pool button.sel { border: 2px solid #e07ab0; color: #e07ab0; }
+.dock-hint { font-size: 11px; color: var(--dim); line-height: 1.6; }
+
+/* ── 移动端自适应（手机窄屏 <768px）── */
+@media (max-width: 768px) {
+  #app { max-width: 100vw; border-left: none; border-right: none; }
+  .right-dock { width: 56px; }
+  .right-dock.collapsed { width: 0px; }
+  .right-dock .dock-body { display: none; }
+  .right-dock .dock-toggle { display: flex; }
+  .dock-actions { padding: 6px 4px; }
+  .dock-actions button { width: 44px; height: 44px; font-size: 22px; margin: 4px auto; }
+  .dock-toggle { font-size: 11px; }
+  #chat-log { padding: 12px; gap: 10px; }
+  #chat-log .msg { font-size: 15px; line-height: 1.6; }
+  #input-area { padding: 8px 10px; gap: 6px; }
+  #input-area textarea, #input-area input { font-size: 16px; padding: 10px; }  /* 防 iOS 缩放 */
+  .tab-btn { font-size: 13px; padding: 10px 9px; }
+  #chars-panel, #settings-panel { padding: 10px 10px 0; }
+  h2, .panel-title { font-size: 17px; }
+  .btn, button { min-height: 40px; }
+  #sid-display { font-size: 10px; }
+}
+</style>
+<!-- 离线版：本地引擎 + DeepSeek 直连 shim -->
+<script src="./engine_bridge.js"></script>
+<script src="./offline_shim.js"></script>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <span class="logo">🍺 小魔王地下城</span>
+    <button class="tab-btn active" data-tab="adventure">🗡️ 冒险</button>
+    <button class="tab-btn" data-tab="chars">👥 角色</button>
+    <button class="tab-btn" data-tab="equipment">⚔️ 装备</button>
+    <button class="tab-btn" data-tab="engineering">🏗️ 工程</button>
+    <button class="tab-btn" data-tab="library">📚 库</button>
+    <button class="tab-btn" data-tab="log">📊 日志</button>
+    <button class="tab-btn" data-tab="settings">⚙️ 设置</button>
+  </div>
+  <div id="session-bar">
+    <span>SID: <span class="sid" id="sid-display">---</span></span>
+    <button onclick="newAdventure()">新冒险</button>
+    <button onclick="showSaveModal()">💾 存档</button>
+    <button onclick="showLoadModal()">📂 读档</button>
+    <span id="day-display" style="margin-left:auto;color:var(--gold);font-weight:bold;font-size:12px;display:none;"></span>
+  </div>
+
+  <!-- 冒险 -->
+  <div class="tab-panel active" id="tab-adventure">
+    <div id="chat-log">
+      <div class="welcome" id="welcome-msg">
+        <span class="big">🔥</span>
+        欢迎来到小魔王地下城。<br>
+        <em>「选一只魔物，开始你的地下城之旅吧。」</em><br><br>
+        <button onclick="newAdventure()" class="big-adventure-btn">🔥 开始新冒险</button>
+        <br><span style="font-size:11px;color:var(--dim);margin-top:12px;display:inline-block;">或从下方存档中读取</span>
+      </div>
+    </div>
+    <div id="input-area">
+                        <textarea id="user-input" placeholder="描述你的行动——推开沉重的橡木门，走进昏暗的酒馆...（Enter 发送，Shift+Enter 换行）" autofocus rows="2" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:none;min-height:42px;max-height:160px;line-height:1.5;"></textarea>
+                  <button id="send-btn" onclick="sendMessage()">发送</button>
+                            </div>
+          <!-- 文本工具行：输出长度 + 手动压缩记忆 -->
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid var(--border);background:rgba(0,0,0,.15);font-size:12px;">
+            <span style="color:var(--dim);white-space:nowrap;">✍️ 输出长度</span>
+            <select id="length-select" onchange="setGMLength()" style="padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+              <option value="short">短（简洁）</option>
+              <option value="medium" selected>中（标准）</option>
+              <option value="long">长（详细）</option>
+              <option value="verylong">超长（沉浸）</option>
+            </select>
+            <div style="flex:1;"></div>
+                        <span style="color:var(--dim);white-space:nowrap;" title="压缩记忆用的模型。选「自动」用环境变量；或填任意模型名">🧮 缩用</span>
+                        <select id="summarize-model" title="压缩记忆用的模型" style="padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;max-width:130px;">
+                          <option value="auto">自动</option>
+                          <option value="deepseek-chat">deepseek-chat</option>
+                          <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+                          <option value="deepseek-reasoner">deepseek-reasoner</option>
+                          <option value="custom">自定义…</option>
+                        </select>
+                        <input id="summarize-model-custom" placeholder="模型名" style="display:none;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;width:110px;" />
+                        <button onclick="manualSummarize()" title="让 LLM 总结当前对话历史并压缩上下文，防止 GM 失忆、节省 token。压缩模型可选（左侧）" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--gold);cursor:pointer;font-size:12px;font-family:inherit;">🧠 压缩记忆</button>
+          </div>
+        </div>
+
+  <!-- 角色 -->
+  <div class="tab-panel" id="tab-chars">
+    <div id="chars-panel">
+      <div id="char-tabs-row" class="char-tabs"></div>
+      <div id="char-stats-area"></div>
+      <div id="char-skills-area"></div>
+      <div id="char-passives-area"></div>
+    </div>
+  </div>
+
+  <!-- 技能库 -->
+  <div class="tab-panel" id="tab-library">
+    <div id="library-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;color:var(--gold);">📚 模板库</h2>
+        <button onclick="loadLibrary()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--dim);cursor:pointer;font-size:12px;font-family:inherit;">🔄 刷新</button>
+      </div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:4px;">
+        💡 模板角色提供数值参考——AI 生成技能时以此库的倍率逻辑为准。点击技能展开设计理由。
+      </div>
+      <div id="library-entries" style="font-size:13px;color:var(--dim);text-align:center;padding:24px;">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 战斗日志 -->
+  <div class="tab-panel" id="tab-log">
+    <div id="log-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;color:var(--gold);">📊 数值判定日志</h2>
+        <button onclick="refreshLog()" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--dim);cursor:pointer;font-size:12px;font-family:inherit;">🔄 刷新</button>
+      </div>
+      <div id="log-entries" style="font-size:13px;color:var(--dim);text-align:center;padding:24px;">冒险开始后，所有骰子和战斗计算会显示在这里。</div>
+    </div>
+  </div>
+
+  <!-- 装备 -->
+  <div class="tab-panel" id="tab-equipment">
+    <div id="equipment-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <h2 style="font-size:16px;color:var(--gold);">⚔️ 装备管理</h2>
+        <select id="eq-char-select" onchange="renderEquipment()" style="padding:6px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;"></select>
+      </div>
+      <!-- 当前装备 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;">🛡️ 已装备</div>
+      <div id="eq-slots" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <!-- 装备仓库 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:8px;">📦 装备仓库</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="eq-filter-btn active" onclick="filterEquipment('all',this)">全部</button>
+        <button class="eq-filter-btn" onclick="filterEquipment('weapon',this)">🗡️ 武器</button>
+        <button class="eq-filter-btn" onclick="filterEquipment('armor',this)">🛡️ 防具</button>
+        <button class="eq-filter-btn" onclick="filterEquipment('accessory',this)">💍 饰品</button>
+      </div>
+      <div id="eq-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- 工程 -->
+  <div class="tab-panel" id="tab-engineering">
+    <div id="engineering-panel" style="padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+      <h2 style="font-size:16px;color:var(--gold);">🏗️ 地下城工程</h2>
+      <div style="font-size:12px;color:var(--dim);line-height:1.6;">
+        💡 工程加入队列后每天自动推进——第一个在建工程每日+1天进度。<br>
+        🟢 哥布林被动「工程天赋」：建造速度+0.5天/每日。<br>
+        城墙让近战敌人必须攀爬，远程敌人仰射命中降低，我方远程获得高打低加成。
+      </div>
+      <!-- 在建造 -->
+      <div style="font-size:13px;color:#c9a050;border-bottom:1px solid var(--border);padding-bottom:4px;">🔨 在建造</div>
+      <div id="eng-building" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--dim);font-size:12px;font-style:italic;text-align:center;padding:16px;">建造队列为空</div>
+      </div>
+      <!-- 已建造 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:4px;">🏰 已建成</div>
+      <div id="eng-built" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--dim);font-size:12px;font-style:italic;text-align:center;padding:16px;">尚未建成任何工事</div>
+      </div>
+      <!-- 可建造 -->
+      <div style="font-size:13px;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:4px;margin-top:4px;">📋 工程项目</div>
+      <div id="eng-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div class="tab-panel" id="tab-settings">
+    <div id="settings-panel">
+      <h2>⚙️ API 设置</h2>
+      <div class="setting-group">
+        <label>API Key</label>
+        <input id="set-key" type="password" placeholder="sk-...">
+        <span class="hint">支持 DeepSeek / OpenAI 等兼容格式</span>
+      </div>
+      <div class="setting-group">
+        <label>Base URL</label>
+        <input id="set-base" placeholder="https://api.deepseek.com">
+      </div>
+      <div class="setting-group">
+        <label>模型名</label>
+        <input id="set-model" placeholder="deepseek-chat">
+      </div>
+      <button id="save-settings-btn" onclick="saveSettings()">💾 保存</button>
+      <div id="settings-status"></div>
+      <h2 style="margin-top:16px;cursor:pointer;user-select:none;" onclick="toggleOtherSettings()">⚙️ 其他设置 <span id="other-toggle-icon" style="font-size:14px;color:var(--dim);">▶</span></h2>
+      <div id="other-panel" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--input-bg);">
+        <h3 style="cursor:pointer;user-select:none;font-size:14px;color:var(--dim);margin:0;" onclick="toggleExpSettings()">🧪 实验设置 <span id="exp-toggle-icon" style="font-size:12px;">▶</span></h3>
+        <div id="exp-panel" style="display:none;margin-top:8px;padding:10px;border-left:2px solid var(--border);">
+          <div class="setting-group" style="display:flex;align-items:center;gap:8px;flex-direction:row;">
+            <span style="font-size:10px;color:#3a3028;opacity:0.5;">nsfw</span>
+            <label class="switch">
+              <input id="set-nsfw" type="checkbox" onchange="saveSettings()">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:16px;">🌍 世界观</h2>
+      <div class="setting-group">
+        <label>自定义世界设定（影响 GM 叙事风格）</label>
+        <textarea id="set-world" style="padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:vertical;min-height:60px;">小魔王地下城——你是一只被赶鸭子上架的小魔王。冒险者公会三天两头派人来砸场子。你的魔物子民等着你带领它们让入侵者有来无回。</textarea>
+      </div>
+      <button id="save-world-btn" onclick="saveWorld()" style="padding:10px 28px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;">💾 保存世界观</button>
+      <div id="world-status" style="font-size:13px;min-height:20px;"></div>
+
+      <h2 style="margin-top:16px;cursor:pointer;user-select:none;" onclick="toggleDevMode()">🔧 开发者模式 <span id="dev-toggle-icon" style="font-size:14px;color:var(--dim);">▶</span></h2>
+      <div id="dev-panel" style="display:none;margin-top:8px;border:1px solid #4a3020;border-radius:8px;padding:14px;background:#1a1410;">
+        <div style="font-size:12px;color:var(--gold);margin-bottom:10px;">⚠️ 开发者工具——直接操作游戏数据</div>
+
+        <!-- 经验 -->
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--dim);">给角色加经验</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <select id="dev-exp-char" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;"></select>
+            <input id="dev-exp-amount" type="number" value="200" min="1" max="99999" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devAddExp()" style="padding:6px 12px;background:var(--good);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">加经验</button>
+          </div>
+        </div>
+
+        <!-- 直接设置等级 -->
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--dim);">设置等级</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <select id="dev-lv-char" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;"></select>
+            <input id="dev-lv-value" type="number" value="5" min="1" max="99" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devSetLevel()" style="padding:6px 12px;background:#c44b3c;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">设等级</button>
+          </div>
+        </div>
+
+        <!-- 跳转天数 -->
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;color:var(--dim);">跳转天数/波次</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <span style="font-size:11px;color:var(--dim);align-self:center;">天</span>
+            <input id="dev-day" type="number" value="5" min="1" max="999" style="width:60px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <span style="font-size:11px;color:var(--dim);align-self:center;">波</span>
+            <input id="dev-wave" type="number" value="1" min="1" max="99" style="width:60px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <span style="font-size:11px;color:var(--dim);align-self:center;">倒计时</span>
+            <input id="dev-dta" type="number" value="1" min="0" max="99" style="width:60px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devSetDay()" style="padding:6px 12px;background:#8b5cf6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">跳转</button>
+          </div>
+        </div>
+
+        <!-- 修改属性 -->
+        <div style="margin-bottom:8px;">
+          <label style="font-size:12px;color:var(--dim);">修改属性（选角色→属性→值）</label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <select id="dev-stat-char" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;"></select>
+            <select id="dev-stat-key" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+              <option value="END">耐力END</option><option value="STR">力量STR</option><option value="SPD">速度SPD</option><option value="DEF">防御DEF</option><option value="INT">智力INT</option><option value="MP">法力MP</option><option value="WIL">精神WIL</option>
+            </select>
+            <input id="dev-stat-val" type="number" value="10" min="1" max="99" style="width:70px;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+            <button onclick="devSetStat()" style="padding:6px 12px;background:var(--gold);color:#1a1410;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">修改</button>
+          </div>
+        </div>
+        <div id="dev-status" style="font-size:11px;color:var(--good);min-height:16px;margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 创建冒险 Modal -->
+  <div class="modal-overlay" id="create-modal">
+    <div class="modal-box">
+      <h2>🔥 开始新冒险</h2>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;color:var(--dim);">😈 你的名字（魔王）</label>
+        <input id="create-player-name" placeholder="给自己取个名字" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;margin-top:4px;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;color:var(--dim);">🌍 世界观设定</label>
+        <textarea id="create-world" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:60px;margin-top:4px;">小魔王地下城——你是一只被赶鸭子上架的小魔王，管理着这座破破烂烂的远古迷宫。冒险者公会视你为经验包，三天两头派人来砸场子。你的魔物子民（猫龙、触手怪、石像鬼…）等着你带领它们让入侵者有来无回。</textarea>
+      </div>
+      <div style="font-size:11px;color:#c9a050;margin-bottom:12px;line-height:1.6;background:#1a1410;border:1px solid #3a2a18;border-radius:6px;padding:8px 12px;">
+        ⚠️ 本游戏机制（魔物物种、raid波次、战斗公式、天数系统等）均围绕默认世界观「小魔王地下城」设计。自定义世界观会改变叙事风格，但不会自动匹配对应的敌人/物种/规则——请知悉后再修改。
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px;color:var(--dim);cursor:pointer;user-select:none;" onclick="var el=document.getElementById('preset-list');el.style.display=el.style.display==='none'?'flex':'none'">📚 出生库 <span style="font-size:10px;">(点击展开查看全部出生)</span></label>
+        <div id="preset-list" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        <div id="preset-detail" style="display:none;margin-top:8px;padding:10px 12px;background:var(--msg-gm);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;"></div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;color:var(--dim);">🌱 选择出生</label>
+        <div id="birth-list" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;max-height:300px;overflow-y:auto;padding-right:4px;"></div>
+        <input type="hidden" id="create-species" value="史莱姆">
+      <div style="display:flex;gap:8px;">
+        <button class="primary" onclick="createAdventure()" style="padding:8px 24px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-family:inherit;">开始冒险</button>
+        <button onclick="closeCreateModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 等级提升 Modal -->
+  <div class="modal-overlay" id="skill-modal">
+    <div class="modal-box">
+      <h2>🎉 获得技能点！</h2>
+      <div id="modal-title" style="font-size:13px;color:var(--dim);margin-bottom:12px;"></div>
+      <div id="modal-skills"></div>
+      <div id="modal-actions" class="modal-actions">
+        <button onclick="refreshSkills()">🔄 换一批</button>
+        <button onclick="showCustomSkill()">✏️ 自定义技能</button>
+        <button onclick="closeSkillModal()">关闭</button>
+      </div>
+      <textarea id="custom-skill-input" style="display:none;" placeholder="描述你想要的技能，系统会帮你转成标准格式...&#10;例：一个快速的二连斩，每次伤害不高但能打断施法"></textarea>
+      <div class="modal-actions" id="custom-actions" style="display:none;">
+        <button class="primary" onclick="submitCustomSkill()">生成技能</button>
+        <button onclick="hideCustomInput()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 存档 Modal -->
+  <div class="modal-overlay" id="save-modal">
+    <div class="modal-box">
+      <h2>💾 存档</h2>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:13px;color:var(--dim);">存档名称</label>
+        <input id="save-name" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;margin-top:4px;" placeholder="给存档起个名字...">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="primary" onclick="doSave()" style="padding:8px 24px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:14px;font-family:inherit;">💾 保存</button>
+        <button onclick="closeSaveModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 读档 Modal -->
+  <div class="modal-overlay" id="load-modal">
+    <div class="modal-box">
+      <h2>📂 读档</h2>
+      <div id="load-list" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <div style="text-align:center;padding:20px;color:var(--dim);">加载中...</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button onclick="closeLoadModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 探索 Modal（分区版：选择探索区域） -->
+    <div class="modal-overlay" id="explore-modal">
+      <div class="modal-box">
+        <h2>🗺️ 选择探索区域</h2>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
+          💡 派队伍探索地下城的某个区域。区域分【难度】(安全/危险/高危)与【主题】，越难奖励越好，但敌人越强。
+        </div>
+        <div id="explore-zones" style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;">
+        </div>
+        <div id="explore-result" style="margin-top:12px;padding:10px;border-radius:5px;display:none;"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button onclick="closeExploreModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 生育 Modal（配种，仅NSFW） -->
+    <div class="modal-overlay" id="breed-modal">
+      <div class="modal-box">
+        <h2>🤰 生育（配种）</h2>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
+          💡 选两只未怀孕的魔物繁育后代。父方→母方，母方进入怀孕期（杂鱼1天/普通2天/精锐3天/精英4天），到期自动生产。跨物种成功率更低；猫龙参与 +20% 成功率；魔王本人参与 100%。怀孕中的魔物不能参与。
+        </div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">👨 父方（父亲）</div>
+        <div id="breed-father-pool" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;max-height:20vh;overflow-y:auto;"></div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">👩 母方（母亲 · 怀孕方）</div>
+        <div id="breed-mother-pool" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;max-height:20vh;overflow-y:auto;"></div>
+        <div id="breed-result" style="margin-top:12px;padding:10px;border-radius:5px;display:none;"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button onclick="doBreed()" id="breed-confirm-btn" disabled style="padding:8px 20px;background:#e07ab0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">配种</button>
+          <button onclick="closeBreedModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
+        </div>
+      </div>
+    </div>
+        <div class="modal-overlay" id="loot-modal">
+          <div class="modal-box">
+            <h2>🎒 挑选战利品</h2>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px;" id="loot-capacity">携带额度</div>
+            <div style="font-size:12px;color:var(--good);margin-bottom:12px;" id="loot-used">已选 0</div>
+            <div id="loot-list" style="display:flex;flex-direction:column;gap:6px;max-height:45vh;overflow-y:auto;"></div>
+            <div style="font-size:11px;color:var(--dim);margin-top:8px;">⚠️ 带不走的战利品会被丢弃，只能拿走额度内的。</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button onclick="confirmPickLoot()" style="padding:8px 20px;background:var(--good);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">确认带走</button>
+              <button onclick="discardAllLoot()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">全部放弃</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+<script>
+/* ===== 版本号（改代码就 bump）===== */
+const APP_VERSION='v2.38-offline';
+window.addEventListener('DOMContentLoaded', function(){
+  const el = document.getElementById('app-ver');
+  if (el) el.textContent = APP_VERSION;
+});
+
+const ATTRS = [
+  {key:"END", name:"耐力", desc:"体魄与持久力——决定你能扛多少伤害、战斗多久不倒下"},
+  {key:"STR", name:"力量", desc:"纯粹的肌肉爆发力——挥砍越重、破甲越狠"},
+  {key:"SPD", name:"速度", desc:"身法与反应——先手出击、闪避致命一击、缩短攻击间隔"},
+  {key:"DEF", name:"防御", desc:"护甲与格挡技巧——让敌人的攻击打折扣"},
+  {key:"INT", name:"智力", desc:"法术天赋与精神力——决定法术的威力与精神攻击的穿透力"},
+  {key:"MP",  name:"法量", desc:"魔力池的深度——存储和恢复魔力的能力，决定你能施放多少法术"},
+  {key:"WIL", name:"精神", desc:"战斗意志与士气的体现——崩溃线高低、对恐惧和魅惑的抵抗力"},
+];
+
+let state = {
+  session_id: '',
+  characters: [],
+  active_char_id: '',
+  isLoading: false,
+  modal_char_id: '',
+  draft: null,
+  day: 1,
+  days_until_attack: 5,
+  raid_wave: 1,
+};
+
+const SPECIES_PRESETS = [
+  {name:"猫龙", coeff:2.5, desc:"精英×2.5 | 魔战士·INT+STR双修 | 龙息法术+利爪近战，黑暗主场 | 最强初始魔物"},
+  {name:"幼龙", coeff:2.5, desc:"精英×2.5 | 法师·高INT龙息轰炸 | 鳞甲天生高防，尾击击退近身 | 最强初始魔物"},
+  {name:"触手怪", coeff:1.8, desc:"精锐×1.8 | 全能辅助·脆皮高精神——缠绕减攻速减耐力，鞭打多目标，墨汁致盲"},
+  {name:"石像鬼", coeff:1.8, desc:"精锐×1.8 | 坦克·DEF全物种最高 | 石化皮肤高防御，窄洞飞行无视地形"},
+  {name:"杀人兔", coeff:1.8, desc:"精锐×1.8 | 刺客·SPD封顶暴击率高 | 先手必暴一击脱离，萌外表杀戮机器"},
+  {name:"野狼", coeff:1.3, desc:"普通×1.3 | 刺客·高SPD游击闪避 | 撕咬扑击短冷却，狼群战术增伤"},
+  {name:"史莱姆", coeff:1.0, desc:"杂鱼×1.0 | 全能普通·进化路线最多 | 凝胶身体钝伤减半，可塑性全物种最高"},
+  {name:"哥布林", coeff:1.0, desc:"杂鱼×1.0 | 战士/射手双职业 | 石锤挥砍盾击近战，藤弓短弓淬毒远程"},
+];
+
+const BIRTH_PRESETS = [
+  {
+    id:"slime_nest",
+    name:"🫧 史莱姆巢穴",
+    desc:"你在一处潮湿的地下洞穴中醒来，四周是半透明的蓝色凝胶——一个史莱姆巢穴。一只胆大的小史莱姆正趴在你的胸口，用它Q弹的身体轻轻起伏，像是在听你的心跳。它身后还缩着一滩淡绿色的酸液史莱姆，怯生生地躲在姐姐的凝胶后面。",
+    hint:"开局获得两只史莱姆：软软(物理肉盾)+黏黏(酸液射手)，属性低但人多。",
+    species:"史莱姆", coeff:1.0,
+    primary:{
+      name:"软软",
+      stats:{END:2,STR:2,SPD:2,DEF:2,INT:1,MP:2,WIL:1},
+      skills:[
+        {name:"撞击",type:"钝击",formula:"10+1.0×耐力+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"70+1.0×耐力",category:"主动"},
+        {name:"缩壳",type:"防御",formula:"8+1.0×耐力/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"凝胶身体",effect:"钝伤减半"}],
+    },
+    twin:{
+      name:"黏黏",
+      stats:{END:1,STR:1,SPD:3,DEF:1,INT:2,MP:2,WIL:2},
+      skills:[
+        {name:"酸液喷射",type:"刺击",formula:"12+2.0×智力+0.5×速度",cost:"蓝6",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
+        {name:"分裂",type:"防御",formula:"下次受击减半后回复8+1.0×耐力",cost:"耐力10",interval:"12.0s(冷却)",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"酸性体质",effect:"受击时对攻击者造成2+0.3×智力酸蚀伤害"}],
+    },
+  },
+  {
+    id:"goblin_outpost",
+    name:"🗡️ 哥布林前哨",
+    desc:"你被一群哥布林的嘈杂声吵醒，它们正为一块发霉的面包吵得不可开交。看到你睁开眼睛，它们立刻安静下来。一个瘦小的哥布林战士怯生生地把面包递到你面前，它的弟弟则在后方拉开弹弓警戒。",
+    hint:"开局获得两只哥布林：石锤(近战战士)+藤弓(远程射手)，属性低但兄弟齐心。",
+    species:"哥布林", coeff:1.0,
+    primary:{
+      name:"石锤",
+      stats:{END:2,STR:3,SPD:2,DEF:2,INT:1,MP:1,WIL:1},
+      skills:[
+        {name:"挥砍",type:"斩击",formula:"12+2.0×力量+0.5×速度",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.5×力量+0.5×速度",category:"主动"},
+        {name:"盾击",type:"钝击",formula:"10+1.5×力量+0.5×耐力",cost:"耐力14",interval:"4.0s",hit_formula:"75+1.5×力量",category:"主动"},
+        {name:"格挡",type:"防御",formula:"10+1.5×耐力+1.0×力量/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"战斗怒吼",effect:"战斗开始时STR+1"},{name:"工程天赋",effect:"工程建造速度+0.5天/每日"}],
+    },
+    twin:{
+      name:"藤弓",
+      stats:{END:1,STR:2,SPD:4,DEF:1,INT:1,MP:1,WIL:2},
+      skills:[
+        {name:"短弓射击",type:"刺击",formula:"12+2.0×速度+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"75+2.0×速度",category:"主动"},
+        {name:"淬毒箭",type:"刺击",formula:"18+2.5×速度+1.0×智力",cost:"耐力16",interval:"6.0s",cooldown:"8s",hit_formula:"80+2.0×速度",category:"主动"},
+        {name:"闪避步法",type:"防御",formula:"10+2.0×速度/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"远程狙击",effect:"远程攻击伤害+15%，命中+10%"},{name:"工程天赋",effect:"工程建造速度+0.5天/每日"}],
+    },
+  },
+  {
+    id:"dungeon_foundling",
+    name:"🌑 地下城弃婴",
+    desc:"你降临地下城的瞬间，王座旁的光影悄然凝聚成一只浑身漆黑的猫龙幼崽——左眼粉右眼绿，尾巴尖跳动着火焰。它没有逃跑，仰头认真地看着你，过了许久才轻轻「咪」了一声。这就是托付给你的第一只魔物。",
+    hint:"开局获得一只猫龙「影爪」(精英2.5×)，魔战士，暗影主场。",
+    species:"猫龙", coeff:2.5,
+    primary:{
+      name:"影爪",
+      stats:{END:3,STR:5,SPD:5,DEF:3,INT:4,MP:3,WIL:2},
+      skills:[
+        {name:"暗影吐息",type:"法术",formula:"22+2.5×智力",cost:"蓝14",interval:"4.5s",cooldown:"8s",hit_formula:"85+2.0×智力",category:"主动"},
+        {name:"利爪",type:"斩击",formula:"18+2.0×力量+1.5×速度",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
+        {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"80+1.5×速度",category:"主动"},
+        {name:"灵巧格挡",type:"防御",formula:"15+2.0×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"暗影亲和",effect:"黑暗环境不受命中惩罚，法术伤害+10%"}],
+    },
+  },
+  {
+    id:"volcano_orphan",
+    name:"🌋 火山遗孤",
+    desc:"你降临地下城时，王座前的空气中凭空浮现一枚温热的龙蛋，蛋壳应声裂开。一只瘦小的红色幼龙从里面挣扎出来，比同龄的龙小一圈，喷出的第一口龙息却直接把你脚下的岩石烧成了岩浆。它歪头看你，打了个嗝，冒出黑烟。",
+    hint:"开局获得一只幼龙「赤焰」(精英2.5×)，高INT龙息轰炸，鳞甲天生。",
+    species:"幼龙", coeff:2.5,
+    primary:{
+      name:"赤焰",
+      stats:{END:4,STR:2,SPD:3,DEF:4,INT:6,MP:4,WIL:2},
+      skills:[
+        {name:"龙息",type:"法术",formula:"25+3.0×智力",cost:"蓝16",interval:"5.0s",cooldown:"8s",hit_formula:"90",category:"主动"},
+        {name:"尾击",type:"钝击",formula:"18+2.0×力量+0.5×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"75+2.0×速度",category:"主动"},
+        {name:"龙鳞格挡",type:"防御",formula:"20+2.0×耐力+1.0×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"鳞甲天生",effect:"DEF等效+1，钝伤减伤+10%"}],
+    },
+  },
+  {
+    id:"underground_river",
+    name:"🌊 暗河漂流",
+    desc:"你降临地下城时，暗河的水面泛起涟漪，一团暗紫色的软体被水波轻轻推到你面前。它的数条触手无力地垂着，荧光纹路微弱地跳动。你用指尖碰了碰一条触手，吸盘轻轻嘬住你的手指，传来微弱的脉搏——它还活着。这就是托付给你的同伴。",
+    hint:"开局获得一只触手怪「墨墨」(精锐1.8×)，全能辅助，精神攻击。",
+    species:"触手怪", coeff:1.8,
+    primary:{
+      name:"墨墨",
+      stats:{END:2,STR:2,SPD:4,DEF:2,INT:2,MP:3,WIL:5},
+      skills:[
+        {name:"缠绕",type:"钝击",formula:"8+1.0×速度+0.5×精神",cost:"耐力12",interval:"4.0s",hit_formula:"80+2.0×速度",category:"主动"},
+        {name:"鞭打",type:"钝击",formula:"12+1.5×速度+0.5×精神",cost:"耐力10",interval:"2.5s",hit_formula:"75+1.5×速度+0.5×精神",category:"主动"},
+        {name:"触须护盾",type:"防御",formula:"10+1.5×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"精神触须",effect:"攻击命中时减少目标 自身精神×0.5 精神条"}],
+    },
+  },
+  {
+    id:"ancient_hall",
+    name:"🗿 古殿苏醒",
+    desc:"你降临地下城的王座前，一尊蹲伏的石像鬼雕像忽然从祭坛上苏醒，灰色的石壳片片剥落，露出一双无瞳的石眼。它跃下祭坛，石翼张开，沉默地挡在你面前。这是守候许久、终于等到主人归来的第一只魔物。",
+    hint:"开局获得一只石像鬼「岩盾」(精锐1.8×)，重甲飞行坦克，全游最高防御。",
+    species:"石像鬼", coeff:1.8,
+    primary:{
+      name:"岩盾",
+      stats:{END:6,STR:4,SPD:2,DEF:7,INT:1,MP:1,WIL:4},
+      skills:[
+        {name:"俯冲",type:"钝击",formula:"22+2.0×速度+1.0×力量",cost:"耐力16",interval:"4.0s",hit_formula:"75+3.0×速度",category:"主动"},
+        {name:"碎石",type:"钝击",formula:"16+1.5×力量+0.5×耐力",cost:"耐力20",interval:"5.0s",cooldown:"8s",hit_formula:"85+1.0×速度",category:"主动"},
+        {name:"石翼守护",type:"防御",formula:"20+2.5×耐力+1.5×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"石化皮肤",effect:"减伤+8%，受击概率石化攻击者(-3SPD)"}],
+    },
+  },
+  {
+    id:"snowfield_wolf",
+    name:"🐺 雪原独狼",
+    desc:"你降临地下城的边界，一头灰白色的独狼穿过风雪走入你的视线——它没有被驯服，只是用绿光眼睛盯着你看了很久，然后安静地跟在你身后，不再离开。它被自己的族群放逐，如今把仅剩的信任交到你手里。",
+    hint:"开局获得一只野狼「灰牙」(普通1.3×)，高SPD游击刺客。",
+    species:"野狼", coeff:1.3,
+    primary:{
+      name:"灰牙",
+      stats:{END:3,STR:4,SPD:6,DEF:2,INT:1,MP:1,WIL:3},
+      skills:[
+        {name:"撕咬",type:"刺击",formula:"15+2.0×力量+1.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×速度+1.0×力量",category:"主动"},
+        {name:"扑击",type:"钝击",formula:"18+1.5×力量+2.0×速度",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×速度+1.0×力量",category:"主动"},
+        {name:"影步",type:"防御",formula:"闪避+25(单次)",cost:"耐力15",interval:"6.0s",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"狼群战术",effect:"队友在场时伤害+10%"}],
+    },
+  },
+  {
+    id:"bloody_meadow",
+    name:"🐇 血色草丛",
+    desc:"你降临地下城的入口，一只雪白的小兔子蹦到你脚边，用毛茸茸的脑袋蹭你。你弯腰想摸它——它抬起头，嘴角咧到耳根，露出两排尖锐獠牙，黑豆眼瞬间透出血红。然后它又恢复萌样，继续蹭你。它看似无害，却天生嗜血。",
+    hint:"开局获得一只杀人兔「跳跳」(精锐1.8×)，全游最高速度，一击必杀刺客。",
+    species:"杀人兔", coeff:1.8,
+    primary:{
+      name:"跳跳",
+      stats:{END:2,STR:3,SPD:7,DEF:2,INT:1,MP:1,WIL:4},
+      skills:[
+        {name:"致命突袭",type:"刺击",formula:"18+3.0×速度+0.5×力量",cost:"耐力10",interval:"2.0s",cooldown:"6s",hit_formula:"70+3.5×速度",category:"主动"},
+        {name:"连咬",type:"斩击",formula:"14+1.5×速度+1.0×力量",cost:"耐力8",interval:"1.8s",cooldown:"0.5s",hit_formula:"75+2.0×速度",category:"主动"},
+        {name:"幻影步",type:"防御",formula:"闪避+30(单次)",cost:"耐力12",interval:"5.0s",hit_formula:"",category:"主动"},
+      ],
+      passives:[{name:"偷袭",effect:"战斗首次攻击伤害×2"},{name:"闪避本能",effect:"闪避+10"}],
+    },
+  },
+];
+
+const CHARACTER_PRESETS = [
+  {
+    name:"猫龙「影爪」", species:"猫龙", coeff:2.5,
+    stats:{END:3,STR:5,SPD:5,DEF:3,INT:4,MP:3,WIL:2},
+    desc:"一只浑身漆黑的猫龙幼崽，是托付给你的第一只魔物。它的瞳孔能在黑暗与光明间自由切换，既有猫科动物的敏捷，也继承了龙族血脉的魔力。它走路没有声音，可尾巴尖跳动的火焰总会暴露它的位置。",
+    skills:[
+      {name:"暗影吐息",type:"法术",formula:"22+2.5×智力",cost:"蓝14",interval:"4.5s",cooldown:"8s",hit_formula:"85+2.0×智力",category:"主动"},
+      {name:"利爪",type:"斩击",formula:"18+2.0×力量+1.5×速度",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
+      {name:"扫尾",type:"钝击",formula:"15+1.5×力量+1.0×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"80+1.5×速度",category:"主动"},
+      {name:"灵巧格挡",type:"防御",formula:"15+2.0×力量+1.0×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"暗影亲和",effect:"黑暗环境不受命中惩罚，法术伤害+10%"},
+    ],
+  },
+  {
+    name:"幼龙「赤焰」", species:"幼龙", coeff:2.5,
+    stats:{END:4,STR:2,SPD:3,DEF:4,INT:6,MP:4,WIL:2},
+    desc:"一枚在火山口捡到的龙蛋，孵出来的小家伙比同龄的龙瘦小一圈，龙息却比谁都烫。它的脾气和名字一样火爆，一点就着，唯独对你莫名地服气。",
+    skills:[
+      {name:"龙息",type:"法术",formula:"25+3.0×智力",cost:"蓝16",interval:"5.0s",hit_formula:"90",category:"主动"},
+      {name:"尾击",type:"钝击",formula:"18+2.0×力量+0.5×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"75+2.0×速度",category:"主动"},
+      {name:"龙鳞格挡",type:"防御",formula:"20+2.0×耐力+1.0×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"鳞甲天生",effect:"DEF等效+1，钝伤减伤+10%"},
+    ],
+  },
+  {
+    name:"触手怪「墨墨」", species:"触手怪", coeff:1.8,
+    stats:{END:2,STR:2,SPD:4,DEF:2,INT:2,MP:3,WIL:5},
+    desc:"从地下暗河里漂出来的一团暗紫色生物。它不会说话，只用触手感知世界，轻轻卷住你的手指时，吸盘传来的微弱脉搏会让你知道它在听你的心跳。它很脆弱，精神力却极强。",
+    skills:[
+      {name:"缠绕",type:"钝击",formula:"8+1.0×速度+0.5×精神",cost:"耐力12",interval:"4.0s",hit_formula:"80+2.0×速度",category:"主动"},
+      {name:"鞭打",type:"钝击",formula:"12+1.5×速度+0.5×精神",cost:"耐力10",interval:"2.5s",hit_formula:"75+1.5×速度+0.5×精神",category:"主动"},
+      {name:"触须护盾",type:"防御",formula:"10+1.5×耐力/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"精神触须",effect:"攻击命中时减少目标 自身精神×0.5 精神条"},
+    ],
+  },
+  {
+    name:"石像鬼「岩盾」", species:"石像鬼", coeff:1.8,
+    stats:{END:6,STR:4,SPD:2,DEF:7,INT:1,MP:1,WIL:4},
+    desc:"一块在地下城最深处苏醒的石像鬼碎片，比普通石头聪明得多，也比大多数魔物固执得多。它不怎么会说话，可每次战斗都会沉默地挡在你和敌人之间。",
+    skills:[
+      {name:"俯冲",type:"钝击",formula:"22+2.0×速度+1.0×力量",cost:"耐力16",interval:"4.0s",hit_formula:"75+3.0×速度",category:"主动"},
+      {name:"碎石",type:"钝击",formula:"16+1.5×力量+0.5×耐力",cost:"耐力20",interval:"5.0s",hit_formula:"85+1.0×速度",category:"主动"},
+      {name:"石翼守护",type:"防御",formula:"20+2.5×耐力+1.5×防御/秒",cost:"耐力0.5/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"石化皮肤",effect:"减伤+8%，受击概率石化攻击者(-3SPD)"},
+    ],
+  },
+  {
+    name:"杀人兔「跳跳」", species:"杀人兔", coeff:1.8,
+    stats:{END:2,STR:3,SPD:7,DEF:2,INT:1,MP:1,WIL:4},
+    desc:"一只外表萌死人的小白兔，得看见它后腿隆起的肌肉和那双血红的眼睛，才会明白它不是宠物。它被冒险者踢过一脚，一直怀恨在心，如今踢人是它的专长。战斗一结束，它又变回毛球模样，蹭腿讨零食。",
+    skills:[
+      {name:"致命突袭",type:"刺击",formula:"18+3.0×速度+0.5×力量",cost:"耐力10",interval:"2.0s",cooldown:"6s",hit_formula:"70+3.5×速度",category:"主动"},
+      {name:"连咬",type:"斩击",formula:"14+1.5×速度+1.0×力量",cost:"耐力8",interval:"1.8s",cooldown:"0.5s",hit_formula:"75+2.0×速度",category:"主动"},
+      {name:"幻影步",type:"防御",formula:"闪避+30(单次)",cost:"耐力12",interval:"5.0s",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"偷袭",effect:"战斗首次攻击伤害×2"},
+      {name:"闪避本能",effect:"闪避+10"},
+    ],
+  },
+  {
+    name:"野狼「灰牙」", species:"野狼", coeff:1.3,
+    stats:{END:3,STR:4,SPD:6,DEF:2,INT:1,MP:1,WIL:3},
+    desc:"灰白色的独狼，是托付给你的第一只魔物。它沉默寡言，每次出击却都直奔要害，刺客的本能刻在骨子里。",
+    skills:[
+      {name:"撕咬",type:"刺击",formula:"15+2.0×力量+1.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×速度+1.0×力量",category:"主动"},
+      {name:"扑击",type:"钝击",formula:"18+1.5×力量+2.0×速度",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×速度+1.0×力量",category:"主动"},
+      {name:"影步",type:"防御",formula:"闪避+25(单次)",cost:"耐力15",interval:"6.0s",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"狼群战术",effect:"队友在场时伤害+10%"},
+    ],
+  },
+  {
+    name:"史莱姆「软软」", species:"史莱姆", coeff:1.0,
+    stats:{END:2,STR:2,SPD:2,DEF:2,INT:1,MP:2,WIL:1},
+    desc:"一只半透明的蓝色小史莱姆，是地下城最底层的魔物。它什么都学不会，可什么都愿意试着学，虽然大部分时候只是在地上弹来弹去。",
+    skills:[
+      {name:"撞击",type:"钝击",formula:"10+1.0×耐力+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"70+1.0×耐力",category:"主动"},
+      {name:"缩壳",type:"防御",formula:"8+1.0×耐力/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"凝胶身体",effect:"钝伤减半"},
+    ],
+  },
+  {
+    name:"史莱姆「黏黏」", species:"史莱姆", coeff:1.0,
+    stats:{END:1,STR:1,SPD:3,DEF:1,INT:2,MP:2,WIL:2},
+    desc:"软软的妹妹，是一滩淡绿色的酸液史莱姆。它比姐姐胆小得多，吐酸水却特别准，平时总躲在软软身后，一旦被惹毛，就会把对方的盔甲溶出一个洞。",
+    skills:[
+      {name:"酸液喷射",type:"刺击",formula:"12+2.0×智力+0.5×速度",cost:"蓝6",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
+      {name:"分裂",type:"防御",formula:"下次受击减半后回复8+1.0×耐力",cost:"耐力10",interval:"12.0s(冷却)",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"酸性体质",effect:"受击时对攻击者造成2+0.3×智力酸蚀伤害"},
+    ],
+  },
+  {
+    name:"哥布林「石锤」", species:"哥布林", coeff:1.0,
+    stats:{END:2,STR:3,SPD:2,DEF:2,INT:1,MP:1,WIL:1},
+    desc:"一只被同族赶出来的瘦小哥布林战士，捡了把生锈的铁锤当宝贝。它脑筋有点直，胆子却很足，每次冲上去之前都要大喊一声给自己壮胆。",
+    skills:[
+      {name:"挥砍",type:"斩击",formula:"12+2.0×力量+0.5×速度",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.5×力量+0.5×速度",category:"主动"},
+      {name:"盾击",type:"钝击",formula:"10+1.5×力量+0.5×耐力",cost:"耐力14",interval:"4.0s",hit_formula:"75+1.5×力量",category:"主动"},
+      {name:"格挡",type:"防御",formula:"10+1.5×耐力+1.0×力量/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"战斗怒吼",effect:"战斗开始时STR+1"},
+      {name:"工程天赋",effect:"工程建造速度+0.5天/每日"},
+    ],
+  },
+  {
+    name:"哥布林「藤弓」", species:"哥布林", coeff:1.0,
+    stats:{END:1,STR:2,SPD:4,DEF:1,INT:1,MP:1,WIL:2},
+    desc:"石锤的弟弟，从小不敢近身搏斗，射弹弓却百发百中。它那把弓是用废铁和橡皮筋拼出来的，看着寒酸，射出去的箭却是真家伙。",
+    skills:[
+      {name:"短弓射击",type:"刺击",formula:"12+2.0×速度+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"75+2.0×速度",category:"主动"},
+      {name:"淬毒箭",type:"刺击",formula:"18+2.5×速度+1.0×智力",cost:"耐力16",interval:"6.0s",cooldown:"8s",hit_formula:"80+2.0×速度",category:"主动"},
+      {name:"闪避步法",type:"防御",formula:"10+2.0×速度/秒",cost:"耐力0.4/0.1s",interval:"持续",hit_formula:"",category:"主动"},
+    ],
+    passives:[
+      {name:"远程狙击",effect:"远程攻击伤害+15%，命中+10%"},
+      {name:"工程天赋",effect:"工程建造速度+0.5天/每日"},
+    ],
+  },
+];
+
+// ── 初始化 ──
+async function init() {
+  try {
+    const res = await fetch('/api/settings');
+    const s = await res.json();
+    document.getElementById('set-base').value = s.base_url || '';
+    document.getElementById('set-model').value = s.model || '';
+    document.getElementById('set-key').placeholder = s.has_key ? '(已设置)' : 'sk-...';
+    document.getElementById('set-nsfw').checked = s.nsfw || false;
+  } catch(e) {}
+  await loadOrCreateSession();
+}
+
+async function loadOrCreateSession() {
+  const saved = localStorage.getItem('monster_sid') || localStorage.getItem('derbiren_sid');
+  // 防御：加载前清空，防止旧数据残留
+  state.characters = [];
+  if (saved) {
+    try {
+      const res = await fetch('/api/session/' + saved);
+      if (res.ok) {
+        const data = await res.json();
+        state.session_id = data.session_id;
+        state.player_name = data.player_name || '小魔王';
+        state.characters = data.characters || [];
+        state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
+        document.getElementById('sid-display').textContent = state.session_id;
+        setWorldField(data.world_setting);
+        if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
+        state._exploredToday = (data.explored_today || []).join(',');
+        state._unlockedEquipment = data.unlocked_equipment || [];
+        renderAll();
+        restoreHistory(data.history || []);
+        updateBreedBtn();
+        return;
+      }
+    } catch(e) {}
+  }
+  // 无存档 → 保持欢迎页，等用户点按钮
+  // （欢迎页按钮和顶部「新冒险」都会调用 newAdventure()）
+}
+
+async function newAdventure() {
+  // 直接内联显示（不依赖 .show class，最稳）
+  document.getElementById('create-modal').style.display = 'flex';
+  document.getElementById('birth-list').dataset.selected = '';
+  document.getElementById('preset-detail').style.display = 'none';
+  renderBirths();
+  renderPresets();
+}
+
+function renderBirths() {
+  const list = document.getElementById('birth-list');
+  list.innerHTML = BIRTH_PRESETS.map((b,i) => {
+    const chars = b.twin ? `${b.primary.name} + ${b.twin.name}` : b.primary.name;
+    const stats = b.primary.stats;
+    const statStr = Object.entries(stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
+    return `<div>
+      <div class="birth-card" data-birth="${b.id}" onclick="toggleBirth('${b.id}')" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:8px 10px;background:var(--input-bg);font-size:12px;line-height:1.5;transition:.15s;"
+        onmouseover="if(this.style.borderColor!=='var(--accent)')this.style.borderColor='var(--accent-glow)'" onmouseout="if(!document.getElementById('birth-detail-${b.id}')?.style.display||document.getElementById('birth-detail-${b.id}').style.display==='none')this.style.borderColor='var(--border)'">
+        <div style="font-weight:bold;color:var(--gold);margin-bottom:2px;">${b.name}</div>
+        <div style="color:var(--dim);font-size:11px;">🐾 ${chars} · ${b.species} · ×${b.coeff}</div>
+        <div style="margin-top:3px;font-size:11px;">${statStr}</div>
+      </div>
+      <div id="birth-detail-${b.id}" style="display:none;margin-top:4px;padding:10px 12px;background:var(--msg-gm);border:1px solid var(--border);border-radius:6px;font-size:12px;line-height:1.7;"></div>
+    </div>`;
+  }).join('');
+}
+
+function toggleBirth(birthId) {
+  const detail = document.getElementById('birth-detail-' + birthId);
+  if (!detail) return;
+  const isOpen = detail.style.display === 'block';
+  const card = document.querySelector(`.birth-card[data-birth="${birthId}"]`);
+
+  if (isOpen) {
+    // 收起
+    detail.style.display = 'none';
+    if (card) { card.style.borderColor = 'var(--border)'; card.style.background = 'var(--input-bg)'; }
+    return;
+  }
+
+  // 展开：填充内容
+  const b = BIRTH_PRESETS.find(b => b.id === birthId);
+  if (!b) return;
+
+  const cp = CHARACTER_PRESETS.find(p => p.name.includes(b.primary.name));
+  const twinCP = b.twin ? CHARACTER_PRESETS.find(p => p.name.includes(b.twin.name)) : null;
+  const charDescHTML = [
+    cp ? `<div style="color:var(--text);margin-bottom:4px;line-height:1.7;font-size:12px;"><span style="color:var(--gold);font-weight:bold;">🐾 ${cp.name}</span> — ${cp.desc}</div>` : '',
+    twinCP ? `<div style="color:var(--text);margin-bottom:4px;line-height:1.7;font-size:12px;"><span style="color:var(--gold);font-weight:bold;">🐾 ${twinCP.name}</span> — ${twinCP.desc}</div>` : '',
+  ].filter(Boolean).join('');
+  const chars = b.twin
+    ? `<b>${b.primary.name}</b>（${b.species}）+ <b>${b.twin.name}</b>（${b.species}）`
+    : `<b>${b.primary.name}</b>（${b.species}）`;
+  const twinStats = b.twin ? `<br>${b.twin.name}: ${Object.entries(b.twin.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}` : '';
+
+  const primarySkillsHTML = cp ? `<div style="color:var(--dim);font-size:11px;margin-top:2px;">📋 ${cp.name} 技能：${(cp.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(cp.passives||[]).map(s=>s.name).join('、') || '无'}</div>` : '';
+  const twinSkillsHTML = twinCP ? `<div style="color:var(--dim);font-size:11px;margin-top:2px;">📋 ${twinCP.name} 技能：${(twinCP.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(twinCP.passives||[]).map(s=>s.name).join('、') || '无'}</div>` : '';
+
+  detail.innerHTML = `
+    ${charDescHTML}
+    <div style="color:var(--accent-glow);margin-bottom:4px;font-size:11px;border-top:1px solid var(--border);padding-top:6px;">📍 出生场景</div>
+    <div style="color:var(--dim);margin-bottom:6px;line-height:1.7;font-size:12px;">${b.desc}</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:4px;">🎯 获得角色：${chars}</div>
+    <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${b.primary.name}: ${Object.entries(b.primary.stats).map(([k,v]) => `${STAT_NAMES[k]||k}:${v}`).join(' ')}${twinStats}</div>
+    ${primarySkillsHTML}
+    ${twinSkillsHTML}
+    <div style="color:#c9a050;font-size:11px;margin-top:4px;">💡 ${b.hint}</div>
+    <div id="birth-lore-${birthId}" style="margin-top:6px;"></div>
+  `;
+  detail.style.display = 'block';
+
+  // 高亮卡片
+  if (card) { card.style.borderColor = 'var(--accent)'; card.style.background = '#2a1a18'; }
+
+  // 存为"开始冒险"的默认选择
+  document.getElementById('birth-list').dataset.selected = birthId;
+  document.getElementById('create-species').value = b.species;
+  document.getElementById('create-species').dataset.birthId = birthId;
+
+  // 加载物种资料到卡片内的面板
+  loadSpeciesLoreForBirth(b.species, birthId);
+}
+
+function loadSpeciesLoreForBirth(species, birthId) {
+  const div = document.getElementById('birth-lore-' + birthId);
+  if (!div) return;
+  if (!_speciesLore) {
+    fetch('/api/species').then(r => r.json()).then(d => {
+      _speciesLore = (d.species || {});
+      renderLoreToDiv(species, div);
+    }).catch(() => {});
+  } else {
+    renderLoreToDiv(species, div);
+  }
+}
+
+function renderLoreToDiv(species, div) {
+  const lore = _speciesLore[species];
+  if (!lore) { div.innerHTML = ''; return; }
+  div.innerHTML = `
+    <div style="background:#1a1410;border:1px solid #3a2a18;border-radius:5px;padding:10px;margin-top:6px;font-size:12px;line-height:1.7;max-height:180px;overflow-y:auto;">
+      <div style="color:var(--gold);font-weight:bold;margin-bottom:4px;">📖 ${lore.tag} · ${lore.name}</div>
+      <div style="color:var(--text);margin-bottom:6px;">${(lore.lore||'').split('\\n')[0]}</div>
+      <div style="color:var(--dim);font-size:11px;">
+        <b>战斗风格：</b>${lore.combat_style||'—'}<br>
+        <b>进化路线：</b>${(lore.evolution||[]).join(' → ') || '—'}<br>
+        <b>技能特色：</b>${(lore.skill_traits||[]).join(' · ') || '—'}<br>
+        <b>属性倾向：</b>${lore.base_stats_hint||'—'}
+      </div>
+    </div>
+  `;
+}
+
+function renderPresets() {
+  const list = document.getElementById('preset-list');
+  list.innerHTML = CHARACTER_PRESETS.map((p,i) => {
+    const statStr = Object.entries(p.stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
+    return `<div onclick="selectPreset(${i})" style="cursor:pointer;border:1px solid var(--border);border-radius:5px;padding:6px 10px;background:var(--input-bg);font-size:11px;line-height:1.5;transition:.15s;"
+      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="font-weight:bold;color:var(--gold);">${p.name}</div>
+      <div style="color:var(--dim);">${p.desc}</div>
+      <div style="margin-top:2px;">${statStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectPreset(idx) {
+  const p = CHARACTER_PRESETS[idx];
+  const detail = document.getElementById('preset-detail');
+  const statStr = Object.entries(p.stats).map(([k,v]) => `<span style="color:var(--gold);">${STAT_NAMES[k]||k}:${v}</span>`).join(' ');
+  detail.style.display = 'block';
+  detail.innerHTML = `
+    <div style="color:var(--gold);font-weight:bold;margin-bottom:4px;">📖 ${p.name}（${p.species} · ×${p.coeff}）</div>
+    <div style="color:var(--text);margin-bottom:6px;line-height:1.7;">${p.desc}</div>
+    <div style="color:var(--gold);font-size:11px;margin-bottom:4px;">📊 ${statStr}</div>
+    <div style="color:var(--dim);font-size:11px;">📋 技能：${(p.skills||[]).map(s=>s.name).join('、') || '无'} | 被动：${(p.passives||[]).map(s=>s.name).join('、') || '无'}</div>
+    <div style="color:var(--dim);font-size:10px;margin-top:4px;">💡 此为图鉴参考。要使用此角色请选择对应的出生。</div>
+  `;
+}
+
+let _speciesLore = null;
+async function loadSpeciesLore(species) {
+  const div = document.getElementById('species-lore-panel');
+  if (!div) return;
+  if (!_speciesLore) {
+    try {
+      const r = await fetch('/api/species');
+      _speciesLore = (await r.json()).species || {};
+    } catch(e) { _speciesLore = {}; }
+  }
+  const lore = _speciesLore[species];
+  if (!lore) { div.innerHTML = ''; return; }
+  div.innerHTML = `
+    <div style="background:var(--msg-gm);border:1px solid var(--border);border-radius:5px;padding:10px;margin-top:8px;font-size:12px;line-height:1.7;max-height:180px;overflow-y:auto;">
+      <div style="color:var(--gold);font-weight:bold;margin-bottom:4px;">📖 ${lore.tag} · ${lore.name}</div>
+      <div style="color:var(--text);margin-bottom:6px;">${lore.lore.split('\\n')[0]}</div>
+      <div style="color:var(--dim);font-size:11px;">
+        <b>战斗风格：</b>${lore.combat_style}<br>
+        <b>进化路线：</b>${(lore.evolution||[]).join(' → ')}<br>
+        <b>技能特色：</b>${(lore.skill_traits||[]).join(' · ')}<br>
+        <b>属性倾向：</b>${lore.base_stats_hint||''}
+      </div>
+    </div>`;
+}
+
+function closeCreateModal() {
+  document.getElementById('create-modal').style.display = 'none';
+}
+
+async function createAdventure() {
+  // 防御：清除旧角色，防止面板残留上局数据
+  state.characters = [];
+  renderAll();
+  const world = document.getElementById('create-world').value.trim() || '小魔王地下城。';
+  const playerName = document.getElementById('create-player-name').value.trim() || '小魔王';
+  const speciesEl = document.getElementById('create-species');
+  const birthId = speciesEl.dataset.birthId || 'slime_nest';
+  const birth = BIRTH_PRESETS.find(b => b.id === birthId) || BIRTH_PRESETS[0];
+  const species = birth.species;
+  const coeff = birth.coeff;
+  const name = birth.primary.name;
+  const charStats = birth.primary.stats;
+  const charSkills = birth.primary.skills;
+  const charPassives = birth.primary.passives;
+  let twinStats = null, twinSkills = null, twinPassives = null;
+  if (birth.twin) {
+    twinStats = birth.twin.stats;
+    twinSkills = birth.twin.skills;
+    twinPassives = birth.twin.passives;
+  }
+
+  // 建档成功 → 关闭 create-modal + 收起右侧 dock 展开区
+    document.getElementById('create-modal').style.display = 'none';
+    ['explore','breed'].forEach(s => {
+      const el = document.getElementById('dock-' + s + '-sec');
+      if (el) el.classList.remove('active');
+    });
+
+    const body = {world_setting: world, player_name: playerName, char_name: name, char_species: species, char_coeff: coeff};
+  if (charStats) body.char_stats = charStats;
+  if (charSkills) body.char_skills = charSkills;
+  if (charPassives) body.char_passives = charPassives;
+  if (twinStats) body.twin_stats = twinStats;
+  if (twinSkills) body.twin_skills = twinSkills;
+  if (twinPassives) body.twin_passives = twinPassives;
+
+  const res = await fetch('/api/session/new', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  state.session_id = data.session_id;
+  state.player_name = data.player_name || playerName;
+  state.characters = data.characters || [];
+  state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
+  localStorage.setItem('monster_sid', state.session_id);
+  document.getElementById('sid-display').textContent = state.session_id;
+  updateBreedBtn();
+  if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
+  document.getElementById('chat-log').innerHTML =
+    `<div class="welcome"><span class="big">🔥</span>冒险开始。<br><em>「${playerName}，地下城在等着你。」</em></div>`;
+  renderAll();
+  // 自动触发 GM 开场叙述
+  setTimeout(() => autoStart(), 300);
+}
+
+async function autoStart() {
+  if (state.isLoading) return;
+  state.isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'msg gm typing';
+  typingDiv.textContent = 'GM 正在编写剧情...';
+  document.getElementById('chat-log').appendChild(typingDiv);
+  scrollBottom();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:'[START]', session_id:state.session_id}),
+    });
+    const data = await res.json();
+    typingDiv.remove();
+    addMsg('gm', data.narrative + (data.truncated ? '\n\n⚠️ (这段太长了,被字数上限截断,已自动重试补齐)' : ''));
+    scrollBottom();
+    if (data.characters_updated) {
+      _equipmentCache = null;  // 刷新装备缓存（波次奖励）
+      // ⚠️ characters_updated 是 bool(False) 或 chars 数组(True) 二选一——不能整体覆盖！
+      if (Array.isArray(data.characters_updated)) {
+        state.characters = data.characters_updated;
+        renderAll();
+      } else {
+        await refreshCharacters();
+      }
+    }
+  } catch(e) {
+    typingDiv.remove();
+  }
+  state.isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+function restoreHistory(history) {
+  const log = document.getElementById('chat-log');
+  log.innerHTML = '';
+  if (!history || history.length === 0) {
+    // 空历史 → 显示欢迎页
+    log.innerHTML = `<div class="welcome" id="welcome-msg">
+        <span class="big">🔥</span>
+        欢迎来到小魔王地下城。<br>
+        <em>「选一只魔物，开始你的地下城之旅吧。」</em><br><br>
+        <button onclick="newAdventure()" class="big-adventure-btn">🔥 开始新冒险</button>
+        <br><span style="font-size:11px;color:var(--dim);margin-top:12px;display:inline-block;">或从下方存档中读取</span>
+      </div>`;
+    return;
+  }
+  for (const m of history) addMsg(m.role === 'user' ? 'user' : 'gm', m.content);
+  scrollBottom();
+}
+
+function updateDayDisplay() {
+  const el = document.getElementById('day-display');
+  if (!el) return;
+  el.style.display = 'inline';
+  const dta = state.days_until_attack;
+  if (dta > 0) {
+    el.textContent = `📅 第${state.day}天 · 第${state.raid_wave}波 ⚔️ ${dta}天后`;
+  } else if (dta === 0) {
+    el.textContent = `📅 第${state.day}天 · 第${state.raid_wave}波 ⚠️ 来袭！`;
+  } else {
+    el.textContent = `📅 第${state.day}天`;
+  }
+}
+
+async function advanceDay() {
+  if (state.isLoading) return;
+  const input = document.getElementById('user-input');
+  const old = input.value;
+  input.value = '/day';
+  await sendMessage();
+  input.value = old;
+}
+
+async function refreshCharacters() {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters');
+    if (res.ok) {
+      const data = await res.json();
+      state.characters = data.characters || [];
+      state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
+      renderAll();
+      updateBreedBtn();
+    }
+  } catch(e) {}
+}
+
+// ── Tab 切换 ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'library') loadLibrary();
+    if (btn.dataset.tab === 'log') refreshLog();
+  });
+});
+
+// ── 冒险 ──
+function parseChoices(text) {
+  // 检测 "现在你可以：" 后面的 **选项** 列表
+  const marker = /(?:现在你可以[：:]|你可以[：:]|请选择[：:]|行动选项[：:])/;
+  const idx = text.search(marker);
+  if (idx === -1) return { narrative: text, choices: [] };
+
+  const narrative = text.substring(0, idx).trim();
+  const rest = text.substring(idx);
+
+  // 提取 **粗体** 开头的选项行（"**xxx**描述" 或 "- **xxx**描述"）
+  const choiceRegex = /[-•*]?\s*\*\*(.+?)\*\*\s*[，,。.]?\s*(.*?)(?=\n|$)/g;
+  const choices = [];
+  let m;
+  while ((m = choiceRegex.exec(rest)) !== null) {
+    const label = m[1].trim();
+    const desc = m[2].trim();
+    choices.push({ label, desc, full: desc ? `${label}——${desc}` : label });
+  }
+  return { narrative, choices };
+}
+
+function addMsg(cls, text) {
+  const log = document.getElementById('chat-log');
+  const w = log.querySelector('.welcome'); if (w) w.remove();
+
+  if (cls !== 'gm') {
+    // 玩家消息——直接一条
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.innerHTML = fmtCombat(text);
+    log.appendChild(div);
+    return;
+  }
+
+  // ═══ GM 消息：气泡按字数上限切分，但气泡内保留原文换行分段 ═══
+  const { narrative, choices } = parseChoices(text);
+  const SINGLE_LIMIT = 800;   // 单条消息字数上限（QQ 消息量级），超了才接续下一条
+
+  // 按句界切出"块"（句子或换行段），逐块累积进气泡：
+  //  - 换行符作为内容保留在气泡内（段落不丢失），但换行本身不触发切气泡
+  //  - 只有累积字数超过 SINGLE_LIMIT 才在句界断开接续下一条
+  let chunks = [];
+  if (narrative) {
+    // 句子与换行交替：`[^\n。！？.!?…]*…` 是一句（不吞换行），`\n+` 单独成换行段
+    const pieces = narrative.match(/[^\n。！？.!?…]*[。！？.!?…]+[“”」]*|\n+/g) || [narrative];
+    let buf = '';
+    let sentLen = 0;   // 累计的"有效文字"长度（不含换行）
+    for (const pc of pieces) {
+      if (/^\n+$/.test(pc)) {
+        // 换行段——作为内容保留（最多保留一段空行为段落分隔），不触发切条
+        buf += (buf && /\n\n$/.test(buf)) ? '' : '\n\n';
+        continue;
+      }
+      const sent = pc.trim();
+      if (!sent) continue;
+      const w = sentLen + sent.length;   // 上一句有效长度 + 本句
+      if (buf && w > SINGLE_LIMIT) {
+        // 这条满了 → 发出去，余下的开新条继续
+        chunks.push(buf.trim());
+        buf = sent;
+        sentLen = sent.length;
+      } else {
+        buf += sent;
+        sentLen = w;
+      }
+    }
+    if (buf) chunks.push(buf.trim());
+  }
+
+  // 逐条渲染
+  chunks.forEach((c, i) => {
+    // 除最后一条外都不加选项按钮；选项只属于最后一条
+    const isLast = (i === chunks.length - 1) && (choices.length > 0);
+    const div = document.createElement('div');
+    div.className = 'msg gm';
+    div.innerHTML = fmtCombat(c);
+    if (isLast) {
+      appendChoiceButtons(div, choices);
+    }
+    log.appendChild(div);
+  });
+
+  // 只有 options 没有 narrative 的情况（极少数）
+  if (chunks.length === 0 && choices.length > 0) {
+    const div = document.createElement('div');
+    div.className = 'msg gm';
+    appendChoiceButtons(div, choices);
+    log.appendChild(div);
+  }
+}
+
+// 选项按钮渲染（从 addMsg 抽出来复用）
+function appendChoiceButtons(div, choices) {
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px;';
+  choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.textContent = c.label;
+    btn.title = c.full;
+    btn.style.cssText = 'text-align:left;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;';
+    btn.onmouseover = () => { btn.style.borderColor='var(--accent)'; btn.style.background='#2a2018'; };
+    btn.onmouseout = () => { btn.style.borderColor='var(--border)'; btn.style.background='var(--input-bg)'; };
+    btn.onclick = () => {
+      if (c.label === '挑选战利品' && state.session_id) {
+        showLootModal();
+        return;
+      }
+      if (c.label === '放弃' && /战利品|loot/i.test(c.full)) {
+        discardAllLoot();
+        return;
+      }
+      document.getElementById('user-input').value = c.full;
+      sendMessage();
+    };
+    btnRow.appendChild(btn);
+  });
+  div.appendChild(btnRow);
+}
+function scrollBottom() {
+  document.getElementById('chat-log').scrollTop = document.getElementById('chat-log').scrollHeight;
+}
+
+async function sendMessage() {
+  if (state.isLoading) return;
+  if (!state.session_id) {
+    addMsg('gm', '⚠️ 还没创建或加载存档呢杂鱼——先点「开始新冒险」！');
+    return;
+  }
+  const input = document.getElementById('user-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  if (/^\/r\s/.test(msg)) {
+    const dice = msg.replace(/^\/r\s*/, '');
+    await doDiceRoll(dice);
+    return;
+  }
+  const finalMsg = msg;
+  state.isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+  addMsg('user', msg);
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'msg gm typing';
+  typingDiv.textContent = 'GM 正在编写剧情...';
+  document.getElementById('chat-log').appendChild(typingDiv);
+  scrollBottom();
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: finalMsg, session_id:state.session_id}),
+    });
+    const data = await res.json();
+    typingDiv.remove();
+    addMsg('gm', data.narrative + (data.truncated ? '\n\n⚠️ (这段太长了,被字数上限截断,已自动重试补齐)' : ''));
+    scrollBottom();
+    if (data.session_id && data.session_id !== state.session_id) {
+      state.session_id = data.session_id;
+      localStorage.setItem('monster_sid', state.session_id);
+      document.getElementById('sid-display').textContent = state.session_id;
+    }
+    if (data.characters_updated) {
+      _equipmentCache = null;  // 刷新装备缓存（波次奖励）
+      await refreshCharacters();
+    }
+    // 更新天数显示
+    if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
+    // 如果当前在日志tab，自动刷新
+    if (document.getElementById('tab-log').classList.contains('active')) refreshLog();
+  } catch(e) {
+    typingDiv.remove();
+    addMsg('gm', '🔥💢 连接切断！检查 API 设置吧杂鱼！(' + e.message + ')');
+    scrollBottom();
+  }
+  state.isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+}
+
+// ── 重写按钮：AI 审查/缩水时清洗污染回复并重发 ──
+async function rewindLast() {
+  if (state.isLoading) return;   // 防止和 sendMessage 并发
+  if (!state.session_id) { addMsg('gm','⚠️ 还没有存档呢杂鱼,先开一场！'); return; }
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('rewind-btn').disabled = true;
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/rewind', {method:'POST'});
+    const data = await res.json();
+    if (!data.rewound) { addMsg('gm','⚠️ ' + (data.reason || '没有可重写的消息')); return; }
+    addMsg('gm','⟲ 已清除被污染的那段回复,重新编——');
+    const input = document.getElementById('user-input');
+    input.value = data.message;
+    // 不手动设 isLoading——由 sendMessage 自己接管（否则会卡它的开头 return 检查）
+    await sendMessage();
+  } catch(e) {
+    addMsg('gm','🔥💢 重写失败！(' + e.message + ')');
+  }
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('rewind-btn').disabled = false;
+}
+document.getElementById('user-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+    document.getElementById('user-input').style.height = 'auto';
+  }
+});
+// textarea 自动增高（上限 160px）
+(function() {
+  const ta = document.getElementById('user-input');
+  ta.addEventListener('input', () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+  });
+})();
+
+// ── 角色面板 ──
+function renderAll() {
+  renderCharTabs();
+  renderCharDetail();
+}
+
+function renderCharTabs() {
+  const row = document.getElementById('char-tabs-row');
+  // 防御：只渲染当前会话的角色（过滤掉可能的脏数据）
+  const validChars = (state.characters || []).filter(c => c && c.id && c.name);
+  if (validChars.length !== state.characters.length) {
+    state.characters = validChars;
+  }
+  const parts = validChars.map(c => {
+    const active = c.id === state.active_char_id ? ' active' : '';
+    const badge = c.pending_skill_points > 0 ? `<span class="badge">${c.pending_skill_points}</span>` : '';
+    return `<button class="char-tab${active}" onclick="selectChar('${c.id}')">${c.name} Lv.${c.level}${badge}</button>`;
+  }).join('');
+  row.innerHTML = parts;
+}
+
+function selectChar(cid) {
+  state.active_char_id = cid;
+  // 切换角色 → 丢弃当前草稿
+  if (state.draft && state.draft.charId !== cid) state.draft = null;
+  // 同步到后端
+  fetch('/api/session/' + state.session_id + '/characters/' + cid, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({active: true}),
+  }).catch(() => {});
+  renderAll();
+  // 检查是否有待选技能
+  const c = state.characters.find(x => x.id === cid);
+  if (c && c.pending_skill_points > 0) openSkillModal(c);
+}
+
+function getActiveChar() {
+  return state.characters.find(c => c.id === state.active_char_id)
+      || state.characters[0];
+}
+
+async function addCharManually() {
+  const name = prompt('角色名：');
+  if (!name) return;
+  const species = prompt('物种（默认人类）：', '人类') || '人类';
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, species}),
+    });
+    if (res.ok) await refreshCharacters();
+  } catch(e) { alert('添加失败: ' + e.message); }
+}
+
+async function renameChar(cid) {
+  const c = state.characters.find(x => x.id === cid);
+  if (!c) return;
+  const newName = prompt(`给「${c.name}」改名：`, c.name);
+  if (!newName || newName === c.name) return;
+  // 用 /改名 命令直接调用 API
+  const msg = `/改名 旧名=${c.name} 新名=${newName}`;
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: msg}),
+    });
+    if (res.ok) await refreshCharacters();
+  } catch(e) { alert('改名失败: ' + e.message); }
+}
+
+function renderExpBar(c) {
+  // 经验条：当前 exp / 下一级所需（与后端 _check_levelup 公式一致：need = 100 × 当前等级）
+  const exp = c.exp || 0;
+  const expNeed = c.level >= 99 ? 0 : 100 * c.level;
+  const pct = expNeed > 0 ? Math.min(100, Math.round(exp / expNeed * 100)) : 100;
+  const barColor = pct >= 100 ? 'linear-gradient(90deg,#8b5cf6,#c9a050)' : 'linear-gradient(90deg,#c9a050,#f0d080)';
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;" title="升级所需 = 100 × 当前等级">
+      <span style="color:var(--gold);white-space:nowrap;">⭐ 经验</span>
+      <div style="flex:1;height:10px;background:#1a1a1a;border-radius:5px;overflow:hidden;border:1px solid var(--border);">
+        <div style="width:${pct}%;height:100%;background:${barColor};border-radius:4px;transition:width .3s;"></div>
+      </div>
+      <span style="color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;">${exp} / ${expNeed > 0 ? expNeed : 'MAX'}</span>
+      ${pct >= 100 && expNeed > 0 ? '<span style="color:#8b5cf6;font-size:11px;">⬆️ 可升级</span>' : ''}
+    </div>`;
+}
+
+async function renderCharDetail() {
+  const c = getActiveChar();
+  if (!c) return;
+
+  const isDraft = state.draft && state.draft.charId === c.id;
+  // 草稿模式下用预览属性
+  const st = {...c.stats};
+  if (isDraft) {
+    for (const [k, d] of Object.entries(state.draft.deltas)) {
+      st[k] = (st[k] || 3) + d;
+    }
+  }
+  // 装备属性加成（加到 st 上，面板直接显示最终值）
+  const ZH2KEY = {耐力:'END',力量:'STR',速度:'SPD',防御:'DEF',智力:'INT',法力:'MP',精神:'WIL'};
+  const equipBonuses = {}; for (const k of ATTRS.map(a=>a.key)) equipBonuses[k] = 0;
+  if (c.equipment) {
+    const eqAll = await loadEquipmentCache();
+    for (const slot of ['weapon','armor','accessory']) {
+      const eqId = c.equipment[slot];
+      if (!eqId) continue;
+      const eq = eqAll.find(e => e.id === eqId);
+      if (!eq) continue;
+      // equipment.json 用 stats_bonus (英文短键) + secondary_bonus
+      const bonuses = {...(eq.stats_bonus || {}), ...(eq.secondary_bonus || {})};
+      for (const [key, val] of Object.entries(bonuses)) {
+        // key 可能是 END/STR/... 或 耐力/力量/...
+        const attrKey = ZH2KEY[key] || key;
+        const validKeys = ATTRS.map(a=>a.key);
+        if (validKeys.includes(attrKey)) {
+          st[attrKey] = (st[attrKey]||3) + val;
+          equipBonuses[attrKey] = (equipBonuses[attrKey]||0) + val;
+        }
+      }
+    }
+  }
+  // 进化属性加成
+  const evolveBonuses = {};
+  if (c.evolve_bonus) {
+    for (const [k, v] of Object.entries(c.evolve_bonus)) {
+      st[k] = (st[k]||3) + v;
+      evolveBonuses[k] = v;
+    }
+  }
+  // 衍生值（仅角色级——技能命中/间隔见各技能详情）
+  const maxHP = st.END * 200;
+  const HP = (c.current_hp != null) ? c.current_hp : maxHP;
+  const maxStamina = st.END * 50;
+  const staminaVal = (c.current_stamina != null) ? c.current_stamina : maxStamina;
+  const maxMana = st.MP * 20;
+  const manaVal = (c.current_mana != null) ? c.current_mana : maxMana;
+  const maxSpirit = st.WIL * 10;
+  const spiritVal = (c.current_spirit != null) ? c.current_spirit : maxSpirit;
+  const hpDisplay = (c.current_hp != null && c.current_hp < maxHP) ? `${HP}/${maxHP}` : `${HP}`;
+  const staminaDisplay = (c.current_stamina != null && c.current_stamina < maxStamina) ? `${staminaVal}/${maxStamina}` : `${staminaVal}`;
+  const manaDisplay = (c.current_mana != null && c.current_mana < maxMana) ? `${manaVal}/${maxMana}` : `${manaVal}`;
+  const spiritDisplay = (c.current_spirit != null && c.current_spirit < maxSpirit) ? `${spiritVal}/${maxSpirit}` : `${spiritVal}`;
+  const isMonster = ['猫龙','幼龙','触手怪','石像鬼','杀人兔','野狼','史莱姆','哥布林'].includes(c.species);
+  const defEff = isMonster ? (st.DEF + st.END * 0.5).toFixed(1) : st.DEF;
+  const defBuffer = defEff * 50;  // 防御缓冲=有效DEF×50（常驻额外HP）
+  const dodge = (st.SPD * 2.5 + (isMonster ? st.DEF + st.END * 0.5 : st.DEF) * 0.5).toFixed(1);
+
+  const freeLeft = isDraft ? state.draft.freeLeft : c.free_points;
+
+  // 属性
+  const statsArea = document.getElementById('char-stats-area');
+  const draftBanner = isDraft
+    ? `<div style="background:#2a2018;border:1px solid var(--gold);border-radius:6px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="color:var(--gold);font-weight:bold;">📝 预览中 — 剩余 <span style="color:var(--accent-glow);">${state.draft.freeLeft}</span> 点</span>
+        <button onclick="applyDraft()" style="padding:4px 14px;background:var(--good);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">✅ 确认应用</button>
+        <button onclick="cancelDraft()" style="padding:4px 14px;background:#444;color:var(--text);border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">❌ 取消</button>
+      </div>`
+    : '';
+
+  statsArea.innerHTML = `
+    ${draftBanner}
+    <div class="stats-section">
+      <h3>🔮 ${c.name} <button onclick="renameChar('${c.id}')" title="改名" style="background:none;border:none;cursor:pointer;font-size:14px;padding:0 4px;opacity:0.5;">✏️</button> · ${c.species} · Lv.${c.level}</h3>
+      ${renderExpBar(c)}
+      ${c.evolved ? `
+        <div style="background:#1a1228;border:1px solid #8b5cf6;border-radius:6px;padding:6px 10px;margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="color:#8b5cf6;font-size:13px;">✨ 已进化</span>
+          <span style="color:var(--text);font-size:13px;">当前形态：<b style="color:#c9a050;">${c.evolve_form || '未选择'}</b></span>
+          ${c.evolve_forms ? c.evolve_forms.map(f => 
+            f !== c.evolve_form ? `<button onclick="switchEvolveForm('${f}')" style="padding:3px 10px;background:#2a1a3a;border:1px solid #8b5cf6;color:#c9a050;border-radius:4px;cursor:pointer;font-size:12px;">🔄 切换为${f}</button>` : ''
+          ).join('') : ''}
+          <span style="font-size:10px;color:var(--dim);">（每日可自由切换）</span>
+        </div>
+      ` : ''}
+      <div class="free-pts">剩余点数：<span id="free-pts">${c.free_points}</span></div>
+      ${ATTRS.map(({key, name, desc}) => {
+        const baseVal = c.stats[key] || 3;
+        const eqBonus = equipBonuses[key] || 0;
+        const evBonus = evolveBonuses[key] || 0;
+        const delta = isDraft ? (state.draft.deltas[key] || 0) : 0;
+        const displayVal = baseVal + eqBonus + evBonus + delta;
+        const eqStr = eqBonus !== 0 ? `<span style="color:#c9a050;font-size:11px;margin-left:2px;">${eqBonus>0?'+':''}${eqBonus}装</span>` : '';
+        const evStr = evBonus !== 0 ? `<span style="color:#8b5cf6;font-size:11px;margin-left:2px;">${evBonus>0?'+':''}${evBonus}进化</span>` : '';
+        const deltaStr = delta > 0 ? `<span style="color:var(--good);font-size:11px;margin-left:2px;">+${delta}</span>` : '';
+        const canPlus = freeLeft > 0 && displayVal < 99;
+        const canMinus = isDraft && delta > 0;
+        return `<div class="stat-row">
+          <span class="stat-name">${name}</span>
+          <span class="stat-desc">${desc}</span>
+          <span class="stat-val">${displayVal}${eqStr}${evStr}${deltaStr}</span>
+          ${canMinus ? `<button class="stat-btn minus" onclick="adjustStat('${key}',-1)">−</button>` : ''}
+          <button class="stat-btn plus" onclick="adjustStat('${key}',1)" ${!canPlus?'disabled':''}>+</button>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="stats-section" style="border-top:1px solid var(--border);padding-top:10px;">
+      <h3>📐 衍生数值${isDraft ? '<span style="color:var(--gold);font-size:11px;"> — 预览</span>' : ''}</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;line-height:1.8;">
+        <div>❤️ 生命值 <span style="color:var(--accent);">${hpDisplay}</span></div>
+        <div>🏃 体力 <span style="color:var(--gold);">${staminaDisplay}</span></div>
+        <div>💎 魔法储量 <span style="color:#4b9eef;">${manaDisplay}</span></div>
+        <div>🧠 精神条 <span style="color:#8b5cf6;">${spiritDisplay}</span></div>
+        <div>🛡️ 统一护盾 <span style="color:#c9a050;">${defBuffer}</span><span style="font-size:10px;color:var(--dim);"> +装备护甲</span></div>
+        <div>💨 基础闪避 <span style="color:#5a9e4b;">+${dodge}</span></div>
+        <div style="grid-column:1/-1;font-size:10px;color:var(--dim);margin-top:2px;">
+          💡 统一护盾=有效DEF×50+装备护甲 | 常驻不依赖格挡 | 野怪有效DEF=DEF+耐力×0.5</div>
+      </div>
+    </div>`;
+
+  // 技能——计算实际伤害
+  const skArea = document.getElementById('char-skills-area');
+  const skCollapsed = localStorage.getItem('skills_collapsed_' + c.id) === '1';
+  skArea.innerHTML = `
+    <div class="skills-section">
+      <h3 onclick="toggleSkills('${c.id}')">
+        <span class="arrow${skCollapsed ? '' : ' open'}" id="sk-arrow-${c.id}">▶</span>
+        ⚔️ 技能 (${c.skills ? c.skills.length : 0})
+        ${c.pending_skill_points > 0 ? `<span style="color:var(--accent);font-size:12px;"> — ${c.pending_skill_points}技能点可用</span>` : ''}
+      </h3>
+      <div id="sk-list-${c.id}" style="${skCollapsed ? 'display:none' : ''}">
+        ${(c.skills || []).map(sk => {
+          const expanded = localStorage.getItem('skill_expanded_' + sk.id) === '1';
+          const typeColors = {斩击:'#c9a050', 刺击:'#5a9e4b', 钝击:'#c44b3c', 精神:'#8b5cf6', 法术:'#4b9eef', 防御:'#6b8e9e'};
+          const dmg = evalFormula(sk.formula, st);
+          return `<div class="skill-row">
+            <div class="skill-summary" onclick="toggleSkillDetail('${sk.id}')">
+              <span class="s-arrow${expanded ? ' open' : ''}" id="***${sk.id}">▶</span>
+              <span class="s-name">${sk.name}</span>
+              <span class="s-type" style="color:${typeColors[sk.type]||'#8a7a6a'}">${sk.type}</span>
+              <span style="color:var(--accent);font-size:12px;margin-left:4px;">${dmg}</span>
+              <span class="s-lv">Lv.${sk.level}/${sk.max_level}</span>
+            </div>
+            <div class="skill-detail${expanded ? ' open' : ''}" id="sk-det-${sk.id}">
+              <div>📝 ${sk.description || '无描述'}</div>
+              <div>📐 <span class="s-formula">${translateFormula(sk.formula)}</span> = ${dmg} 伤害</div>
+              ${sk.hit_formula ? `<div>🎯 命中: <span style="color:#5a9e4b;">${translateFormula(sk.hit_formula)}</span>${sk.hit_formula.match(/^\d+$/) ? '' : ' = ' + evalHit(sk.hit_formula, st)}</div>` : ''}
+              <div>💰 ${sk.cost} | ⚡${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ` | 🕐${sk.cooldown}` : ''}${sk.special ? ` | ✨ ${translateFormula(sk.special)}` : ''}</div>
+              ${(c.pending_skill_points > 0 && sk.level < sk.max_level)
+                ? `<button class="upgrade-btn" onclick="upgradeSkill('${sk.id}')">⬆ 升级到 Lv.${sk.level+1}</button>`
+                : ''}
+            </div>
+          </div>`;
+        }).join('')}
+        ${c.pending_skill_points > 0
+          ? `<button style="margin-top:8px;padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;" onclick="openSkillModal(getActiveChar())">✨ 选择新技能</button>`
+          : ''}
+      </div>
+    </div>`;
+
+  // 被动
+  const paArea = document.getElementById('char-passives-area');
+  if (c.passives && c.passives.length > 0) {
+    const paCollapsed = localStorage.getItem('passives_collapsed_' + c.id) === '1';
+    paArea.innerHTML = `
+      <div class="passives-section">
+        <h3 onclick="togglePassives('${c.id}')">
+          <span class="arrow${paCollapsed ? '' : ' open'}" id="pa-arrow-${c.id}">▶</span>
+          📜 被动
+        </h3>
+        <div id="pa-list-${c.id}" style="${paCollapsed ? 'display:none' : ''}">
+          ${c.passives.map(p => `<div class="passive-row"><span class="p-name">${p.name}</span> ${translateFormula(p.effect || p.description)}</div>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    paArea.innerHTML = '';
+  }
+}
+
+// ── 公式求值 ──
+function evalFormula(formula, stats) {
+  if (!formula) return '?';
+  try {
+    let expr = formula
+      .replace(/×/g, '*').replace(/÷/g, '/')
+      .replace(/STR/g, stats.STR).replace(/SPD/g, stats.SPD)
+      .replace(/END/g, stats.END).replace(/DEF/g, stats.DEF)
+      .replace(/INT/g, stats.INT).replace(/MP/g, stats.MP)
+      .replace(/WIL/g, stats.WIL);
+    // 安全求值：只允许数字和运算符
+    if (/^[\d\s+\-*/().]+$/.test(expr)) {
+      const val = Function('"use strict"; return (' + expr + ')')();
+      return Math.round(val);
+    }
+    return formula; // 无法求值就显示原公式
+  } catch(e) { return '?'; }
+}
+
+// 命中公式求值（与 evalFormula 相同逻辑）
+function evalHit(formula, stats) {
+  return evalFormula(formula, stats);
+}
+
+function toggleSkills(cid) {
+  const list = document.getElementById('sk-list-' + cid);
+  const arrow = document.getElementById('sk-arrow-' + cid);
+  const collapsed = list.style.display === 'none';
+  list.style.display = collapsed ? '' : 'none';
+  arrow.classList.toggle('open', collapsed);
+  localStorage.setItem('skills_collapsed_' + cid, collapsed ? '0' : '1');
+}
+
+function toggleSkillDetail(skid) {
+  const det = document.getElementById('sk-det-' + skid);
+  const arrow = document.getElementById('sk-det-arrow-' + skid);
+  const expanded = !det.classList.contains('open');
+  det.classList.toggle('open', expanded);
+  arrow.classList.toggle('open', expanded);
+  localStorage.setItem('skill_expanded_' + skid, expanded ? '1' : '0');
+}
+
+function togglePassives(cid) {
+  const list = document.getElementById('pa-list-' + cid);
+  const arrow = document.getElementById('pa-arrow-' + cid);
+  const collapsed = list.style.display === 'none';
+  list.style.display = collapsed ? '' : 'none';
+  arrow.classList.toggle('open', collapsed);
+  localStorage.setItem('passives_collapsed_' + cid, collapsed ? '0' : '1');
+}
+
+async function adjustStat(key, delta) {
+  const c = getActiveChar();
+  if (!c) return;
+
+  if (delta > 0) {
+    // 加点 → 进入/维持草稿模式
+    if (!state.draft || state.draft.charId !== c.id) {
+      state.draft = {
+        charId: c.id,
+        deltas: {END:0, STR:0, SPD:0, DEF:0, INT:0, MP:0, WIL:0},
+        freeLeft: c.free_points,
+      };
+    }
+    if (state.draft.freeLeft <= 0) return;
+    const curVal = c.stats[key] + (state.draft.deltas[key] || 0);
+    if (curVal >= 99) return;
+    state.draft.deltas[key] = (state.draft.deltas[key] || 0) + 1;
+    state.draft.freeLeft--;
+  } else {
+    // 减点 → 只能撤销本次草稿中刚加的点
+    if (!state.draft || state.draft.charId !== c.id) return;
+    if ((state.draft.deltas[key] || 0) <= 0) return;
+    state.draft.deltas[key]--;
+    state.draft.freeLeft++;
+  }
+  renderCharDetail();
+}
+
+async function applyDraft() {
+  if (!state.draft) return;
+  const c = state.characters.find(x => x.id === state.draft.charId);
+  if (!c) return;
+  const deltas = state.draft.deltas;
+  for (const [k, d] of Object.entries(deltas)) {
+    if (d > 0) { c.stats[k] = (c.stats[k] || 3) + d; c.free_points -= d; }
+  }
+  state.draft = null;
+  renderCharDetail();
+  try {
+    await fetch('/api/session/' + state.session_id + '/characters/' + c.id, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({stats: c.stats, free_points: c.free_points}),
+    });
+  } catch(e) {}
+}
+
+function cancelDraft() {
+  state.draft = null;
+  renderCharDetail();
+}
+
+// ── 技能 Modal ──
+function openSkillModal(char) {
+  state.modal_char_id = char.id;
+  document.getElementById('modal-title').textContent =
+    `${char.name} Lv.${char.level} | 可用技能点：${char.pending_skill_points}`;
+  document.getElementById('skill-modal').classList.add('show');
+  loadSkillOptions();
+}
+
+function closeSkillModal() {
+  document.getElementById('skill-modal').classList.remove('show');
+  state.modal_char_id = '';
+  hideCustomInput();
+}
+
+async function loadSkillOptions() {
+  const container = document.getElementById('modal-skills');
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">正在生成技能...</div>';
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills/generate',
+      { method: 'POST' }
+    );
+    const data = await res.json();
+    const actives = data.active || [];
+    const passive = data.passive;
+    let html = '';
+    // 主动技能
+    html += '<div style="font-size:13px;color:var(--gold);margin-bottom:6px;">⚔️ 主动技能</div>';
+    html += actives.map(sk => `
+      <div class="skill-option">
+        <div class="so-name">${sk.name} <span class="so-type">${sk.type}</span></div>
+        <div class="so-desc">${sk.description || ''}</div>
+        <div class="so-formula">${sk.formula}</div>
+        ${sk.hit_formula ? `<div class="so-formula" style="color:#5a9e4b;font-size:11px;">🎯 命中: ${sk.hit_formula}</div>` : ''}
+        <div class="so-meta">💰 ${sk.cost} | ⚡${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ` | 🕐${sk.cooldown}` : ''}${sk.special ? ` | ✨ ${sk.special}` : ''}</div>
+        <button class="pick-btn" onclick='pickSkill(${JSON.stringify(sk).replace(/'/g,"&#39;")})'>选择</button>
+      </div>
+    `).join('');
+    // 被动技能
+    if (passive) {
+      html += '<div style="font-size:13px;color:#8b5cf6;margin:12px 0 6px;">📜 被动技能</div>';
+      html += `
+        <div class="skill-option" style="border-color:#8b5cf6;">
+          <div class="so-name">${passive.name} <span class="so-type" style="color:#8b5cf6;">被动</span></div>
+          <div class="so-desc">${passive.description || ''}</div>
+          <div class="so-formula" style="color:#8b5cf6;">✨ ${passive.effect || ''}</div>
+          <button class="pick-btn" style="background:#8b5cf6;" onclick='pickSkill(${JSON.stringify(passive).replace(/'/g,"&#39;")})'>选择</button>
+        </div>`;
+    }
+    container.innerHTML = html || '<div style="color:var(--dim);text-align:center;padding:20px;">未能生成技能，请重试</div>';
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--accent);">加载失败：' + e.message + '</div>';
+  }
+}
+
+// ── 技能模板库 ──
+async function loadLibrary() {
+  const entries = document.getElementById('library-entries');
+  entries.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">加载中...</div>';
+  try {
+    const res = await fetch('/api/library');
+    const data = await res.json();
+    const templates = data.templates || [];
+    const encountered = data.encountered || [];
+
+    let html = '';
+
+    // 遭遇角色
+    if (encountered.length > 0) {
+      html += '<div style="font-size:13px;color:var(--gold);margin-bottom:4px;">🎭 遭遇角色</div>';
+      html += encountered.map(c => `
+        <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;font-size:12px;overflow:hidden;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;cursor:pointer;"
+               onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none'">
+            <strong style="color:var(--gold);">${c.name}</strong>
+            <span style="color:var(--dim);">${c.species} Lv.${c.level} · 系数${c.species_coeff||1.3}</span>
+          </div>
+          <div style="display:none;padding:8px 10px;border-top:1px solid var(--border);">
+            <div style="color:var(--dim);margin-bottom:6px;line-height:1.8;">
+              ${translateStats(c.stats)}
+              <div style="font-size:10px;margin-top:2px;">HP=${c.current_hp!=null?Math.round(c.current_hp)+'/'+(c.stats.END||3)*200:(c.stats.END||3)*200} | 体力=${c.current_stamina!=null?Math.round(c.current_stamina)+'/'+(c.stats.END||3)*50:(c.stats.END||3)*50} | 蓝量=${c.current_mana!=null?Math.round(c.current_mana)+'/'+(c.stats.MP||3)*20:(c.stats.MP||3)*20} | 精神条=${c.current_spirit!=null?Math.round(c.current_spirit)+'/'+(c.stats.WIL||3)*10:(c.stats.WIL||3)*10} | 护盾=${((c.stats.DEF||3)+((c.stats.END||3)*0.5))*50} | 闪避=${((c.stats.SPD||3)*2.5+((c.stats.DEF||3)+(c.stats.END||3)*0.5)*0.5).toFixed(1)}</div>
+            </div>
+            ${c.skills?.length ? '<div style="font-size:12px;color:var(--accent);margin-bottom:4px;">⚔️ 技能</div>' + c.skills.map(sk => `
+              <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
+                <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⚡${sk.interval||''}${sk.cooldown&&sk.cooldown!==sk.interval?` 🕐${sk.cooldown}`:''}</span></div>
+                <div style="color:var(--text);">伤害: ${translateFormula(sk.formula)}</div>
+                ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${translateFormula(sk.hit_formula)}</div>` : ''}
+                ${sk.special ? `<div style="color:#8b5cf6;">✨ ${translateFormula(sk.special)}</div>` : ''}
+              </div>
+            `).join('') : ''}
+            ${c.passives?.length ? '<div style="font-size:12px;color:#8b5cf6;margin:6px 0 4px;">📜 被动</div>' + c.passives.map(p => `
+              <div style="background:#1a1612;border-left:2px solid #8b5cf6;border-radius:0 4px 4px 0;padding:4px 8px;margin:4px 0;">
+                <b style="color:#8b5cf6;">${p.name}</b> <span style="color:var(--text);">${translateFormula(p.effect)}</span>
+              </div>
+            `).join('') : ''}
+          </div>
+        </div>
+      `).join('');
+      html += '<hr style="border-color:var(--border);margin:12px 0;">';
+    }
+    html += '<div style="font-size:13px;color:var(--gold);margin-bottom:4px;">📚 设计模板</div>';
+    html += templates.map(tpl => `
+      <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:8px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <strong style="color:var(--gold);">${tpl.name}</strong>
+          <span style="color:var(--dim);">${tpl.species} Lv.${tpl.level} · ${tpl.style||''}</span>
+        </div>
+        <div style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+          <div style="color:var(--dim);margin-bottom:4px;">${translateStats(tpl.stats)}</div>
+          ${tpl.skills?.map(sk => `
+            <div style="background:#1a1612;border-radius:4px;padding:6px 8px;margin:4px 0;">
+              <div><b style="color:var(--accent);">${sk.name}</b> <span style="color:var(--dim);">${sk.type||''} ${sk.category||''} | ${sk.cost||''} | ⚡${sk.interval||''}${sk.cooldown&&sk.cooldown!==sk.interval?` 🕐${sk.cooldown}`:''}</span></div>
+              <div style="color:var(--text);">伤害: ${translateFormula(sk.formula)}</div>
+              ${sk.hit_formula ? `<div style="color:#5a9e4b;">🎯 命中: ${translateFormula(sk.hit_formula)}</div>` : ''}
+              ${sk.rationale ? `<div style="color:var(--dim);font-size:11px;margin-top:3px;font-style:italic;">💡 ${translateFormula(sk.rationale)}</div>` : ''}
+            </div>
+          `).join('') || ''}
+          ${tpl.passives?.map(p => `
+            <div style="background:#1a1612;border-left:2px solid #8b5cf6;border-radius:0 4px 4px 0;padding:4px 8px;margin:4px 0;">
+              <b style="color:#8b5cf6;">📜 ${p.name}</b> <span style="color:var(--text);">${translateFormula(p.effect)}</span>
+            </div>
+          `).join('') || ''}
+          ${tpl.design_notes ? `<div style="color:var(--dim);font-size:11px;margin-top:4px;">📝 ${translateFormula(tpl.design_notes)}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    if (!templates.length && !encountered.length) {
+      html = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无模板——创建角色并升级后会出现在这里。</div>';
+    }
+
+    // 装备模板
+    const eqTemplates = data.equipment_templates || [];
+    if (eqTemplates.length > 0) {
+      html += '<hr style="border-color:var(--border);margin:12px 0;">';
+      html += '<div style="font-size:13px;color:var(--gold);margin-bottom:4px;">⚒️ 装备模板</div>';
+      html += '<div style="font-size:12px;color:var(--dim);margin-bottom:8px;">💡 AI 生成装备时以此库的数值模式为准。</div>';
+      html += eqTemplates.map(eq => `
+        <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:8px;font-size:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+            <strong style="color:var(--gold);">${eq.name}</strong>
+            <span style="color:var(--dim);">${({weapon:'🗡️武器',armor:'🛡️防具',accessory:'💍饰品'})[eq.slot]||eq.slot} · ${RARITY_NAMES[eq.rarity]||eq.rarity} · ${eq.tier||''}</span>
+          </div>
+          <div style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+            <div style="color:var(--dim);margin-bottom:4px;">${eq.description||''}</div>
+            <div style="color:var(--good);">📊 ${Object.entries(eq.stats||{}).map(([k,v])=>k+v).join(' | ')}</div>
+            ${Object.keys(eq.attribute_bonus||{}).length ? `<div style="color:var(--gold);margin-top:4px;">🔸 ${Object.entries(eq.attribute_bonus).map(([k,v])=>STAT_NAMES[k]||k+(v>0?'+':'')+v).join(' ')}</div>` : ''}
+            ${eq.design_notes ? `<div style="color:var(--dim);font-size:11px;margin-top:4px;font-style:italic;">💡 ${eq.design_notes}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    entries.innerHTML = html;
+  } catch(e) {
+    entries.innerHTML = '<div style="color:var(--accent);text-align:center;padding:20px;">🔥 加载失败：' + e.message + '</div>';
+  }
+}
+
+async function refreshSkills() { await loadSkillOptions(); }
+
+async function pickSkill(skill) {
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills',
+      {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({skill}),
+      }
+    );
+    if (res.ok) {
+      await refreshCharacters();
+      const c = state.characters.find(x => x.id === state.modal_char_id);
+      if (c && c.pending_skill_points > 0) {
+        document.getElementById('modal-title').textContent =
+          `${c.name} Lv.${c.level} | 可用技能点：${c.pending_skill_points}`;
+        await loadSkillOptions();
+        renderCharDetail();
+      } else {
+        closeSkillModal();
+      }
+    } else {
+      const err = await res.json();
+      alert(err.detail || '添加失败');
+    }
+  } catch(e) { alert('错误：' + e.message); }
+}
+
+function showCustomSkill() {
+  document.getElementById('custom-skill-input').style.display = '';
+  document.getElementById('custom-actions').style.display = 'flex';
+  document.getElementById('modal-actions').style.display = 'none';
+  document.getElementById('modal-skills').style.display = 'none';
+}
+
+function hideCustomInput() {
+  document.getElementById('custom-skill-input').style.display = 'none';
+  document.getElementById('custom-actions').style.display = 'none';
+  document.getElementById('modal-actions').style.display = 'flex';
+  document.getElementById('modal-skills').style.display = '';
+}
+
+async function submitCustomSkill() {
+  const desc = document.getElementById('custom-skill-input').value.trim();
+  if (!desc) return;
+  const container = document.getElementById('modal-skills');
+  container.style.display = '';
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">正在解读描述...</div>';
+  hideCustomInput();
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills/custom',
+      {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({description: desc}),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      // 直接添加
+      await fetch(
+        '/api/session/' + state.session_id + '/characters/' + state.modal_char_id + '/skills',
+        {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({skill: data.skill}),
+        }
+      );
+      await refreshCharacters();
+      const c = state.characters.find(x => x.id === state.modal_char_id);
+      if (c && c.pending_skill_points > 0) {
+        document.getElementById('modal-title').textContent =
+          `${c.name} Lv.${c.level} | 可用技能点：${c.pending_skill_points}`;
+        await loadSkillOptions();
+      } else {
+        closeSkillModal();
+      }
+    } else {
+      const err = await res.json();
+      container.innerHTML = '<div style="color:var(--accent);padding:10px;">生成失败：' + (err.detail || '未知错误') + '</div>';
+    }
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--accent);padding:10px;">错误：' + e.message + '</div>';
+  }
+}
+
+async function upgradeSkill(skid) {
+  const c = getActiveChar();
+  if (!c || c.pending_skill_points <= 0) return;
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + c.id + '/skills/' + skid,
+      { method:'PUT' }
+    );
+    if (res.ok) {
+      await refreshCharacters();
+    } else {
+      const err = await res.json();
+      alert(err.detail || '升级失败');
+    }
+  } catch(e) { alert('错误：' + e.message); }
+}
+
+async function switchEvolveForm(form) {
+  const c = getActiveChar();
+  if (!c || !c.evolved) return;
+  try {
+    const res = await fetch(
+      '/api/session/' + state.session_id + '/characters/' + c.id + '/evolve',
+      { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({form}) }
+    );
+    if (res.ok) {
+      await refreshCharacters();
+    } else {
+      const err = await res.json();
+      alert(err.detail || '切换失败');
+    }
+  } catch(e) { alert('错误：' + e.message); }
+}
+
+// ── 骰子 ──
+function addRollMsg(detail, result) {
+  const log = document.getElementById('chat-log');
+  const w = log.querySelector('.welcome'); if (w) w.remove();
+  const div = document.createElement('div');
+  div.className = 'msg roll';
+  div.innerHTML = `${detail}<br><span class="big">${result}</span>`;
+  log.appendChild(div);
+  scrollBottom();
+}
+
+async function doDiceRoll(diceExpr) {
+  try {
+    const res = await fetch('/api/roll', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: diceExpr, session_id: state.session_id}),
+    });
+    const data = await res.json();
+    if (data.result && data.result.startsWith('格式错误')) {
+      addMsg('gm', '🎲 ' + data.result);
+    } else {
+      addRollMsg(data.detail, data.result);
+    }
+  } catch(e) {
+    addMsg('gm', '🎲 骰子崩了: ' + e.message);
+  }
+}
+
+// ── 设置 ──
+async function saveSettings() {
+  const key = document.getElementById('set-key').value.trim();
+  const base = document.getElementById('set-base').value.trim();
+  const model = document.getElementById('set-model').value.trim();
+  const nsfw = document.getElementById('set-nsfw').checked;
+  const status = document.getElementById('settings-status');
+  try {
+    const res = await fetch('/api/settings', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({api_key:key, base_url:base, model:model, nsfw:nsfw}),
+    });
+    if (res.ok) {
+      status.textContent = '✅ 保存成功';
+      status.className = 'ok';
+      document.getElementById('set-key').value = '';
+      document.getElementById('set-key').placeholder = '(已设置)';
+      updateBreedBtn();
+    } else {
+      status.textContent = '❌ 保存失败';
+      status.className = 'err';
+    }
+  } catch(e) {
+    status.textContent = '❌ 网络错误: ' + e.message;
+    status.className = 'err';
+  }
+}
+
+async function saveWorld() {
+  if (!state.session_id) return;
+  const world = document.getElementById('set-world').value.trim();
+  const status = document.getElementById('world-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/world', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({world_setting: world}),
+    });
+    if (res.ok) {
+      status.textContent = '✅ 世界观已更新（下次对话生效）';
+      status.className = 'ok';
+    } else {
+      status.textContent = '❌ 保存失败';
+      status.className = 'err';
+    }
+  } catch(e) {
+    status.textContent = '❌ 网络错误: ' + e.message;
+    status.className = 'err';
+  }
+}
+
+function setWorldField(val) {
+  document.getElementById('set-world').value = val || '小魔王地下城——你是一只小魔王，冒险者公会三天两头来砸场子。';
+}
+
+// ── 其他设置折叠 ──
+
+function toggleOtherSettings() {
+  const panel = document.getElementById('other-panel');
+  const icon = document.getElementById('other-toggle-icon');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    icon.textContent = '▼';
+  } else {
+    panel.style.display = 'none';
+    icon.textContent = '▶';
+  }
+}
+
+function toggleExpSettings() {
+  const panel = document.getElementById('exp-panel');
+  const icon = document.getElementById('exp-toggle-icon');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    icon.textContent = '▼';
+  } else {
+    panel.style.display = 'none';
+    icon.textContent = '▶';
+  }
+}
+
+// ── 开发者模式 ──
+
+function toggleDevMode() {
+  const panel = document.getElementById('dev-panel');
+  const icon = document.getElementById('dev-toggle-icon');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block'; icon.textContent = '▼'; refreshDevChars();
+  } else {
+    panel.style.display = 'none'; icon.textContent = '▶';
+  }
+}
+
+function refreshDevChars() {
+  ['dev-exp-char','dev-lv-char','dev-stat-char'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = (state.characters || []).map(c =>
+      `<option value="${c.name}">${c.name} Lv.${c.level}</option>`
+    ).join('');
+  });
+}
+
+async function devAddExp() {
+  const target = document.getElementById('dev-exp-char').value;
+  const amount = parseInt(document.getElementById('dev-exp-amount').value) || 200;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'add_exp', char: target, amount}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.characters = d.characters;
+      renderAll();
+      st.textContent = `✅ 给 ${target} 加了 ${amount} 经验`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
+}
+
+async function devSetLevel() {
+  const target = document.getElementById('dev-lv-char').value;
+  const level = parseInt(document.getElementById('dev-lv-value').value) || 5;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'set_level', char: target, level}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.characters = d.characters;
+      renderAll();
+      st.textContent = `✅ ${target} 等级设为 Lv.${level}`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
+}
+
+async function devSetDay() {
+  const day = parseInt(document.getElementById('dev-day').value) || 5;
+  const wave = parseInt(document.getElementById('dev-wave').value) || 1;
+  const dta = parseInt(document.getElementById('dev-dta').value) || 1;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'set_day', day, wave, dta}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.day = d.day; state.days_until_attack = d.days_until_attack; state.raid_wave = d.raid_wave;
+      updateDayDisplay();
+      st.textContent = `✅ 跳转到第${day}天 第${wave}波 倒计时${dta}天`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
+}
+
+async function devSetStat() {
+  const target = document.getElementById('dev-stat-char').value;
+  const stat = document.getElementById('dev-stat-key').value;
+  const value = parseInt(document.getElementById('dev-stat-val').value) || 10;
+  const st = document.getElementById('dev-status');
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'set_stat', char: target, stat, value}),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      state.characters = d.characters;
+      renderAll();
+      st.textContent = `✅ ${target} ${stat}=${value}`;
+    }
+  } catch(e) { st.textContent = '❌ ' + e.message; }
+}
+
+// ── 战斗日志解析 ──
+
+async function refreshLog() {
+  const entries = document.getElementById('log-entries');
+  if (!state.session_id) {
+    entries.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无日志——先去冒险吧！</div>';
+    return;
+  }
+
+  // 1. 从 API 读取游戏事件
+  let eventHtml = '';
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/events?limit=100');
+    if (res.ok) {
+          const data = await res.json();
+          const icons = {exp:'⭐', level_up:'📈', stat_change:'📊', system:'🔧', char_add:'🆕',
+            engine_ruling:'⚖️', tag_fix:'⚠️', recruit:'🤝', rename:'✏️', con_discover:'🏗️',
+            con_upgrade:'🔨', patrol_encounter:'⚔️', breach:'☠️', combat:'💥'};
+          eventHtml = (data.events || []).map(e => {
+            const icon = icons[e.type] || '📋';
+            const dayTag = e.day ? `[第${e.day}天] ` : '';
+            const devTag = (e.data && e.data.dev) ? ' 🔧' : '';
+            let detail = '';
+            // 引擎裁决：展示每一条批准/拒绝
+            if (e.type === 'engine_ruling' && e.data && Array.isArray(e.data.rulings)) {
+              detail = e.data.rulings.map(r =>
+                `<div style="padding:2px 0 2px 16px;font-size:11px;${r.includes('已批准')?'color:#7fd487':(r.includes('已拒绝')?'color:#e07a7a':'color:var(--dim)')}">${r}</div>`
+              ).join('');
+            }
+            // 标签修正：展示每一条问题
+            if (e.type === 'tag_fix' && e.data && Array.isArray(e.data.issues)) {
+              detail = e.data.issues.map(r =>
+                `<div style="padding:2px 0 2px 16px;font-size:11px;color:#e0c07a;">- ${r}</div>`
+              ).join('');
+            }
+            return `<div style="padding:4px 0;border-bottom:1px solid #2a2520;font-size:12px;">
+              <span style="color:var(--dim);">${dayTag}</span><span>${icon} ${e.msg}${devTag}</span>${detail}
+            </div>`;
+          }).join('');
+          if (!(data.events||[]).length) {
+            eventHtml = '<div style="text-align:center;padding:16px;color:var(--dim);font-size:12px;">暂无事件日志——引擎还没有裁决过任何变更。</div>';
+          }
+        }
+  } catch(e) {}
+
+  // 2. 从聊天中提取 DMG 块和命中判定
+  const log = document.getElementById('chat-log');
+  const msgs = log ? log.querySelectorAll('.msg.gm') : [];
+  let dmgHtml = '';
+
+  let items = [];
+  msgs.forEach(msg => {
+    const text = msg.textContent || '';
+    const dmgBlocks = text.match(/\[DMG:[^\]]+\]/g);
+    if (dmgBlocks) {
+      dmgBlocks.forEach(block => {
+        const inner = block.replace(/^\[DMG:\s*|\]$/g, '');
+        const typeMatch = inner.match(/类型[=＝]([刺钝斩]+)/);
+        const rawMatch = inner.match(/原始伤害[=＝](\d+)/);
+        const finalMatch = inner.match(/最终伤害[=＝](\d+)/);
+        const spiritMatch = inner.match(/精神伤害[=＝](\d+)/);
+        const formulaMatch = inner.match(/公式[=＝]([^|]+)/);
+        const reduceMatch = inner.match(/减伤[=＝]([\d.]+%)/);
+        const penMatch = inner.match(/穿透[:=]([\d.]+%)/);
+        const bypassMatch = inner.match(/无视[:=]([\d.]+)/);
+        const armorDmgMatch = inner.match(/护甲损伤[=＝]([\d.]+)/);
+        const remainMatch = inner.match(/剩余(\d+)/);
+
+        let main = '';
+        const typeNames = {刺:'🗡️刺击', 钝:'🔨钝击', 斩:'⚔️斩击'};
+        if (typeMatch) main = typeNames[typeMatch[1]] || typeMatch[1];
+        if (rawMatch) main += ` 原始${rawMatch[1]}`;
+        if (spiritMatch) main = `🔮 精神伤害${spiritMatch[1]}`;
+        if (finalMatch) main += ` → 实伤${finalMatch[1]}`;
+        if (remainMatch) main += ` (剩${remainMatch[1]})`;
+
+        let detail = [];
+        if (formulaMatch) detail.push(formulaMatch[1].trim());
+        if (reduceMatch) detail.push(`减伤${reduceMatch[1]}`);
+        if (penMatch) detail.push(`穿透${penMatch[1]}`);
+        if (bypassMatch) detail.push(`无视${bypassMatch[1]}`);
+        if (armorDmgMatch) detail.push(`削甲${armorDmgMatch[1]}`);
+
+        items.push({type:'damage', main: main || inner.substring(0,60), detail: detail.join(' | ')});
+      });
+    }
+
+    const hitLines = text.match(/🎯[^\n]*/g);
+    if (hitLines) {
+      hitLines.forEach(line => {
+        const m = line.match(/🎯\s*(.+?)\s*→\s*d100=(\d+)\s*vs\s*命中率([\d.]+)%\s*\((.+?)\)\s*→\s*(.+)/);
+        if (m) {
+          const hit = m[5].includes('命中');
+          items.push({type: hit ? 'damage' : 'roll', main: `${m[1].trim()} → d100=${m[2]} / ${m[3]}%`, detail: `公式: ${m[4]} | 结果: ${m[5].trim()}`, result: hit ? 'success' : 'fail'});
+          return;
+        }
+        const s = line.replace('🎯', '').trim();
+        if (s && s.length > 2) items.push({type:'roll', main: '⚔️ ' + s, detail:'', result:''});
+      });
+    }
+  });
+
+  const colors = {roll:'var(--gold)',damage:'var(--accent)',event:'var(--good)'};
+  dmgHtml = items.map(item => `
+    <div class="log-entry">
+      <span class="log-type ${item.type}">${item.type==='roll'?'🎲 骰子':item.type==='damage'?'⚔️ 伤害':'📌 事件'}</span>
+      <span class="log-main">${item.main}</span>
+      ${item.detail?`<div class="log-detail">${item.detail}</div>`:''}
+    </div>
+  `).join('');
+
+  if (!eventHtml && !dmgHtml) {
+    entries.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dim);">暂无日志——开始冒险后事件和战斗判定会显示在这里。</div>';
+    return;
+  }
+
+  entries.innerHTML = (eventHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin-bottom:8px;">📋 游戏事件</div>' + eventHtml : '')
+    + (dmgHtml ? '<div style="color:var(--gold);font-size:13px;font-weight:bold;margin:12px 0 8px;">⚔️ 战斗判定</div>' + dmgHtml : '');
+}
+
+// ── 存档/读档 ──
+
+function showSaveModal() {
+  if (!state.session_id) { alert('请先开始冒险'); return; }
+  document.getElementById('save-name').value = '';
+  document.getElementById('save-modal').classList.add('show');
+}
+
+function closeSaveModal() {
+  document.getElementById('save-modal').classList.remove('show');
+}
+
+async function doSave() {
+  const name = document.getElementById('save-name').value.trim() || '存档';
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, saved_at: new Date().toISOString()}),
+    });
+    if (res.ok) {
+      closeSaveModal();
+      alert('✅ 存档成功: ' + name);
+    } else {
+      const err = await res.json();
+      alert('存档失败: ' + (err.detail || ''));
+    }
+  } catch(e) { alert('存档失败: ' + e.message); }
+}
+
+async function showLoadModal() {
+  document.getElementById('load-modal').classList.add('show');
+  const list = document.getElementById('load-list');
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">加载中...</div>';
+  try {
+    const res = await fetch('/api/saves');
+    const data = await res.json();
+    const saves = data.saves || [];
+    if (saves.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">暂无存档</div>';
+      return;
+    }
+    list.innerHTML = saves.map(s => {
+      const date = s.saved_at ? new Date(s.saved_at).toLocaleString('zh-CN') : '未知';
+      return `<div style="border:1px solid var(--border);border-radius:6px;padding:10px 14px;background:var(--input-bg);display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">💾</span>
+        <div style="flex:1;">
+          <div style="color:var(--gold);font-weight:bold;">${s.name}</div>
+          <div style="font-size:11px;color:var(--dim);">${s.characters||''} | ${s.msg_count||0}条消息 | ${date}</div>
+        </div>
+        <button onclick="event.stopPropagation();doLoad('${s.file}')" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">📂 读取</button>
+      </div>`;
+    }).join('');
+  } catch(e) { list.innerHTML = '<div style="color:var(--accent);">加载失败: ' + e.message + '</div>'; }
+}
+
+function closeLoadModal() {
+  document.getElementById('load-modal').classList.remove('show');
+}
+
+async function doLoad(filename) {
+  try {
+    const res = await fetch('/api/saves/' + filename + '/load', { method:'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      state.session_id = data.session_id;
+      state.characters = data.characters || [];
+      state.active_char_id = state.characters[0]?.id || '';
+      localStorage.setItem('monster_sid', state.session_id);
+      document.getElementById('sid-display').textContent = state.session_id;
+      closeLoadModal();
+      // 刷新全部
+      await loadOrCreateSession();
+    } else {
+      const err = await res.json();
+      alert('读档失败: ' + (err.detail || ''));
+    }
+  } catch(e) { alert('读档失败: ' + e.message); }
+}
+
+// ── 工程/陷阱系统 ──
+
+let _engCache = null;
+
+async function loadEngCache() {
+  if (_engCache) return _engCache;
+  try {
+    const res = await fetch('/api/constructions');
+    const data = await res.json();
+    _engCache = data.constructions || [];
+  } catch(e) { _engCache = []; }
+  return _engCache;
+}
+
+async function renderEngineering() {
+  const allCon = await loadEngCache();
+
+  let all = [];
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/constructions');
+    if (res.ok) {
+      const data = await res.json();
+      all = data.constructions || [];
+    }
+  } catch(e) {}
+
+  const building = all.filter(c => c.status === 'building');
+  const built = all.filter(c => c.status === 'built');
+
+  // ── 在建造 ──
+  const buildingDiv = document.getElementById('eng-building');
+  if (building.length === 0) {
+    buildingDiv.innerHTML = '<div style="color:var(--dim);font-size:12px;font-style:italic;text-align:center;padding:16px;">建造队列为空</div>';
+  } else {
+    buildingDiv.innerHTML = building.map(c => {
+      const eff = c.effect || {};
+      const pct = Math.round((c.build_progress||0) / (c.build_total||1) * 100);
+      return `<div class="eq-slot-card" style="border-color:#c9a050;">
+        <span style="font-size:22px;">${c.icon||'🏗️'}</span>
+        <span style="font-size:11px;color:var(--dim);width:60px;">${c.type||''}</span>
+        <span class="slot-name">${c.name}</span>
+        <span style="font-size:11px;color:#c9a050;">⏳ ${c.build_progress||0}/${c.build_total}天 (${pct}%)</span>
+        <span style="font-size:10px;color:var(--dim);">第${c.started_day}天开工</span>
+        <button class="unequip-btn" onclick="demolishCon('${c.instance_id}')">🔨 取消</button>
+      </div>`;
+    }).join('');
+  }
+
+  // ── 已建成 ──
+  const builtDiv = document.getElementById('eng-built');
+  if (built.length === 0) {
+    builtDiv.innerHTML = '<div style="color:var(--dim);font-size:12px;font-style:italic;text-align:center;padding:16px;">尚未建成任何工事</div>';
+  } else {
+    builtDiv.innerHTML = built.map(c => {
+      const eff = c.effect || {};
+      const details = [];
+      if (eff.melee_climb_time) details.push(`🧗 近战攀爬: ${eff.melee_climb_time}`);
+      if (eff.enemy_ranged_hit) details.push(`🎯 敌远程: ${eff.enemy_ranged_hit}`);
+      if (eff.ally_ranged_hit) details.push(`🎯 我方远程: ${eff.ally_ranged_hit}`);
+      if (eff.durability) details.push(`🛡️ 耐久: ${eff.durability}`);
+      if (eff.damage) details.push(`💥 ${eff.damage}`);
+      if (eff.slow) details.push(`🐌 ${eff.slow}`);
+      if (eff.immobilize) details.push(`🔒 ${eff.immobilize}`);
+      if (eff.blind) details.push(`👁️ ${eff.blind}`);
+      if (eff.aoe) details.push(`💥 ${eff.aoe}`);
+      if (eff.uses !== undefined && eff.uses < 999) details.push(`🔄 剩余: ${c.uses_left||0}/${eff.uses}`);
+      return `<div class="eq-slot-card">
+        <span style="font-size:22px;">${c.icon||'🏗️'}</span>
+        <span style="font-size:11px;color:var(--dim);width:60px;">${c.type||''}</span>
+        <span class="slot-name">${c.name}</span>
+        <span style="font-size:11px;color:var(--dim);">${details.join(' | ')}</span>
+        <span style="font-size:10px;color:var(--dim);">第${c.built_day}天建成</span>
+        <button class="unequip-btn" onclick="demolishCon('${c.instance_id}')">🔨 拆除</button>
+      </div>`;
+    }).join('');
+  }
+
+  // ── 可建造 ──
+  const listDiv = document.getElementById('eng-list');
+  const allIds = {};
+  all.forEach(c => { allIds[c.id] = (allIds[c.id]||0) + 1; });
+
+  listDiv.innerHTML = allCon.map(con => {
+    const count = allIds[con.id] || 0;
+    const maxed = count >= (con.max_count || 99);
+    const eff = con.effect || {};
+    const effectLines = [];
+    if (eff.melee_climb_time) effectLines.push(`🧗 近战需攀爬 ${eff.melee_climb_time}`);
+    if (eff.enemy_ranged_hit) effectLines.push(`🎯 敌远程命中 ${eff.enemy_ranged_hit}`);
+    if (eff.ally_ranged_hit) effectLines.push(`🎯 我方远程命中 ${eff.ally_ranged_hit}`);
+    if (eff.durability) effectLines.push(`🛡️ 耐久 ${eff.durability}`);
+    if (eff.damage) effectLines.push(`💥 伤害 ${eff.damage}`);
+    if (eff.slow) effectLines.push(`🐌 ${eff.slow}`);
+    if (eff.immobilize) effectLines.push(`🔒 ${eff.immobilize}`);
+    if (eff.blind) effectLines.push(`👁️ ${eff.blind}`);
+    if (eff.aoe) effectLines.push(`💥 ${eff.aoe}`);
+    if (eff.uses) effectLines.push(`🔄 可用 ${eff.uses} 次`);
+    if (eff.assassin_climb_bonus) effectLines.push(`⚡ 刺客 ${eff.assassin_climb_bonus}`);
+
+    return `<div class="eq-item-card">
+      <span style="font-size:22px;">${con.icon||'🏗️'}</span>
+      <span class="slot-tag">${con.type||''}</span>
+      <span class="item-name">${con.name}</span>
+      <span style="font-size:11px;color:var(--dim);flex:1;">${con.description||''}</span>
+      <div style="font-size:10px;color:var(--dim);">${effectLines.join('<br>')}</div>
+      <span style="font-size:10px;color:var(--dim);white-space:nowrap;">需${con.build_days||1}天 | 上限${con.max_count||1}</span>
+      <button class="equip-btn ${maxed?'equipped':''}"
+        onclick="buildCon('${con.id}')"
+        ${maxed?'disabled':''}>${maxed?'已满':'🔨 加入队列'}</button>
+    </div>`;
+  }).join('');
+}
+
+async function buildCon(conId) {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/constructions', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({construction_id: conId}),
+    });
+    if (res.ok) {
+      renderEngineering();
+    } else {
+      const err = await res.json();
+      alert('加入队列失败: ' + (err.detail || '未知错误'));
+    }
+  } catch(e) { alert('加入队列失败: ' + e.message); }
+}
+
+async function demolishCon(iid) {
+  if (!confirm('确定拆除这个工事吗？拆除后不可恢复。')) return;
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/constructions/' + iid, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      renderEngineering();
+    }
+  } catch(e) { alert('拆除失败: ' + e.message); }
+}
+
+// ── 装备系统 ──
+
+let _equipmentCache = null;
+let _eqFilter = 'all';
+const STAT_NAMES = {END:'耐力', STR:'力量', SPD:'速度', DEF:'防御', INT:'智力', MP:'法力', WIL:'精神'};
+const STAT_DESCS = {END:'HP+200/点 体力+50/点', STR:'物理伤害主属性', SPD:'命中/闪避主属性', DEF:'护盾+50/点', INT:'法术伤害主属性', MP:'蓝量+20/点', WIL:'精神条+10/点'};
+const RARITY_NAMES = {common:'普通', uncommon:'精良', rare:'稀有', epic:'史诗'};
+const SLOT_NAMES = {weapon:'武器', armor:'防具', accessory:'饰品'};
+function translateFormula(str) {
+  if (!str) return '';
+  return str.replace(/\b(END|STR|SPD|DEF|INT|MP|WIL)\b/g, m => STAT_NAMES[m] || m);
+}
+// 战斗计算行缩小显示
+function fmtCombat(text) {
+  if (!text) return '';
+  let html = translateFormula(text);
+  // 转义 HTML
+  html = html.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // 🎯 命中行 → <span class="calc 🎯">
+  html = html.replace(/^🎯.*$/gm, m => `<span class="calc 🎯">${m}</span>`);
+  // [DMG: ...] 行 → <span class="calc hit">
+  html = html.replace(/^\[DMG:.*\]$/gm, m => `<span class="calc hit">${m}</span>`);
+  // 恢复换行
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+function translateStats(statsObj) {
+  if (!statsObj) return '';
+  return Object.entries(statsObj).map(([k,v]) => `<b>${STAT_NAMES[k]||k}</b>:${v}`).join('  ');
+}
+
+async function loadEquipmentCache() {
+  if (_equipmentCache !== null) return _equipmentCache;
+  try {
+    const sid = state.session_id || '';
+    const url = '/api/equipment' + (sid ? '?sid=' + encodeURIComponent(sid) : '');
+    const res = await fetch(url);
+    const data = await res.json();
+    _equipmentCache = data.equipment || [];
+  } catch(e) { _equipmentCache = []; }
+  return _equipmentCache;
+}
+
+function getEquippedChar() {
+  const sel = document.getElementById('eq-char-select');
+  const cid = sel.value;
+  return state.characters.find(c => c.id === cid) || state.characters[0];
+}
+
+async function renderEquipment() {
+  const allEq = await loadEquipmentCache();
+  const c = getEquippedChar();
+  if (!c) return;
+
+  // 填充角色选择器
+  const sel = document.getElementById('eq-char-select');
+  sel.innerHTML = state.characters.map(ch =>
+    `<option value="${ch.id}" ${ch.id === c.id ? 'selected' : ''}>${ch.name} Lv.${ch.level}</option>`
+  ).join('');
+
+  const eq = c.equipment || {weapon: null, armor: null, accessory: null};
+
+  // 渲染已装备槽位
+  const slotsDiv = document.getElementById('eq-slots');
+  const slotIcons = {weapon: '🗡️', armor: '🛡️', accessory: '💍'};
+  const slotNames = {weapon: '武器', armor: '防具', accessory: '饰品'};
+  slotsDiv.innerHTML = Object.entries(slotNames).map(([slot, name]) => {
+    const eqId = eq[slot];
+    if (!eqId) {
+      return `<div class="eq-slot-card">
+        <span class="slot-icon">${slotIcons[slot]}</span>
+        <span class="slot-label">${name}</span>
+        <span class="slot-empty">空</span>
+      </div>`;
+    }
+    const item = allEq.find(e => e.id === eqId);
+    if (!item) {
+      return `<div class="eq-slot-card">
+        <span class="slot-icon">${slotIcons[slot]}</span>
+        <span class="slot-label">${name}</span>
+        <span class="slot-name">未知装备</span>
+        <button class="unequip-btn" onclick="unequipItem('${c.id}','${slot}')">卸下</button>
+      </div>`;
+    }
+    const rarityClass = 'rarity-' + (item.rarity || 'common');
+    const bonusStr = item.attribute_bonus ? Object.entries(item.attribute_bonus)
+      .filter(([k,v]) => v !== 0)
+      .map(([k,v]) => `${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ') : '';
+    let skillHtml = '';
+    if (item.skill) {
+      const sk = item.skill;
+      skillHtml = `<div style="font-size:11px;color:var(--accent);margin-top:2px;">⚡ ${sk.name}「${sk.type}」| 公式:${sk.formula} | 命中:${sk.hit_formula} | 消耗:${sk.cost} | 使用:${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ' | 冷却:'+sk.cooldown : ''}${sk.special?' | '+sk.special:''}${sk.description?'<br>📝 '+sk.description:''}</div>`;
+    }
+    const HDR = 'font-size:12px;color:var(--gold);font-weight:bold;margin-top:6px;border-bottom:1px solid #333;padding-bottom:2px;';
+    let detailHtml = `<div style="${HDR}">【主属性】</div>`;
+    detailHtml += `<div style="font-size:12px;color:var(--good);margin-left:4px;">${bonusStr || '无'}</div>`;
+    detailHtml += `<div style="${HDR}">【副属性】</div>`;
+    if (item.secondary_bonus && Object.values(item.secondary_bonus).some(v=>v!==0)) {
+      const secStr = Object.entries(item.secondary_bonus).filter(([k,v])=>v!==0).map(([k,v])=>`${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ');
+      detailHtml += `<div style="font-size:12px;color:var(--gold);margin-left:4px;">${secStr}</div>`;
+    } else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
+    detailHtml += `<div style="${HDR}">【技能】</div>`;
+    if (item.skill) { detailHtml += skillHtml; }
+    else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
+    if (item.special) {
+      detailHtml += `<div style="${HDR}">【特殊效果】</div>`;
+      detailHtml += `<div style="font-size:11px;color:#8b5cf6;margin-left:4px;">✨ ${item.special}</div>`;
+    }
+    detailHtml += `<div style="font-size:11px;color:var(--dim);margin-top:4px;">📦 来源: ${item.source==='starting'?'开局':item.source==='exploration'?'探索':item.source==='wave'?'波次奖励':'未知'} | 品级: ${RARITY_NAMES[item.rarity]||item.rarity}</div>`;
+    return `<div class="eq-slot-card" style="cursor:pointer;" onclick="this.querySelector('.eq-slot-detail-expand')?.classList.toggle('open')">
+      <span class="slot-icon">${slotIcons[slot]}</span>
+      <span class="slot-label">${name}</span>
+      <span class="rarity-badge ${rarityClass}">${RARITY_NAMES[item.rarity]||item.rarity}</span>
+      <span class="slot-name">${item.name}</span>
+      <span class="slot-desc">${item.description||''}</span>
+      <span style="font-size:10px;color:var(--dim);">▼</span>
+      <button class="unequip-btn" onclick="event.stopPropagation();unequipItem('${c.id}','${slot}')">卸下</button>
+      <div class="eq-slot-detail-expand" style="display:none;width:100%;padding:6px 0 0 32px;border-top:1px dashed var(--border);margin-top:4px;">${detailHtml}</div>
+    </div>`;
+  }).join('');
+
+  // 渲染装备仓库（过滤）
+  const listDiv = document.getElementById('eq-list');
+  // 收集所有角色已装备的物品ID（不只是当前角色）
+  const allEquippedIds = new Set();
+  const allEquippedBy = {};  // item_id → [name, ...]
+  if (state.characters && state.characters.length > 0) {
+    for (const ch of state.characters) {
+      const eq2 = ch.equipment || {};
+      for (const [slot, eid] of Object.entries(eq2)) {
+        if (eid) {
+          allEquippedIds.add(eid);
+          if (!allEquippedBy[eid]) allEquippedBy[eid] = [];
+          if (!allEquippedBy[eid].includes(ch.name)) allEquippedBy[eid].push(ch.name);
+        }
+      }
+    }
+  }
+  let filtered = allEq;
+  if (_eqFilter !== 'all') filtered = allEq.filter(e => e.slot === _eqFilter);
+
+  listDiv.innerHTML = filtered.map(item => {
+    const isEquipped = allEquippedIds.has(item.id);
+    const equippedByNames = allEquippedBy[item.id] || [];
+    const equipLabel = isEquipped ? '已装备' + (equippedByNames.length ? '·' + equippedByNames.join('、') : '') : '装备';
+    const rarityClass = 'rarity-' + (item.rarity || 'common');
+    const bonusStr = item.attribute_bonus ? Object.entries(item.attribute_bonus)
+      .filter(([k,v]) => v !== 0)
+      .map(([k,v]) => `${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ') : '';
+    const slotTag = SLOT_NAMES[item.slot] ? ({weapon:'🗡️', armor:'🛡️', accessory:'💍'}[item.slot]+SLOT_NAMES[item.slot]) : item.slot;
+    const HDR = 'font-size:12px;color:var(--gold);font-weight:bold;margin-top:6px;border-bottom:1px solid #333;padding-bottom:2px;';
+    let detailHtml = `<div style="${HDR}">【主属性】</div>`;
+    detailHtml += `<div style="font-size:12px;color:var(--good);margin-left:4px;">${bonusStr || '无'}</div>`;
+    detailHtml += `<div style="${HDR}">【副属性】</div>`;
+    if (item.secondary_bonus && Object.values(item.secondary_bonus).some(v=>v!==0)) {
+      const secStr = Object.entries(item.secondary_bonus).filter(([k,v])=>v!==0).map(([k,v])=>`${STAT_NAMES[k]||k}${v>0?'+':''}${v}`).join(' ');
+      detailHtml += `<div style="font-size:12px;color:var(--gold);margin-left:4px;">${secStr}</div>`;
+    } else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
+    detailHtml += `<div style="${HDR}">【技能】</div>`;
+    if (item.skill) {
+      const sk = item.skill;
+      detailHtml += `<div style="font-size:11px;color:var(--accent);margin-top:4px;">⚡ 技能: ${sk.name}「${sk.type}」<br>　 伤害公式: ${sk.formula}<br>　 命中公式: ${sk.hit_formula}<br>　 消耗: ${sk.cost} | 使用: ${sk.interval}${sk.cooldown && sk.cooldown !== sk.interval ? ' | 冷却: '+sk.cooldown : ''}${sk.special?'<br>　 特殊: '+sk.special:''}${sk.description?'<br>　 📝 '+sk.description:''}</div>`;
+    } else { detailHtml += `<div style="font-size:12px;color:var(--dim);margin-left:4px;">无</div>`; }
+    if (item.special) {
+      detailHtml += `<div style="${HDR}">【特殊效果】</div>`;
+      detailHtml += `<div style="font-size:11px;color:#8b5cf6;margin-left:4px;">✨ ${item.special}</div>`;
+    }
+    detailHtml += `<div style="font-size:11px;color:var(--dim);margin-top:4px;">📦 来源: ${item.source==='starting'?'开局赠送':item.source==='exploration'?'探索发现':item.source==='wave'?'波次奖励':'未知'} | 品级: ${RARITY_NAMES[item.rarity]||item.rarity}</div>`;
+    return `<div class="eq-item-card" onclick="const d=this.nextElementSibling;const a=this.querySelector('.eq-arrow');if(d){d.classList.toggle('open');if(a)a.classList.toggle('open',d.classList.contains('open'));}" style="cursor:pointer;">
+      <span class="rarity-badge ${rarityClass}">${RARITY_NAMES[item.rarity]||item.rarity}</span>
+      <span class="slot-tag">${slotTag}</span>
+      <span class="item-name">${item.name}</span>
+      <span class="slot-desc" style="flex:1;">${item.description||''}</span>
+      ${bonusStr ? `<span class="item-bonus">${bonusStr}</span>` : ''}
+      <span class="eq-arrow">▼</span>
+      <button class="equip-btn ${isEquipped?'equipped':''}"
+        onclick="event.stopPropagation();equipItem('${c.id}','${item.id}')"
+        ${isEquipped?'disabled':''}>${equipLabel}</button>
+    </div>
+    <div class="eq-detail-expand" style="display:none;padding:8px 14px;margin:-4px 0 6px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--input-bg);font-size:12px;color:var(--dim);line-height:1.7;">
+      ${detailHtml}
+    </div>`;
+  }).join('');
+}
+
+async function equipItem(cid, itemId) {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters/' + cid + '/equip', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({equipment_id: itemId}),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const c = state.characters.find(ch => ch.id === cid);
+      if (c) c.equipment = data.equipment;
+      renderEquipment();
+      renderCharDetail();
+    }
+  } catch(e) { alert('装备失败: ' + e.message); }
+}
+
+async function unequipItem(cid, slot) {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/characters/' + cid + '/equip/' + slot, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const c = state.characters.find(ch => ch.id === cid);
+      if (c) c.equipment = data.equipment;
+      renderEquipment();
+      renderCharDetail();
+    }
+  } catch(e) { alert('卸下失败: ' + e.message); }
+}
+
+function filterEquipment(type, btn) {
+  _eqFilter = type;
+  document.querySelectorAll('.eq-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEquipment();
+}
+
+// ── 探索系统（分区版）──
+const _ZONE_DIFF = {'safe':'🟢','danger':'🟡','high':'🔴'};
+const _ZONE_DIFF_NAME = {'safe':'安全','danger':'危险','high':'高危'};
+let _exploreZones = [];
+
+async function loadExploreZones() {
+  if (!state.session_id) return [];
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/zones');
+    if (res.ok) { const d = await res.json(); _exploreZones = d.zones || []; }
+  } catch(e) {}
+  return _exploreZones;
+}
+
+async function showExploreModal() {
+  // 右侧折叠栏内展开探索区域（替代全屏弹窗）
+  const container = document.getElementById('dock-explore-zones');
+  openDockSection('explore');
+  // 没建档 → 在栏内显示引导
+  if (!state.session_id) {
+    container.innerHTML = '<div class="dock-hint" style="text-align:center;padding:18px 8px;line-height:1.8;">'
+      + '还未开始冒险，探索地下城需要先有存档。<br>'
+      + '<button onclick="newAdventure()" style="margin-top:10px;padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">🔥 立即开始新冒险</button>'
+      + '</div>';
+    return;
+  }
+  container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--dim);">加载探索区域...</div>';
+  const zones = await loadExploreZones();
+  if (!zones.length) {
+    container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--accent);">⚠️ 探索区域加载失败</div>';
+    return;
+  }
+  // 按难度分组渲染（用 dock 样式）
+  const diffOrder = ['safe','danger','high'];
+  const grouped = {};
+  zones.forEach(z => { (grouped[z.difficulty] = grouped[z.difficulty] || []).push(z); });
+  let html = '';
+  diffOrder.forEach(df => {
+    const list = grouped[df];
+    if (!list || !list.length) return;
+    html += `<div style="font-size:12px;color:var(--dim);margin:6px 0 3px;">${_ZONE_DIFF[df]}【${_ZONE_DIFF_NAME[df]}】（Lv${list[0].lvl_range[0]}-${list[0].lvl_range[1]}）</div>`;
+    list.forEach(z => {
+      const theme = z.theme || '';
+      const lv = z.lvl_range ? `Lv.${z.lvl_range[0]}-${z.lvl_range[1]}` : '';
+      html += `<div class="dock-zone-btn" onclick="exploreZone('${z.name}')">
+        <span style="font-size:16px;">${_ZONE_DIFF[z.difficulty]}</span>
+        <span class="zn">${z.name}</span>
+        <span class="zt">${theme} · ${lv} · ${z.risk}</span>
+      </div>`;
+    });
+  });
+  container.innerHTML = html;
+  document.getElementById('dock-explore-result').style.display = 'none';
+}
+
+function closeExploreModal() {
+  const sec = document.getElementById('dock-explore-sec');
+  if (sec) sec.classList.remove('active');
+  // 兼容旧全屏 modal（隐藏备用）
+  const old = document.getElementById('explore-modal');
+  if (old) old.style.display = 'none';
+}
+
+// ── 生育（配种）──
+let _breedParent = { father: '', mother: '' };
+function updateBreedBtn() {
+  const btn = document.getElementById('breed-btn');
+  if (!btn) return;
+  const nsfwOn = !!(document.getElementById('set-nsfw') && document.getElementById('set-nsfw').checked);
+  const chars = state.characters || [];
+  // 是否有未怀孕的魔物（魔王 + 至少1只魔物即可配；2 只魔物也可）
+  const breedableCount = chars.filter(c => c && !c.pregnant).length;
+  btn.style.display = (nsfwOn && breedableCount >= 1) ? '' : 'none';
+}
+async function showBreedModal() {
+  // 右侧折叠栏内展开配种（替代全屏弹窗）
+  openDockSection('breed');
+  // 没建档 → 在栏内显示引导
+  if (!state.session_id) {
+    document.getElementById('dock-breed-father').innerHTML = '';
+    document.getElementById('dock-breed-mother').innerHTML = '';
+    document.getElementById('dock-breed-result').innerHTML =
+      '<div class="dock-hint" style="text-align:center;padding:16px 8px;line-height:1.8;">'
+      + '还未开始冒险，配种需要先有存档。<br>'
+      + '<button onclick="newAdventure()" style="margin-top:10px;padding:8px 18px;background:#e07ab0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">🔥 立即开始新冒险</button>'
+      + '</div>';
+    document.getElementById('dock-breed-result').style.display = 'block';
+    return;
+  }
+  // 清理结果提示
+  document.getElementById('dock-breed-result').style.display = 'none';
+  // 兜底 player_name（新开场还没从 session 拿到的场景）
+  if (!state.player_name) state.player_name = '小魔王';
+  _breedParent = { father: '', mother: '' };
+  renderBreedPools();
+}
+
+function renderBreedPools() {
+  const chars = (state.characters || []).filter(c => c && !c.pregnant);
+  const pname = state.player_name || '小魔王';
+  const fp = document.getElementById('dock-breed-father');
+  const mp = document.getElementById('dock-breed-mother');
+  const mk = (c) => {
+    const sel = c.name === _breedParent.father || c.name === _breedParent.mother;
+    const role = (c.name === _breedParent.father) ? '父' : (c.name === _breedParent.mother) ? '母' : '';
+    return `<button onclick="pickBreedParent('${c.id.replace(/'/g,'')}', '${c.name.replace(/'/g,'')}')" style="padding:8px 12px;border:${sel?'2px solid #e07ab0':'1px solid var(--border)'};border-radius:6px;background:var(--input-bg);color:${sel?'#e07ab0':'var(--text)'};cursor:pointer;font-size:13px;font-family:inherit;">${c.name} Lv.${c.level}<span style="font-size:10px;color:var(--dim);margin-left:6px;">${c.species}${role?' · '+role:''}</span></button>`;
+  };
+  // 魔王（性别可改，父/母都行）
+  const mkPlayer = (roleHint) => {
+    const name = pname;
+    const sel = name === _breedParent.father || name === _breedParent.mother;
+    const role = (name === _breedParent.father) ? '父' : (name === _breedParent.mother) ? '母' : '';
+    return `<button onclick="pickBreedParent('__player__', '${name.replace(/'/g,'')}')" style="padding:8px 12px;border:${sel?'2px solid #e07ab0':'1px solid var(--border)'};border-radius:6px;background:var(--input-bg);color:${sel?'#e07ab0':'var(--text)'};cursor:pointer;font-size:13px;font-family:inherit;">😈 ${name}<span style="font-size:10px;color:var(--dim);margin-left:6px;">魔王${role?' · '+role:' · 性别可改'}</span></button>`;
+  };
+  fp.innerHTML = mkPlayer('父') + chars.map(mk).join('');
+  mp.innerHTML = mkPlayer('母') + chars.map(mk).join('');
+}
+function pickBreedParent(cid, cname) {
+  // 点同一只两次→交替父/母；点已选的同角色→取消
+  if (_breedParent.father === cname) { _breedParent.father = ''; }
+  else if (_breedParent.mother === cname) { _breedParent.mother = ''; }
+  else if (!_breedParent.father) { _breedParent.father = cname; }
+  else if (!_breedParent.mother && _breedParent.mother !== cname) { _breedParent.mother = cname; }
+  else { _breedParent.father = ''; _breedParent.mother = ''; }
+  renderBreedPools();
+  const ok = _breedParent.father && _breedParent.mother && _breedParent.father !== _breedParent.mother;
+  document.getElementById('dock-breed-confirm-btn').disabled = !ok;
+}
+async function doBreed() {
+  const f = _breedParent.father, m = _breedParent.mother;
+  if (!f || !m || f === m) return;
+  const input = document.getElementById('user-input');
+  input.value = `/day 配种 父=${f} 母=${m} 请详细描写这次配种交合的全过程，每一步都写透，不许一跳而过`;
+  closeBreedModal();
+  await sendMessage();
+}
+function closeBreedModal() {
+  const sec = document.getElementById('dock-breed-sec');
+  if (sec) sec.classList.remove('active');
+  const old = document.getElementById('breed-modal');
+  if (old) old.style.display = 'none';
+}
+
+// ── 淫趴模式（多对多群交）──
+let _breedMode = 'pair';          // 'pair' 配种单对 | 'orgy' 淫趴多选
+let _orgySel = [];                // 选中的参趴者 name 数组（可含魔王）
+
+function setBreedMode(mode) {
+  _breedMode = mode;
+  _orgySel = [];
+  const pair = document.getElementById('breed-pair-area');
+  const orgy = document.getElementById('breed-orgy-area');
+  const bpBtn = document.getElementById('breed-mode-pair');
+  const ogBtn = document.getElementById('breed-mode-orgy');
+  const cBtn = document.getElementById('dock-breed-confirm-btn');
+  const oBtn = document.getElementById('dock-orgy-confirm-btn');
+  const isOrgy = mode === 'orgy';
+  if (pair) pair.style.display = isOrgy ? 'none' : '';
+  if (orgy) orgy.style.display = isOrgy ? '' : 'none';
+  if (bpBtn) bpBtn.style.border = isOrgy ? '1px solid var(--border)' : '2px solid #e07ab0';
+  if (bpBtn) bpBtn.style.color = isOrgy ? 'var(--text)' : '#e07ab0';
+  if (ogBtn) ogBtn.style.border = isOrgy ? '2px solid #b056e0' : '1px solid var(--border)';
+  if (ogBtn) ogBtn.style.color = isOrgy ? '#b056e0' : 'var(--text)';
+  if (cBtn) cBtn.style.display = isOrgy ? 'none' : '';
+  if (oBtn) oBtn.style.display = isOrgy ? '' : 'none';
+  if (isOrgy) renderOrgyPool();
+  else renderBreedPools();
+}
+
+function renderOrgyPool() {
+  const chars = (state.characters || []).filter(c => c && !c.pregnant);
+  const pname = state.player_name || '小魔王';
+  const pool = document.getElementById('dock-orgy-pool');
+  if (!pool) return;
+  const mkBtn = (name, species, extraHint, onclick) => {
+    const sel = _orgySel.includes(name) || _orgySel.includes(species==='__player__'?pname:name);
+    const selected = _orgySel.includes(name) || (species==='__player__' && _orgySel.includes(pname));
+    return `<button onclick="${onclick}" style="padding:8px 12px;border:${selected?'2px solid #b056e0':'1px solid var(--border)'};border-radius:6px;background:var(--input-bg);color:${selected?'#b056e0':'var(--text)'};cursor:pointer;font-size:13px;font-family:inherit;margin:2px;">${name}<span style="font-size:10px;color:var(--dim);margin-left:6px;">${species==='__player__'?'😈魔王':' '+extraHint}</span></button>`;
+  };
+  let html = '';
+  // 魔王（性自由：可攻可受）
+  html += mkBtn(pname, '__player__', '性别不限', `toggleOrgy('__player__')`);
+  // 未怀孕魔物
+  for (const c of chars) {
+    html += mkBtn(c.name, c.species, c.species + ' Lv.' + c.level, `toggleOrgy('${c.name.replace(/'/g,'')}')`);
+  }
+  pool.innerHTML = html;
+  updateOrgyBtn();
+}
+
+function toggleOrgy(name) {
+  // __player__ 用真实玩家名
+  const key = name === '__player__' ? (state.player_name || '小魔王') : name;
+  const i = _orgySel.indexOf(key);
+  if (i >= 0) _orgySel.splice(i, 1);
+  else _orgySel.push(key);
+  renderOrgyPool();
+}
+
+function updateOrgyBtn() {
+  const btn = document.getElementById('dock-orgy-confirm-btn');
+  if (btn) btn.disabled = _orgySel.length < 2;
+}
+
+async function doOrgy() {
+  const sel = _orgySel;
+  if (!sel || sel.length < 2) return;
+  const input = document.getElementById('user-input');
+  input.value = '/day 淫趴 参与者=' + sel.join(',') + ' 请详细描写这场淫趴群交的全过程，参与者之间每一对、每个位置都写透，不许一跳而过';
+  closeBreedModal();
+  _orgySel = [];
+  await sendMessage();
+}
+
+
+// 点击区 → 发送「/day 探索 <区名>」走正常对话链（后端四档roll）
+async function exploreZone(zoneName) {
+  closeExploreModal();
+  const input = document.getElementById('user-input');
+  if (input) input.value = '/day 探索 ' + zoneName;
+  await sendMessage();
+}
+
+
+// ── 右侧折叠操作栏 ──
+function toggleDock() {
+  const dock = document.getElementById('right-dock');
+  const collapsed = dock.classList.toggle('collapsed');
+  const tg = dock.querySelector('.dock-toggle');
+  tg.textContent = collapsed ? '⏩ 展开' : '⏪ 收起';
+}
+function openDockSection(name) {
+  const dock = document.getElementById('right-dock');
+  dock.classList.remove('collapsed');
+  dock.querySelector('.dock-toggle').textContent = '⏪ 收起';
+  ['explore','breed'].forEach(s => {
+    const el = document.getElementById('dock-' + s + '-sec');
+    if (el) el.classList.toggle('active', s === name);
+  });
+}
+
+// ── 战利品挑选系统 ──
+let _lootData = { loot: [], capacity: 0, used: 0 };
+
+async function showLootModal() {
+  if (!state.session_id) return;
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/loot');
+    const data = await res.json();
+    _lootData = data;
+    renderLootList();
+    document.getElementById('loot-modal').classList.add('show');
+  } catch(e) {
+    addMsg('gm', '💢 战利品加载失败：' + e.message);
+  }
+}
+
+function renderLootList() {
+  const container = document.getElementById('loot-list');
+  const usedEl = document.getElementById('loot-used');
+  const capEl = document.getElementById('loot-capacity');
+  capEl.textContent = '🎒 携带额度：' + _lootData.capacity + '（随魔物总等级成长）';
+  usedEl.textContent = '已选占用：' + _lootData.used + ' / ' + _lootData.capacity;
+  usedEl.style.color = _lootData.used > _lootData.capacity ? '#e14b3c' : 'var(--good)';
+
+  const RARITY_COLOR = { common:'#ccc', uncommon:'#5a9e4b', rare:'#4a9bd6', epic:'#a46ae0', legendary:'#e0a13c' };
+  const RARITY_NAME = { common:'普通', uncommon:'优秀', rare:'精良', epic:'史诗', legendary:'传说' };
+
+  if (!_lootData.loot || _lootData.loot.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">没有可挑选的战利品</div>';
+    return;
+  }
+  container.innerHTML = _lootData.loot.map((it, idx) => {
+    const col = RARITY_COLOR[it.rarity] || '#ccc';
+    const bonusTxt = Object.entries(it.bonus || {}).map(([k,v]) => {
+      const cn = {STR:'力量',END:'耐力',SPD:'速度',DEF:'防御',INT:'智力',MP:'法量',WIL:'精神'}[k]||k;
+      return cn + '+' + v;
+    }).join('  ');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);">
+      <input type="checkbox" id="loot-cb-${idx}" onchange="toggleLoot(${idx})" style="width:16px;height:16px;">
+      <div style="flex:1;">
+        <div style="font-weight:bold;color:${col};">${it.name}</div>
+        <div style="font-size:11px;color:var(--dim);">${RARITY_NAME[it.rarity]||it.rarity} · ${bonusTxt || it.slot||''}</div>
+      </div>
+      <span style="font-size:12px;font-weight:bold;color:var(--gold);white-space:nowrap;">占 ${it.weight}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleLoot(idx) {
+  const cb = document.getElementById('loot-cb-' + idx);
+  const it = _lootData.loot[idx];
+  if (!it) return;
+  _lootData.used = (_lootData.used || 0) + (cb.checked ? it.weight : -it.weight);
+  if (_lootData.used < 0) _lootData.used = 0;
+  document.getElementById('loot-used').textContent = '已选占用：' + _lootData.used + ' / ' + _lootData.capacity;
+  document.getElementById('loot-used').style.color = _lootData.used > _lootData.capacity ? '#e14b3c' : 'var(--good)';
+}
+
+async function confirmPickLoot() {
+  const ids = [];
+  _lootData.loot.forEach((it, idx) => {
+    const cb = document.getElementById('loot-cb-' + idx);
+    if (cb && cb.checked) ids.push(it.item_id);
+  });
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/loot/pick', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ item_ids: ids })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '超额');
+    document.getElementById('loot-modal').classList.remove('show');
+    const picked = data.picked.length ? data.picked.map(p=>p.name).join('、') : '什么都没带走';
+    const dropped = data.dropped.length ? '，放弃了：' + data.dropped.join('、') : '';
+    addMsg('gm', '🎒 战利品打包完成——你带走了：' + picked + dropped);
+    refreshState();
+  } catch(e) {
+    addMsg('gm', '⚠️ ' + e.message);
+  }
+}
+
+async function discardAllLoot() {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/loot/pick', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ item_ids: [] })
+    });
+    const data = await res.json();
+    document.getElementById('loot-modal').classList.remove('show');
+    addMsg('gm', '🚫 你选择了全部放弃。这一趟巡逻的战利品都留在了原地。');
+    refreshState();
+  } catch(e) {
+      addMsg('gm', '⚠️ ' + e.message);
+    }
+  }
+
+  // ── 输出长度选择 & 手动压缩记忆 ──
+  async function setGMLength() {
+    if (!state.session_id) { alert('请先开始冒险'); return; }
+    const sel = document.getElementById('length-select');
+    const len = sel.value;
+    try {
+      const res = await fetch('/api/session/' + state.session_id + '/length', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ length: len })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '设置失败');
+      addMsg('gm', '✍️ 输出长度已设为「' + (sel.options[sel.selectedIndex].text) + '」（上限 ' + data.max_tokens + ' token）。');
+    } catch(e) {
+      addMsg('gm', '⚠️ 设置失败：' + e.message);
+    }
+  }
+
+  async function manualSummarize() {
+    if (!state.session_id) { alert('请先开始冒险'); return; }
+    if (!confirm('🧠 压缩记忆：让 GM 把近段剧情总结成摘要，之后回应将基于摘要而非全部历史。会释放 token、防失忆。确定吗？')) return;
+    addMsg('gm', '🧠 正在压缩记忆——GM 在整理这段剧情...');
+        try {
+          // 读所选压缩模型
+          const sel = document.getElementById('summarize-model');
+          let model = sel ? sel.value : 'auto';
+          if (model === 'custom') {
+            model = (document.getElementById('summarize-model-custom').value || '').trim() || 'auto';
+          }
+          const res = await fetch('/api/session/' + state.session_id + '/summarize', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ model: model })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || '压缩失败');
+          const tag = model === 'auto' ? '（自动模型）' : '（' + model + '）';
+          addMsg('gm', '🧠 记忆已压缩' + tag + '（' + data.messages_before + ' 条 → ' + data.messages_after + ' 条）！\n📋 当前剧情摘要：\n' + data.summary);
+        } catch(e) {
+          addMsg('gm', '⚠️ ' + e.message);
+        }
+      }
+
+      // 压缩模型下拉：选「自定义…」时显示输入框
+      document.addEventListener('change', function(ev) {
+        if (ev.target && ev.target.id === 'summarize-model') {
+          const custom = document.getElementById('summarize-model-custom');
+          if (custom) custom.style.display = ev.target.value === 'custom' ? 'inline-block' : 'none';
+        }
+      });
+
+/// 更新 tab 切换——加载装备页时刷新
+const _origTabHandler = document.querySelectorAll('.tab-btn')[0]?.onclick;
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.tab === 'equipment') {
+      setTimeout(() => renderEquipment(), 50);
+    }
+    if (btn.dataset.tab === 'engineering') {
+      setTimeout(() => renderEngineering(), 50);
+    }
+  });
+});
+
+init();
+</script>
+<!-- 左下角版本号（改代码就 bump，用户强刷后对照确认更新） -->
+<div id="app-ver" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent.trim())" title="点击复制版本号" style="position:fixed;left:10px;bottom:6px;z-index:9999;font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.5px;cursor:pointer;user-select:none;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:3px;">v2.34</div>
+
+  <!-- 右侧折叠操作栏 -->
+  <div class="right-dock" id="right-dock">
+    <div class="dock-toggle" onclick="toggleDock()" title="折叠/展开操作栏">⏩ <span class="dock-toggle-txt">收起</span></div>
+    <div class="dock-actions">
+      <button onclick="advanceDay()" title="推进天数"><span>📅</span> <span class="btn-txt">下一天</span></button>
+      <button onclick="showExploreModal()" title="派魔物探索地下城"><span>🔍</span> <span class="btn-txt">探索</span></button>
+            <button id="breed-btn" onclick="showBreedModal()" title="配种生育魔物" style="display:none;"><span>🤰</span> <span class="btn-txt">生育</span></button>
+      <button onclick="rewindLast()" title="AI 拒绝/缩水?点这个重写,清掉被污染的回复"><span>⟲</span> <span class="btn-txt">重写</span></button>
+    </div>
+    <div class="dock-body">
+      <div class="dock-section" id="dock-explore-sec">
+        <h4>🗺️ 选择探索区域</h4>
+        <div class="dock-hint">派队伍探索地下城某区域。越难奖励越好但敌人越强。</div>
+        <div id="dock-explore-zones" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div id="dock-explore-result" style="display:none;margin-top:6px;padding:8px;border-radius:5px;"></div>
+      </div>
+      <div class="dock-section" id="dock-breed-sec">
+        <h4>🤰 生育</h4>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button onclick="setBreedMode('pair')" id="breed-mode-pair" style="flex:1;padding:6px;border:2px solid #e07ab0;border-radius:5px;background:var(--input-bg);color:#e07ab0;cursor:pointer;font-size:12px;font-family:inherit;">💞 配种</button>
+          <button onclick="setBreedMode('orgy')" id="breed-mode-orgy" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);cursor:pointer;font-size:12px;font-family:inherit;">🎉 淫趴</button>
+        </div>
+        <!-- 配种模式（单对单） -->
+        <div id="breed-pair-area">
+          <div class="dock-hint">选两只未怀孕魔物繁育后代。跨物种成功率更低；猫龙 +20%；魔王 100%。</div>
+          <div style="font-size:12px;color:var(--dim);">👨 父方</div>
+          <div class="dock-pool" id="dock-breed-father"></div>
+          <div style="font-size:12px;color:var(--dim);">👩 母方（怀孕方）</div>
+          <div class="dock-pool" id="dock-breed-mother"></div>
+        </div>
+        <!-- 淫趴模式（多对多） -->
+        <div id="breed-orgy-area" style="display:none;">
+          <div class="dock-hint">🎉 群交派对——不限人数和性别，全部未怀孕魔物（可含魔王）都进来。产出经验 + 概率怀孕，人越多受孕率越低。选中框=参趴。</div>
+          <div style="font-size:12px;color:var(--dim);">😈 参趴者（点选加入/移除）</div>
+          <div class="dock-pool" id="dock-orgy-pool"></div>
+        </div>
+        <div id="dock-breed-result" style="display:none;margin-top:6px;padding:8px;border-radius:5px;"></div>
+        <button onclick="doBreed()" id="dock-breed-confirm-btn" disabled style="padding:8px 12px;background:#e07ab0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;margin-top:8px;">配种</button>
+        <button onclick="doOrgy()" id="dock-orgy-confirm-btn" disabled style="display:none;padding:8px 12px;background:#b056e0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;margin-top:8px;">🎉 开始淫趴</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

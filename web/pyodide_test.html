@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>Pyodide 引擎验证 v2</title>
+<style>
+  body { font-family: Consolas, monospace; background: #1a1410; color: #e8dcc8; padding: 24px; }
+  pre { white-space: pre-wrap; background: #251d17; padding: 16px; border-radius: 8px; border-left: 3px solid #c9a050; }
+  .ok { color: #6dd06d; } .err { color: #e07070; }
+</style>
+</head>
+<body>
+<h2>Pyodide 加载「怪魔地下城」Python 引擎 — 验证 v2</h2>
+<pre id="log">加载中...</pre>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const log = document.getElementById('log');
+function append(t){ log.textContent += '\n' + t; }
+
+async function main() {
+  try {
+    append('[1] 加载 Pyodide...');
+    const pyodide = await loadPyodide();
+    append('[2] Pyodide v' + pyodide.version + ' 加载成功');
+
+    append('[3] 下载引擎 zip...');
+    const resp = await fetch('mdt_engine.zip');
+    if (!resp.ok) throw new Error('fetch zip HTTP ' + resp.status);
+    const buf = await resp.arrayBuffer();
+    append('      zip ' + buf.byteLength + 'B 收到');
+
+    append('[4] 解压到 Pyodide 文件系统...');
+    pyodide.FS.mkdir('/mdt');
+    pyodide.FS.chdir('/mdt');
+    pyodide.unpackArchive(new Uint8Array(buf), 'zip');
+    const listed = pyodide.runPython("import os; print(os.listdir('/mdt'))");
+    append('      解压内容: ' + listed);
+
+    append('[5] import engine 并跑 new_session + 配种...');
+    // 捕获 Python print 输出
+    let pystdout = '';
+    pyodide.setStdout({ batched: (s) => { pystdout += s + '\n'; } });
+    await pyodide.runPythonAsync(`
+import sys, json
+sys.path.insert(0, '/mdt')
+import engine
+# 用 new_session 开局（bridge 的实际路径）
+sess = engine.new_session(world_setting="测试", player_name="小魔王", char_name="幼猫", char_species="猫龙", char_coeff=1.9)
+chs = sess["characters"]
+sk = [s["name"] for s in chs[0]["skills"]]
+msg, ch = engine.process_day_action(sess, "/day 配种 父=小魔王 母=幼猫", "/day 配种 父=小魔王 母=幼猫")
+print("开局角色数:", len(chs))
+print("主角色技能:", sk)
+print("配种结果:", msg)
+print("怀孕状态:", json.dumps(chs[0].get("pregnant"), ensure_ascii=False)[:120])
+print("change:", json.dumps(ch, ensure_ascii=False)[:120])
+print("PYODIDE_ENGINE_OK")
+`);
+    append(pystdout);
+
+    // 浏览器侧确认引擎标记
+    if (pystdout.indexOf('PYODIDE_ENGINE_OK') >= 0) {
+      append('[6] ✅ Pyodide 完整跑通了引擎！');
+    }
+  } catch(e) {
+    append('\n[ERR] ' + (e.message || e));
+    append('\n（详情见控制台）');
+  }
+  append('\n=== 验证结束 ===');
+}
+main();
+</script>
+</body>
+</html>

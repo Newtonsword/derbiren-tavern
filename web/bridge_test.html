@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>engine_bridge 修改后验证</title></head>
+<body><pre id="log">loading...</pre>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="./engine_bridge.js"></script>
+<script>
+const log=document.getElementById('log');
+const app=(t)=>{log.textContent+='\n'+t;};
+(async()=>{
+  try{
+    app('=== engine_bridge 修改后验证 ===');
+    const E=window.MDTEngine;
+    app('[1] newGame 开局(带 twin 参数)...');
+    const sess=await E.newGame({world:'测试',playerName:'小魔王',charName:'软软',charSpecies:'史莱姆',charCoeff:1.3});
+    const chars=sess.characters||[];
+    app('    角色数: '+chars.length);
+    chars.forEach(c=>app('    - '+c.name+'('+c.species+') lv'+c.level));
+    app('[2] processAction 配种...');
+    const r1=await E.processAction(sess,'/day 配种 父=小魔王 母=软软','/day 配种 父=小魔王 母=软软');
+    app('    结果: '+r1.message);
+    app('[3] advanceDay 生育检查...');
+    const r2=await E.advanceDay(r1.save);
+    app('    消息: '+(r2.message||'(无生育)'));
+    app('[4] 存档往返...');
+    E.saveGame(r1.save);
+    const loaded=E.loadSave();
+    app('    存档角色数: '+(loaded&&loaded.characters?loaded.characters.length:'ERR'));
+    app('=== ALL_OK ===');
+  }catch(e){app('\\n[ERR] '+(e.stack||e));}
+})();
+</script></body></html>

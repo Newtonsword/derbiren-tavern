@@ -1,7 +1,13 @@
-# Derbiren Tavern
+# Dungeon Tavern (小魔王地下城)
+
+A dual-platform AI-powered text adventure dungeon manager — a web app **and** an Android APK.
+
+Built as a dungeon-lord management roguelite: train your monsters, build defenses,
+patrol for recruits, and fend off waves of adventurers. Everything is narrated by an
+OpenAI-compatible LLM (default: DeepSeek), which acts as a dungeon master / narrator.
 
 <!--
-  v2.9 · AGENT-READABLE HEADER
+  AGENT-READABLE HEADER
   Entry: server.py (FastAPI, default port 8099)
   Dependencies: fastapi, uvicorn, openai, httpx, python-dotenv
   Python: 3.10+
@@ -10,13 +16,22 @@
   Frontend: index.html (zero-dependency vanilla JS)
 -->
 
-AI-powered text adventure web app. A tsundere furry demon GM runs your dungeon — build monsters, fight adventurer raids, and recruit creatures to your cause.
-
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-green)](https://www.python.org/)
-[![Release](https://img.shields.io/badge/release-v2.9.0-purple)](https://github.com/Newtonsword/derbiren-tavern/releases)
+[![Release](https://img.shields.io/badge/release-v2.43.0-purple)](https://github.com/Newtonsword/derbiren-tavern/releases)
 
-## Quick Start
+## Platform Overview
+
+| Platform | Entry | How to run |
+|----------|-------|------------|
+| **Desktop / Web** | `server.py` + `index.html` | Run FastAPI backend, open in browser |
+| **Android APK** | `web/webapk/` (Capacitor + Pyodide) | Build once, install — fully offline |
+
+The desktop version runs a full Python backend with all 43 API endpoints. The Android
+version ships an offline build that runs the same game engine in the browser via Pyodide
+(WebAssembly), talking to the LLM directly — no server needed.
+
+## Quick Start (Desktop)
 
 ```bash
 git clone https://github.com/Newtonsword/derbiren-tavern.git
@@ -26,13 +41,31 @@ cp .env.example .env          # add your API key (free: platform.deepseek.com)
 python server.py               # → http://127.0.0.1:8099
 ```
 
-## What It Is
+## Quick Start (Android APK)
 
-You're a fledgling dungeon lord. Adventurers are coming in 5 days. Train your monsters, patrol for recruits, and fight off waves of invaders. The GM — **Derbiren**, a bratty black-furred demon — narrates everything with sarcasm and occasional fire.
+```bash
+cd web/webapk
+npm install
+npx cap sync android
+cd android
+# requires JDK 21 + Android SDK; see web/webapk/README.md
+./gradlew assembleDebug --no-daemon
+# → android/app/build/outputs/apk/debug/app-debug.apk (install on your phone)
+```
+
+The APK is **fully offline**: no server, no backend, no network dependency for game logic
+(exceptions: you supply an LLM API key in the settings page for narration; Pyodide runs the
+engine locally in WebAssembly).
+
+## Game Overview
+
+You're a fledgling dungeon lord. Adventurers are coming in a few days. Train your monsters,
+patrol for recruits, and fight off waves of invaders. The narrator (an AI dungeon master)
+drives all narrative, combat, and NPC dialogue.
 
 ## Features
 
-- **AI GM** — OpenAI-compatible LLM drives all narrative, combat, and NPC dialogue
+- **AI Narrator** — OpenAI-compatible LLM drives all narrative, combat, and NPC dialogue
 - **8 Playable Species** — Cat-Dragon, Hatchling, Tentacle, Gargoyle, Killer Rabbit, Wolf, Slime, Goblin — each with unique lore and skill themes
 - **Dynamic Skill Generation** — AI creates new skills each time; every species gets distinct active/passive abilities
 - **Day System** — Train, patrol, rest, research, or breed. Days tick toward the next raid
@@ -72,6 +105,9 @@ You're a fledgling dungeon lord. Adventurers are coming in 5 days. Train your mo
 | `WEB_PORT` | No | `8099` |
 | `SSL_VERIFY` | No | `false` (Windows) |
 
+For the Android build, the same variables are set in the in-app **Settings** page (API key
+required for narration; game logic runs offline via Pyodide).
+
 ## API Endpoints
 
 | Method | Path | Purpose |
@@ -87,29 +123,31 @@ You're a fledgling dungeon lord. Adventurers are coming in 5 days. Train your mo
 ## File Structure
 
 ```
-derbiren-tavern/
+dungeon-tavern/
 ├── server.py              # FastAPI backend — all game logic
-├── index.html             # Single-page frontend (vanilla JS, zero deps)
-├── recruits.json          # Pool of 8 recruitable monsters
-├── species_lore.json      # Detailed lore for 8 playable species
+├── index.html             # Desktop frontend (vanilla JS, zero deps)
+├── recruits.json          # Pool of recruitable monsters
+├── species_lore.json      # Detailed lore for playable species
 ├── skill_library.json     # Skill template reference
 ├── requirements.txt       # Python dependencies
 ├── .env.example           # Configuration template
 ├── saves/                 # JSON session files (auto-created)
+├── web/
+│   ├── index.html         # Online web build (PWA)
+│   ├── offline_shim.js    # Fetch interceptor → Pyodide engine (offline)
+│   ├── engine_bridge.js   # JS ↔ Pyodide bridge
+│   ├── mdt_engine.zip     # Bundled game engine (Pyodide)
+│   └── webapk/            # Capacitor Android project
+│       ├── capacitor.config.json
+│       └── www/           # APK frontend (full UI + offline engine)
 └── README.md
 ```
 
-## For Hermes Agents
+## Testing
 
-This project is designed to be AI-agent-operable:
-
-- **Single-file backend** — `server.py` contains all logic; modify with `patch` or `write_file`
-- **Stateless API** — Every endpoint is RESTful; session state in `saves/{session_id}.json`
-- **Hot reload** — Kill + restart `python server.py` to pick up code changes
-- **Port** — Default 8099; check `netstat -ano | findstr :8099` if occupied
-- **Model** — Set `LLM_MODEL=deepseek-chat` in `.env` (v4-pro doesn't support structured output)
-- **Testing** — `combat_test.py` in `output/` simulates full raid waves with attribute math
+- `tests/` — Python unit tests (breeding, exp, combat systems)
+- `web/pyodide_test.html` / `web/bridge_test.html` — run in a browser to verify the Pyodide offline engine loads and plays
 
 ## License
 
-MIT — do whatever you want. If your friend has fun, tell Newt. (￣▽￣)🔥
+MIT — build on it freely. If your friend has fun, tell Newt. (￣▽￣)🔥
