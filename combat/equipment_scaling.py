@@ -239,7 +239,7 @@ def get_explore_tier(day: int) -> RewardTier:
         return RewardTier(
             allowed_rarities=["common"],
             max_equipment_score=3.0,
-            xp_min=5, xp_max=15,
+            xp_min=15, xp_max=30,
             equipment_count=(1, 1),
             monster_prob=0.15,
         )
@@ -247,7 +247,7 @@ def get_explore_tier(day: int) -> RewardTier:
         return RewardTier(
             allowed_rarities=["common", "uncommon"],
             max_equipment_score=6.0,
-            xp_min=10, xp_max=25,
+            xp_min=20, xp_max=40,
             equipment_count=(1, 1),
             monster_prob=0.15,
         )

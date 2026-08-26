@@ -4,6 +4,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- PWA 支持：手机可"添加到主屏幕"变 App 图标 -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#231e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小魔王地下城">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+
 <title>小魔王地下城 · Monster Dungeon Tavern</title>
 <style>
 :root {
@@ -337,6 +346,91 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
 .eq-filter-btn:hover { border-color: var(--accent); color: var(--text); }
 .eq-filter-btn.active { border-color: var(--accent); color: var(--gold); background: #2a2018; }
 
+/* ===== 右侧折叠操作栏 ===== */
+.right-dock {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 2000;
+  width: 240px; background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transform: translateX(0);
+  box-shadow: -4px 0 14px rgba(0,0,0,.3);
+  transition: width .2s ease;
+}
+.right-dock.collapsed {
+  width: 52px;
+  box-shadow: none;
+}
+.right-dock .dock-toggle {
+  padding: 10px; text-align: right; border-bottom: 1px solid var(--border);
+  cursor: pointer; color: var(--dim); font-size: 14px; user-select: none;
+  flex-shrink: 0;
+}
+.right-dock .dock-actions {
+  display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  flex-shrink: 0;
+}
+.right-dock .dock-actions button {
+  padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--input-bg); color: var(--text); font-size: 13px;
+  cursor: pointer; font-family: inherit; text-align: left; white-space: nowrap;
+  transition: .15s;
+}
+.right-dock .dock-actions button:hover { border-color: var(--accent); }
+.right-dock .dock-body {
+  flex: 1; overflow-y: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 8px;
+  border-top: 1px solid var(--border);
+}
+.right-dock.collapsed .dock-actions { align-items: center; }
+.right-dock.collapsed .dock-actions button {
+  width: 36px; height: 36px; padding: 0; text-align: center; font-size: 16px;
+  overflow: hidden;
+}
+.right-dock.collapsed .dock-actions button .btn-txt { display: none; }
+.right-dock.collapsed .dock-body { display: none; }
+.dock-section { display: none; flex-direction: column; gap: 6px; }
+.dock-section.active { display: flex; }
+.dock-section h4 { font-size: 13px; color: var(--gold); margin: 2px 0 4px; }
+.dock-zone-btn {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg);
+  color: var(--text); cursor: pointer; font-size: 12px; transition: .15s;
+}
+.dock-zone-btn:hover { border-color: var(--accent); }
+.dock-zone-btn .zn { font-weight: bold; color: var(--gold); }
+.dock-zone-btn .zt { font-size: 10px; color: var(--dim); margin-left: auto; }
+.dock-pool {
+  display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 4px;
+  max-height: 15vh; overflow-y: auto;
+}
+.dock-pool button {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--input-bg); color: var(--text); cursor: pointer; font-size: 12px;
+  font-family: inherit;
+}
+.dock-pool button.sel { border: 2px solid #e07ab0; color: #e07ab0; }
+.dock-hint { font-size: 11px; color: var(--dim); line-height: 1.6; }
+
+/* ── 移动端自适应（手机窄屏 <768px）── */
+@media (max-width: 768px) {
+  #app { max-width: 100vw; border-left: none; border-right: none; }
+  .right-dock { width: 56px; }
+  .right-dock.collapsed { width: 0px; }
+  .right-dock .dock-body { display: none; }
+  .right-dock .dock-toggle { display: flex; }
+  .dock-actions { padding: 6px 4px; }
+  .dock-actions button { width: 44px; height: 44px; font-size: 22px; margin: 4px auto; }
+  .dock-toggle { font-size: 11px; }
+  #chat-log { padding: 12px; gap: 10px; }
+  #chat-log .msg { font-size: 15px; line-height: 1.6; }
+  #input-area { padding: 8px 10px; gap: 6px; }
+  #input-area textarea, #input-area input { font-size: 16px; padding: 10px; }  /* 防 iOS 缩放 */
+  .tab-btn { font-size: 13px; padding: 10px 9px; }
+  #chars-panel, #settings-panel { padding: 10px 10px 0; }
+  h2, .panel-title { font-size: 17px; }
+  .btn, button { min-height: 40px; }
+  #sid-display { font-size: 10px; }
+}
 </style>
 </head>
 <body>
@@ -371,12 +465,31 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
       </div>
     </div>
     <div id="input-area">
-      <button id="day-btn" onclick="advanceDay()" title="推进天数" style="padding:10px 12px;background:linear-gradient(135deg,#2a2018,#3a2a1a);color:var(--gold);border:1px solid #4a3a28;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.background='linear-gradient(135deg,#3a2a1a,#4a3020)'" onmouseout="this.style.borderColor='#4a3a28';this.style.background='linear-gradient(135deg,#2a2018,#3a2a1a)'">📅 下一天</button>
-      <button id="explore-btn" onclick="showExploreModal()" title="派魔物探索地下城" style="padding:10px 12px;background:linear-gradient(135deg,#1a2a2a,#1a2a20);color:#5a9e4b;border:1px solid #3a5a3a;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.15s;" onmouseover="this.style.borderColor='var(--good)';this.style.background='linear-gradient(135deg,#2a3a2a,#2a3a20)'" onmouseout="this.style.borderColor='#3a5a3a';this.style.background='linear-gradient(135deg,#1a2a2a,#1a2a20)'">🔍 探索</button>
-      <input id="user-input" placeholder="描述你的行动——推开沉重的橡木门，走进昏暗的酒馆..." autofocus>
-      <button id="send-btn" onclick="sendMessage()">发送</button>
-    </div>
-  </div>
+                        <textarea id="user-input" placeholder="描述你的行动——推开沉重的橡木门，走进昏暗的酒馆...（Enter 发送，Shift+Enter 换行）" autofocus rows="2" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;font-family:inherit;resize:none;min-height:42px;max-height:160px;line-height:1.5;"></textarea>
+                  <button id="send-btn" onclick="sendMessage()">发送</button>
+                            </div>
+          <!-- 文本工具行：输出长度 + 手动压缩记忆 -->
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid var(--border);background:rgba(0,0,0,.15);font-size:12px;">
+            <span style="color:var(--dim);white-space:nowrap;">✍️ 输出长度</span>
+            <select id="length-select" onchange="setGMLength()" style="padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;">
+              <option value="short">短（简洁）</option>
+              <option value="medium" selected>中（标准）</option>
+              <option value="long">长（详细）</option>
+              <option value="verylong">超长（沉浸）</option>
+            </select>
+            <div style="flex:1;"></div>
+                        <span style="color:var(--dim);white-space:nowrap;" title="压缩记忆用的模型。选「自动」用环境变量；或填任意模型名">🧮 缩用</span>
+                        <select id="summarize-model" title="压缩记忆用的模型" style="padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;font-family:inherit;max-width:130px;">
+                          <option value="auto">自动</option>
+                          <option value="deepseek-chat">deepseek-chat</option>
+                          <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+                          <option value="deepseek-reasoner">deepseek-reasoner</option>
+                          <option value="custom">自定义…</option>
+                        </select>
+                        <input id="summarize-model-custom" placeholder="模型名" style="display:none;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);font-size:12px;width:110px;" />
+                        <button onclick="manualSummarize()" title="让 LLM 总结当前对话历史并压缩上下文，防止 GM 失忆、节省 token。压缩模型可选（左侧）" style="padding:4px 12px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--gold);cursor:pointer;font-size:12px;font-family:inherit;">🧠 压缩记忆</button>
+          </div>
+        </div>
 
   <!-- 角色 -->
   <div class="tab-panel" id="tab-chars">
@@ -634,25 +747,63 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
     </div>
   </div>
 
-  <!-- 探索 Modal -->
-  <div class="modal-overlay" id="explore-modal">
-    <div class="modal-box">
-      <h2>🔍 派遣魔物探索</h2>
-      <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
-        💡 每只魔物每天只能探索一次。探索可能发现装备或遇到野生魔物。
-      </div>
-      <div id="explore-chars" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;">
-        <div style="text-align:center;padding:20px;color:var(--dim);">没有可派遣的魔物</div>
-      </div>
-      <div id="explore-result" style="margin-top:12px;padding:10px;border-radius:5px;display:none;"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button onclick="closeExploreModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
+  <!-- 探索 Modal（分区版：选择探索区域） -->
+    <div class="modal-overlay" id="explore-modal">
+      <div class="modal-box">
+        <h2>🗺️ 选择探索区域</h2>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
+          💡 派队伍探索地下城的某个区域。区域分【难度】(安全/危险/高危)与【主题】，越难奖励越好，但敌人越强。
+        </div>
+        <div id="explore-zones" style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;">
+        </div>
+        <div id="explore-result" style="margin-top:12px;padding:10px;border-radius:5px;display:none;"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button onclick="closeExploreModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- 生育 Modal（配种，仅NSFW） -->
+    <div class="modal-overlay" id="breed-modal">
+      <div class="modal-box">
+        <h2>🤰 生育（配种）</h2>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:12px;">
+          💡 选两只未怀孕的魔物繁育后代。父方→母方，母方进入怀孕期（杂鱼1天/普通2天/精锐3天/精英4天），到期自动生产。跨物种成功率更低；猫龙参与 +20% 成功率；魔王本人参与 100%。怀孕中的魔物不能参与。
+        </div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">👨 父方（父亲）</div>
+        <div id="breed-father-pool" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;max-height:20vh;overflow-y:auto;"></div>
+        <div style="font-size:12px;color:var(--dim);margin-bottom:6px;">👩 母方（母亲 · 怀孕方）</div>
+        <div id="breed-mother-pool" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;max-height:20vh;overflow-y:auto;"></div>
+        <div id="breed-result" style="margin-top:12px;padding:10px;border-radius:5px;display:none;"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button onclick="doBreed()" id="breed-confirm-btn" disabled style="padding:8px 20px;background:#e07ab0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">配种</button>
+          <button onclick="closeBreedModal()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">关闭</button>
+        </div>
+      </div>
+    </div>
+        <div class="modal-overlay" id="loot-modal">
+          <div class="modal-box">
+            <h2>🎒 挑选战利品</h2>
+            <div style="font-size:12px;color:var(--dim);margin-bottom:4px;" id="loot-capacity">携带额度</div>
+            <div style="font-size:12px;color:var(--good);margin-bottom:12px;" id="loot-used">已选 0</div>
+            <div id="loot-list" style="display:flex;flex-direction:column;gap:6px;max-height:45vh;overflow-y:auto;"></div>
+            <div style="font-size:11px;color:var(--dim);margin-top:8px;">⚠️ 带不走的战利品会被丢弃，只能拿走额度内的。</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button onclick="confirmPickLoot()" style="padding:8px 20px;background:var(--good);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">确认带走</button>
+              <button onclick="discardAllLoot()" style="padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;color:var(--dim);cursor:pointer;font-size:13px;font-family:inherit;">全部放弃</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
 <script>
+/* ===== 版本号（改代码就 bump）===== */
+const APP_VERSION = 'v2.34';
+window.addEventListener('DOMContentLoaded', function(){
+  const el = document.getElementById('app-ver');
+  if (el) el.textContent = APP_VERSION;
+});
+
 const ATTRS = [
   {key:"END", name:"耐力", desc:"体魄与持久力——决定你能扛多少伤害、战斗多久不倒下"},
   {key:"STR", name:"力量", desc:"纯粹的肌肉爆发力——挥砍越重、破甲越狠"},
@@ -683,7 +834,7 @@ const SPECIES_PRESETS = [
   {name:"杀人兔", coeff:1.8, desc:"精锐×1.8 | 刺客·SPD封顶暴击率高 | 先手必暴一击脱离，萌外表杀戮机器"},
   {name:"野狼", coeff:1.3, desc:"普通×1.3 | 刺客·高SPD游击闪避 | 撕咬扑击短冷却，狼群战术增伤"},
   {name:"史莱姆", coeff:1.0, desc:"杂鱼×1.0 | 全能普通·进化路线最多 | 凝胶身体钝伤减半，可塑性全物种最高"},
-  {name:"哥布林", coeff:1.0, desc:"杂鱼×1.0 | 战士/射手双职业 | 哥布A挥砍盾击近战，哥布B短弓淬毒远程"},
+  {name:"哥布林", coeff:1.0, desc:"杂鱼×1.0 | 战士/射手双职业 | 石锤挥砍盾击近战，藤弓短弓淬毒远程"},
 ];
 
 const BIRTH_PRESETS = [
@@ -715,11 +866,11 @@ const BIRTH_PRESETS = [
   {
     id:"goblin_outpost",
     name:"🗡️ 哥布林前哨",
-    desc:"你被一群哥布林的嘈杂声吵醒——它们正为一块发霉的面包吵架。看到你睁开眼睛，它们立刻安静了。一个瘦小的哥布林战士怯生生地把面包递到你面前，他弟弟则在后方拉开弹弓警戒。",
-    hint:"开局获得两只哥布林：哥布A(近战战士)+哥布B(远程射手)，属性低但兄弟齐心。",
+    desc:"你被一群哥布林的嘈杂声吵醒，它们正为一块发霉的面包吵得不可开交。看到你睁开眼睛，它们立刻安静下来。一个瘦小的哥布林战士怯生生地把面包递到你面前，它的弟弟则在后方拉开弹弓警戒。",
+    hint:"开局获得两只哥布林：石锤(近战战士)+藤弓(远程射手)，属性低但兄弟齐心。",
     species:"哥布林", coeff:1.0,
     primary:{
-      name:"哥布A",
+      name:"石锤",
       stats:{END:2,STR:3,SPD:2,DEF:2,INT:1,MP:1,WIL:1},
       skills:[
         {name:"挥砍",type:"斩击",formula:"12+2.0×力量+0.5×速度",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.5×力量+0.5×速度",category:"主动"},
@@ -729,7 +880,7 @@ const BIRTH_PRESETS = [
       passives:[{name:"战斗怒吼",effect:"战斗开始时STR+1"},{name:"工程天赋",effect:"工程建造速度+0.5天/每日"}],
     },
     twin:{
-      name:"哥布B",
+      name:"藤弓",
       stats:{END:1,STR:2,SPD:4,DEF:1,INT:1,MP:1,WIL:2},
       skills:[
         {name:"短弓射击",type:"刺击",formula:"12+2.0×速度+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"75+2.0×速度",category:"主动"},
@@ -742,7 +893,7 @@ const BIRTH_PRESETS = [
   {
     id:"dungeon_foundling",
     name:"🌑 地下城弃婴",
-    desc:"你在废墟最深处的月光井中发现一只浑身漆黑的猫龙幼崽——它蜷在井底，左眼粉右眼绿，正用最后一点魔力维持尾巴尖的火焰。看到你时，它没有逃跑，只是虚弱地「咪」了一声。",
+    desc:"你降临地下城的瞬间，王座旁的光影悄然凝聚成一只浑身漆黑的猫龙幼崽——左眼粉右眼绿，尾巴尖跳动着火焰。它没有逃跑，仰头认真地看着你，过了许久才轻轻「咪」了一声。这就是托付给你的第一只魔物。",
     hint:"开局获得一只猫龙「影爪」(精英2.5×)，魔战士，暗影主场。",
     species:"猫龙", coeff:2.5,
     primary:{
@@ -760,7 +911,7 @@ const BIRTH_PRESETS = [
   {
     id:"volcano_orphan",
     name:"🌋 火山遗孤",
-    desc:"你跟随一股硫磺味爬上一座死火山口，在余烬中发现一枚破裂的龙蛋。一只瘦小的红色幼龙正从蛋壳里挣扎出来——比同龄龙小一圈，但喷出的第一口龙息直接把旁边的岩石烧成了岩浆。它歪头看着你，打了个嗝，冒出黑烟。",
+    desc:"你降临地下城时，王座前的空气中凭空浮现一枚温热的龙蛋，蛋壳应声裂开。一只瘦小的红色幼龙从里面挣扎出来，比同龄的龙小一圈，喷出的第一口龙息却直接把你脚下的岩石烧成了岩浆。它歪头看你，打了个嗝，冒出黑烟。",
     hint:"开局获得一只幼龙「赤焰」(精英2.5×)，高INT龙息轰炸，鳞甲天生。",
     species:"幼龙", coeff:2.5,
     primary:{
@@ -777,7 +928,7 @@ const BIRTH_PRESETS = [
   {
     id:"underground_river",
     name:"🌊 暗河漂流",
-    desc:"你在一条地下暗河边捡到一个奇怪的生物——一团暗紫色的软体，数条触手无力地漂在水面上，荧光纹路微弱地跳动着。你用指尖碰了碰一条触手，吸盘轻轻嘬住你的手指，传来微弱的脉搏——它还活着。",
+    desc:"你降临地下城时，暗河的水面泛起涟漪，一团暗紫色的软体被水波轻轻推到你面前。它的数条触手无力地垂着，荧光纹路微弱地跳动。你用指尖碰了碰一条触手，吸盘轻轻嘬住你的手指，传来微弱的脉搏——它还活着。这就是托付给你的同伴。",
     hint:"开局获得一只触手怪「墨墨」(精锐1.8×)，全能辅助，精神攻击。",
     species:"触手怪", coeff:1.8,
     primary:{
@@ -794,7 +945,7 @@ const BIRTH_PRESETS = [
   {
     id:"ancient_hall",
     name:"🗿 古殿苏醒",
-    desc:"你推开一扇千年未开的石门，一座蹲伏在祭坛上的石像鬼雕像突然裂开——灰色的石壳片片剥落，露出一双无瞳的石眼。它从祭坛跃下，石翼张开，沉默地挡在你和黑暗之间。",
+    desc:"你降临地下城的王座前，一尊蹲伏的石像鬼雕像忽然从祭坛上苏醒，灰色的石壳片片剥落，露出一双无瞳的石眼。它跃下祭坛，石翼张开，沉默地挡在你面前。这是守候许久、终于等到主人归来的第一只魔物。",
     hint:"开局获得一只石像鬼「岩盾」(精锐1.8×)，重甲飞行坦克，全游最高防御。",
     species:"石像鬼", coeff:1.8,
     primary:{
@@ -811,7 +962,7 @@ const BIRTH_PRESETS = [
   {
     id:"snowfield_wolf",
     name:"🐺 雪原独狼",
-    desc:"风雪中，一只灰白色的独狼拦住了你的去路——但它没有龇牙，只是用那双绿光眼睛盯着你，然后转身走了几步，回头看。它被狼群驱逐了，现在需要一个新主人。",
+    desc:"你降临地下城的边界，一头灰白色的独狼穿过风雪走入你的视线——它没有被驯服，只是用绿光眼睛盯着你看了很久，然后安静地跟在你身后，不再离开。它被自己的族群放逐，如今把仅剩的信任交到你手里。",
     hint:"开局获得一只野狼「灰牙」(普通1.3×)，高SPD游击刺客。",
     species:"野狼", coeff:1.3,
     primary:{
@@ -828,7 +979,7 @@ const BIRTH_PRESETS = [
   {
     id:"bloody_meadow",
     name:"🐇 血色草丛",
-    desc:"一只雪白的小兔子蹦到你脚边，用毛茸茸的脑袋蹭你的小腿。你弯腰想摸它——它抬起头，嘴角咧到耳根，露出两排尖锐的獠牙，黑豆眼在瞬间变成血红。然后它又恢复了萌样，继续蹭你。",
+    desc:"你降临地下城的入口，一只雪白的小兔子蹦到你脚边，用毛茸茸的脑袋蹭你。你弯腰想摸它——它抬起头，嘴角咧到耳根，露出两排尖锐獠牙，黑豆眼瞬间透出血红。然后它又恢复萌样，继续蹭你。它看似无害，却天生嗜血。",
     hint:"开局获得一只杀人兔「跳跳」(精锐1.8×)，全游最高速度，一击必杀刺客。",
     species:"杀人兔", coeff:1.8,
     primary:{
@@ -848,7 +999,7 @@ const CHARACTER_PRESETS = [
   {
     name:"猫龙「影爪」", species:"猫龙", coeff:2.5,
     stats:{END:3,STR:5,SPD:5,DEF:3,INT:4,MP:3,WIL:2},
-    desc:"一只浑身漆黑的猫龙幼崽，在月光下的废墟中被发现。瞳孔能在黑暗与光明间自由切换——猫科动物的敏捷加上龙族血脉的魔力。走路没有声音，但尾巴尖的火焰出卖了它。",
+    desc:"一只浑身漆黑的猫龙幼崽，是托付给你的第一只魔物。它的瞳孔能在黑暗与光明间自由切换，既有猫科动物的敏捷，也继承了龙族血脉的魔力。它走路没有声音，可尾巴尖跳动的火焰总会暴露它的位置。",
     skills:[
       {name:"暗影吐息",type:"法术",formula:"22+2.5×智力",cost:"蓝14",interval:"4.5s",cooldown:"8s",hit_formula:"85+2.0×智力",category:"主动"},
       {name:"利爪",type:"斩击",formula:"18+2.0×力量+1.5×速度",cost:"耐力14",interval:"3.0s",hit_formula:"75+2.0×力量+1.0×速度",category:"主动"},
@@ -862,7 +1013,7 @@ const CHARACTER_PRESETS = [
   {
     name:"幼龙「赤焰」", species:"幼龙", coeff:2.5,
     stats:{END:4,STR:2,SPD:3,DEF:4,INT:6,MP:4,WIL:2},
-    desc:"一枚被遗弃在火山口的龙蛋，孵出来的小家伙比同龄龙瘦小一圈——但龙息比谁都烫。脾气跟名字一样火爆，一点就着，但对你莫名地服气。",
+    desc:"一枚在火山口捡到的龙蛋，孵出来的小家伙比同龄的龙瘦小一圈，龙息却比谁都烫。它的脾气和名字一样火爆，一点就着，唯独对你莫名地服气。",
     skills:[
       {name:"龙息",type:"法术",formula:"25+3.0×智力",cost:"蓝16",interval:"5.0s",hit_formula:"90",category:"主动"},
       {name:"尾击",type:"钝击",formula:"18+2.0×力量+0.5×耐力",cost:"耐力18",interval:"4.0s",hit_formula:"75+2.0×速度",category:"主动"},
@@ -875,7 +1026,7 @@ const CHARACTER_PRESETS = [
   {
     name:"触手怪「墨墨」", species:"触手怪", coeff:1.8,
     stats:{END:2,STR:2,SPD:4,DEF:2,INT:2,MP:3,WIL:5},
-    desc:"地下暗河里漂出来的一团暗紫色生物。不会说话，只用触手感知世界——轻轻卷住你的手指时，吸盘传来的微弱脉搏让你知道它在听你的心跳。很脆弱，但精神力极强。",
+    desc:"从地下暗河里漂出来的一团暗紫色生物。它不会说话，只用触手感知世界，轻轻卷住你的手指时，吸盘传来的微弱脉搏会让你知道它在听你的心跳。它很脆弱，精神力却极强。",
     skills:[
       {name:"缠绕",type:"钝击",formula:"8+1.0×速度+0.5×精神",cost:"耐力12",interval:"4.0s",hit_formula:"80+2.0×速度",category:"主动"},
       {name:"鞭打",type:"钝击",formula:"12+1.5×速度+0.5×精神",cost:"耐力10",interval:"2.5s",hit_formula:"75+1.5×速度+0.5×精神",category:"主动"},
@@ -888,7 +1039,7 @@ const CHARACTER_PRESETS = [
   {
     name:"石像鬼「岩盾」", species:"石像鬼", coeff:1.8,
     stats:{END:6,STR:4,SPD:2,DEF:7,INT:1,MP:1,WIL:4},
-    desc:"一块在地下城最深处苏醒的石像鬼碎片——比普通石头聪明得多，比大多数魔物固执得多。不怎么会说话，但每次战斗都会沉默地挡在你和敌人之间。",
+    desc:"一块在地下城最深处苏醒的石像鬼碎片，比普通石头聪明得多，也比大多数魔物固执得多。它不怎么会说话，可每次战斗都会沉默地挡在你和敌人之间。",
     skills:[
       {name:"俯冲",type:"钝击",formula:"22+2.0×速度+1.0×力量",cost:"耐力16",interval:"4.0s",hit_formula:"75+3.0×速度",category:"主动"},
       {name:"碎石",type:"钝击",formula:"16+1.5×力量+0.5×耐力",cost:"耐力20",interval:"5.0s",hit_formula:"85+1.0×速度",category:"主动"},
@@ -901,7 +1052,7 @@ const CHARACTER_PRESETS = [
   {
     name:"杀人兔「跳跳」", species:"杀人兔", coeff:1.8,
     stats:{END:2,STR:3,SPD:7,DEF:2,INT:1,MP:1,WIL:4},
-    desc:"一只外表萌死人的小白兔——直到你看见它后腿肌肉的轮廓和那双血红的眼睛。被冒险者踢了一脚后怀恨在心，现在踢人是它的专长。战斗结束后会恢复毛球模式，蹭腿讨零食。",
+    desc:"一只外表萌死人的小白兔，得看见它后腿隆起的肌肉和那双血红的眼睛，才会明白它不是宠物。它被冒险者踢过一脚，一直怀恨在心，如今踢人是它的专长。战斗一结束，它又变回毛球模样，蹭腿讨零食。",
     skills:[
       {name:"致命突袭",type:"刺击",formula:"18+3.0×速度+0.5×力量",cost:"耐力10",interval:"2.0s",cooldown:"6s",hit_formula:"70+3.5×速度",category:"主动"},
       {name:"连咬",type:"斩击",formula:"14+1.5×速度+1.0×力量",cost:"耐力8",interval:"1.8s",cooldown:"0.5s",hit_formula:"75+2.0×速度",category:"主动"},
@@ -915,7 +1066,7 @@ const CHARACTER_PRESETS = [
   {
     name:"野狼「灰牙」", species:"野狼", coeff:1.3,
     stats:{END:3,STR:4,SPD:6,DEF:2,INT:1,MP:1,WIL:3},
-    desc:"灰白色的独狼，在雪原上被狼群驱逐后一路流浪到了地下城入口。沉默寡言，但每次出击都直奔要害——刺客的本能刻在骨子里。",
+    desc:"灰白色的独狼，是托付给你的第一只魔物。它沉默寡言，每次出击却都直奔要害，刺客的本能刻在骨子里。",
     skills:[
       {name:"撕咬",type:"刺击",formula:"15+2.0×力量+1.5×速度",cost:"耐力12",interval:"2.5s",hit_formula:"75+1.5×速度+1.0×力量",category:"主动"},
       {name:"扑击",type:"钝击",formula:"18+1.5×力量+2.0×速度",cost:"耐力16",interval:"3.5s",hit_formula:"70+2.0×速度+1.0×力量",category:"主动"},
@@ -928,7 +1079,7 @@ const CHARACTER_PRESETS = [
   {
     name:"史莱姆「软软」", species:"史莱姆", coeff:1.0,
     stats:{END:2,STR:2,SPD:2,DEF:2,INT:1,MP:2,WIL:1},
-    desc:"一只半透明的蓝色小史莱姆，地下城最底层的魔物。什么都学不会，但什么都愿意试试——虽然大部分时候只是在地上弹来弹去。",
+    desc:"一只半透明的蓝色小史莱姆，是地下城最底层的魔物。它什么都学不会，可什么都愿意试着学，虽然大部分时候只是在地上弹来弹去。",
     skills:[
       {name:"撞击",type:"钝击",formula:"10+1.0×耐力+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"70+1.0×耐力",category:"主动"},
       {name:"缩壳",type:"防御",formula:"8+1.0×耐力/秒",cost:"耐力8",interval:"5.0s(冷却)",hit_formula:"",category:"主动"},
@@ -940,7 +1091,7 @@ const CHARACTER_PRESETS = [
   {
     name:"史莱姆「黏黏」", species:"史莱姆", coeff:1.0,
     stats:{END:1,STR:1,SPD:3,DEF:1,INT:2,MP:2,WIL:2},
-    desc:"软软的妹妹——一滩淡绿色的酸液史莱姆，比姐姐更胆小但吐酸水特别准。平时躲在软软身后，但一旦被惹毛就会把对方盔甲溶个洞。",
+    desc:"软软的妹妹，是一滩淡绿色的酸液史莱姆。它比姐姐胆小得多，吐酸水却特别准，平时总躲在软软身后，一旦被惹毛，就会把对方的盔甲溶出一个洞。",
     skills:[
       {name:"酸液喷射",type:"刺击",formula:"12+2.0×智力+0.5×速度",cost:"蓝6",interval:"4.0s",hit_formula:"75+2.0×智力",category:"主动"},
       {name:"分裂",type:"防御",formula:"下次受击减半后回复8+1.0×耐力",cost:"耐力10",interval:"12.0s(冷却)",hit_formula:"",category:"主动"},
@@ -950,9 +1101,9 @@ const CHARACTER_PRESETS = [
     ],
   },
   {
-    name:"哥布林「哥布A」", species:"哥布林", coeff:1.0,
+    name:"哥布林「石锤」", species:"哥布林", coeff:1.0,
     stats:{END:2,STR:3,SPD:2,DEF:2,INT:1,MP:1,WIL:1},
-    desc:"一只被同族赶出来的瘦小哥布林战士，捡了把生锈的短剑当宝贝。虽然笨但很勇——每次冲上去之前都会大喊一声给自己壮胆。",
+    desc:"一只被同族赶出来的瘦小哥布林战士，捡了把生锈的铁锤当宝贝。它脑筋有点直，胆子却很足，每次冲上去之前都要大喊一声给自己壮胆。",
     skills:[
       {name:"挥砍",type:"斩击",formula:"12+2.0×力量+0.5×速度",cost:"耐力10",interval:"3.0s",hit_formula:"70+1.5×力量+0.5×速度",category:"主动"},
       {name:"盾击",type:"钝击",formula:"10+1.5×力量+0.5×耐力",cost:"耐力14",interval:"4.0s",hit_formula:"75+1.5×力量",category:"主动"},
@@ -964,9 +1115,9 @@ const CHARACTER_PRESETS = [
     ],
   },
   {
-    name:"哥布林「哥布B」", species:"哥布林", coeff:1.0,
+    name:"哥布林「藤弓」", species:"哥布林", coeff:1.0,
     stats:{END:1,STR:2,SPD:4,DEF:1,INT:1,MP:1,WIL:2},
-    desc:"哥布A的弟弟，从小不敢近战但射弹弓百发百中。那把弓是用垃圾堆里捡的废铁和橡皮筋拼的——但箭是真的箭。",
+    desc:"石锤的弟弟，从小不敢近身搏斗，射弹弓却百发百中。它那把弓是用废铁和橡皮筋拼出来的，看着寒酸，射出去的箭却是真家伙。",
     skills:[
       {name:"短弓射击",type:"刺击",formula:"12+2.0×速度+0.5×力量",cost:"耐力8",interval:"3.0s",hit_formula:"75+2.0×速度",category:"主动"},
       {name:"淬毒箭",type:"刺击",formula:"18+2.5×速度+1.0×智力",cost:"耐力16",interval:"6.0s",cooldown:"8s",hit_formula:"80+2.0×速度",category:"主动"},
@@ -993,7 +1144,7 @@ async function init() {
 }
 
 async function loadOrCreateSession() {
-  const saved = localStorage.getItem('derbiren_sid');
+  const saved = localStorage.getItem('monster_sid') || localStorage.getItem('derbiren_sid');
   // 防御：加载前清空，防止旧数据残留
   state.characters = [];
   if (saved) {
@@ -1002,6 +1153,7 @@ async function loadOrCreateSession() {
       if (res.ok) {
         const data = await res.json();
         state.session_id = data.session_id;
+        state.player_name = data.player_name || '小魔王';
         state.characters = data.characters || [];
         state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
         document.getElementById('sid-display').textContent = state.session_id;
@@ -1011,6 +1163,7 @@ async function loadOrCreateSession() {
         state._unlockedEquipment = data.unlocked_equipment || [];
         renderAll();
         restoreHistory(data.history || []);
+        updateBreedBtn();
         return;
       }
     } catch(e) {}
@@ -1020,7 +1173,8 @@ async function loadOrCreateSession() {
 }
 
 async function newAdventure() {
-  document.getElementById('create-modal').classList.add('show');
+  // 直接内联显示（不依赖 .show class，最稳）
+  document.getElementById('create-modal').style.display = 'flex';
   document.getElementById('birth-list').dataset.selected = '';
   document.getElementById('preset-detail').style.display = 'none';
   renderBirths();
@@ -1184,7 +1338,7 @@ async function loadSpeciesLore(species) {
 }
 
 function closeCreateModal() {
-  document.getElementById('create-modal').classList.remove('show');
+  document.getElementById('create-modal').style.display = 'none';
 }
 
 async function createAdventure() {
@@ -1209,9 +1363,14 @@ async function createAdventure() {
     twinPassives = birth.twin.passives;
   }
 
-  document.getElementById('create-modal').classList.remove('show');
+  // 建档成功 → 关闭 create-modal + 收起右侧 dock 展开区
+    document.getElementById('create-modal').style.display = 'none';
+    ['explore','breed'].forEach(s => {
+      const el = document.getElementById('dock-' + s + '-sec');
+      if (el) el.classList.remove('active');
+    });
 
-  const body = {world_setting: world, player_name: playerName, char_name: name, char_species: species, char_coeff: coeff};
+    const body = {world_setting: world, player_name: playerName, char_name: name, char_species: species, char_coeff: coeff};
   if (charStats) body.char_stats = charStats;
   if (charSkills) body.char_skills = charSkills;
   if (charPassives) body.char_passives = charPassives;
@@ -1225,10 +1384,12 @@ async function createAdventure() {
   });
   const data = await res.json();
   state.session_id = data.session_id;
+  state.player_name = data.player_name || playerName;
   state.characters = data.characters || [];
   state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
-  localStorage.setItem('derbiren_sid', state.session_id);
+  localStorage.setItem('monster_sid', state.session_id);
   document.getElementById('sid-display').textContent = state.session_id;
+  updateBreedBtn();
   if (data.day) { state.day = data.day; state.days_until_attack = data.days_until_attack; state.raid_wave = data.raid_wave || 1; updateDayDisplay(); }
   document.getElementById('chat-log').innerHTML =
     `<div class="welcome"><span class="big">🔥</span>冒险开始。<br><em>「${playerName}，地下城在等着你。」</em></div>`;
@@ -1254,12 +1415,17 @@ async function autoStart() {
     });
     const data = await res.json();
     typingDiv.remove();
-    addMsg('gm', data.narrative);
+    addMsg('gm', data.narrative + (data.truncated ? '\n\n⚠️ (这段太长了,被字数上限截断,已自动重试补齐)' : ''));
     scrollBottom();
     if (data.characters_updated) {
-      state.characters = data.characters_updated;
       _equipmentCache = null;  // 刷新装备缓存（波次奖励）
-      renderAll();
+      // ⚠️ characters_updated 是 bool(False) 或 chars 数组(True) 二选一——不能整体覆盖！
+      if (Array.isArray(data.characters_updated)) {
+        state.characters = data.characters_updated;
+        renderAll();
+      } else {
+        await refreshCharacters();
+      }
     }
   } catch(e) {
     typingDiv.remove();
@@ -1317,6 +1483,7 @@ async function refreshCharacters() {
       state.characters = data.characters || [];
       state.active_char_id = data.active_char_id || (state.characters[0]?.id || '');
       renderAll();
+      updateBreedBtn();
     }
   } catch(e) {}
 }
@@ -1358,41 +1525,99 @@ function parseChoices(text) {
 function addMsg(cls, text) {
   const log = document.getElementById('chat-log');
   const w = log.querySelector('.welcome'); if (w) w.remove();
-  const div = document.createElement('div');
-  div.className = 'msg ' + cls;
 
-  if (cls === 'gm') {
-    const { narrative, choices } = parseChoices(text);
-    if (choices.length > 0) {
-      if (narrative) {
-        const p = document.createElement('div');
-        p.style.whiteSpace = 'pre-wrap';
-        p.innerHTML = fmtCombat(narrative);  // 计算行缩小
-        div.appendChild(p);
-      }
-      const btnRow = document.createElement('div');
-      btnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px;';
-      choices.forEach(c => {
-        const btn = document.createElement('button');
-        btn.textContent = c.label;
-        btn.title = c.full;
-        btn.style.cssText = 'text-align:left;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;';
-        btn.onmouseover = () => { btn.style.borderColor='var(--accent)'; btn.style.background='#2a2018'; };
-        btn.onmouseout = () => { btn.style.borderColor='var(--border)'; btn.style.background='var(--input-bg)'; };
-        btn.onclick = () => {
-          document.getElementById('user-input').value = c.full;
-          sendMessage();
-        };
-        btnRow.appendChild(btn);
-      });
-      div.appendChild(btnRow);
-    } else {
-      div.innerHTML = fmtCombat(text);
-    }
-  } else {
+  if (cls !== 'gm') {
+    // 玩家消息——直接一条
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
     div.innerHTML = fmtCombat(text);
+    log.appendChild(div);
+    return;
   }
-  log.appendChild(div);
+
+  // ═══ GM 消息：气泡按字数上限切分，但气泡内保留原文换行分段 ═══
+  const { narrative, choices } = parseChoices(text);
+  const SINGLE_LIMIT = 800;   // 单条消息字数上限（QQ 消息量级），超了才接续下一条
+
+  // 按句界切出"块"（句子或换行段），逐块累积进气泡：
+  //  - 换行符作为内容保留在气泡内（段落不丢失），但换行本身不触发切气泡
+  //  - 只有累积字数超过 SINGLE_LIMIT 才在句界断开接续下一条
+  let chunks = [];
+  if (narrative) {
+    // 句子与换行交替：`[^\n。！？.!?…]*…` 是一句（不吞换行），`\n+` 单独成换行段
+    const pieces = narrative.match(/[^\n。！？.!?…]*[。！？.!?…]+[“”」]*|\n+/g) || [narrative];
+    let buf = '';
+    let sentLen = 0;   // 累计的"有效文字"长度（不含换行）
+    for (const pc of pieces) {
+      if (/^\n+$/.test(pc)) {
+        // 换行段——作为内容保留（最多保留一段空行为段落分隔），不触发切条
+        buf += (buf && /\n\n$/.test(buf)) ? '' : '\n\n';
+        continue;
+      }
+      const sent = pc.trim();
+      if (!sent) continue;
+      const w = sentLen + sent.length;   // 上一句有效长度 + 本句
+      if (buf && w > SINGLE_LIMIT) {
+        // 这条满了 → 发出去，余下的开新条继续
+        chunks.push(buf.trim());
+        buf = sent;
+        sentLen = sent.length;
+      } else {
+        buf += sent;
+        sentLen = w;
+      }
+    }
+    if (buf) chunks.push(buf.trim());
+  }
+
+  // 逐条渲染
+  chunks.forEach((c, i) => {
+    // 除最后一条外都不加选项按钮；选项只属于最后一条
+    const isLast = (i === chunks.length - 1) && (choices.length > 0);
+    const div = document.createElement('div');
+    div.className = 'msg gm';
+    div.innerHTML = fmtCombat(c);
+    if (isLast) {
+      appendChoiceButtons(div, choices);
+    }
+    log.appendChild(div);
+  });
+
+  // 只有 options 没有 narrative 的情况（极少数）
+  if (chunks.length === 0 && choices.length > 0) {
+    const div = document.createElement('div');
+    div.className = 'msg gm';
+    appendChoiceButtons(div, choices);
+    log.appendChild(div);
+  }
+}
+
+// 选项按钮渲染（从 addMsg 抽出来复用）
+function appendChoiceButtons(div, choices) {
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:10px;';
+  choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.textContent = c.label;
+    btn.title = c.full;
+    btn.style.cssText = 'text-align:left;padding:8px 12px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;';
+    btn.onmouseover = () => { btn.style.borderColor='var(--accent)'; btn.style.background='#2a2018'; };
+    btn.onmouseout = () => { btn.style.borderColor='var(--border)'; btn.style.background='var(--input-bg)'; };
+    btn.onclick = () => {
+      if (c.label === '挑选战利品' && state.session_id) {
+        showLootModal();
+        return;
+      }
+      if (c.label === '放弃' && /战利品|loot/i.test(c.full)) {
+        discardAllLoot();
+        return;
+      }
+      document.getElementById('user-input').value = c.full;
+      sendMessage();
+    };
+    btnRow.appendChild(btn);
+  });
+  div.appendChild(btnRow);
 }
 function scrollBottom() {
   document.getElementById('chat-log').scrollTop = document.getElementById('chat-log').scrollHeight;
@@ -1414,37 +1639,28 @@ async function sendMessage() {
     await doDiceRoll(dice);
     return;
   }
-
-  // 德比伦模式：/derbiren 或 @德比伦 或 /系统 触发
-  let derb = false;
-  let finalMsg = msg;
-  if (/^\/derbiren\b/i.test(msg) || /^@德比伦/i.test(msg) || /^\/系统/i.test(msg)) {
-    derb = true;
-    finalMsg = msg.replace(/^\/derbiren\s*/i, '').replace(/^@德比伦\s*/i, '').replace(/^\/系统\s*/i, '');
-    if (!finalMsg.trim()) finalMsg = '在呢，杂鱼～有什么事找本大爷？';
-  }
-
+  const finalMsg = msg;
   state.isLoading = true;
   document.getElementById('send-btn').disabled = true;
   addMsg('user', msg);
   const typingDiv = document.createElement('div');
   typingDiv.className = 'msg gm typing';
-  typingDiv.textContent = derb ? '德比伦晃了晃尾巴...' : 'GM 正在编写剧情...';
+  typingDiv.textContent = 'GM 正在编写剧情...';
   document.getElementById('chat-log').appendChild(typingDiv);
   scrollBottom();
 
   try {
     const res = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({message: derb ? '[DERBIREN] ' + finalMsg : finalMsg, session_id:state.session_id}),
+      body: JSON.stringify({message: finalMsg, session_id:state.session_id}),
     });
     const data = await res.json();
     typingDiv.remove();
-    addMsg('gm', data.narrative);
+    addMsg('gm', data.narrative + (data.truncated ? '\n\n⚠️ (这段太长了,被字数上限截断,已自动重试补齐)' : ''));
     scrollBottom();
     if (data.session_id && data.session_id !== state.session_id) {
       state.session_id = data.session_id;
-      localStorage.setItem('derbiren_sid', state.session_id);
+      localStorage.setItem('monster_sid', state.session_id);
       document.getElementById('sid-display').textContent = state.session_id;
     }
     if (data.characters_updated) {
@@ -1463,9 +1679,43 @@ async function sendMessage() {
   state.isLoading = false;
   document.getElementById('send-btn').disabled = false;
 }
+
+// ── 重写按钮：AI 审查/缩水时清洗污染回复并重发 ──
+async function rewindLast() {
+  if (state.isLoading) return;   // 防止和 sendMessage 并发
+  if (!state.session_id) { addMsg('gm','⚠️ 还没有存档呢杂鱼,先开一场！'); return; }
+  document.getElementById('send-btn').disabled = true;
+  document.getElementById('rewind-btn').disabled = true;
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/rewind', {method:'POST'});
+    const data = await res.json();
+    if (!data.rewound) { addMsg('gm','⚠️ ' + (data.reason || '没有可重写的消息')); return; }
+    addMsg('gm','⟲ 已清除被污染的那段回复,重新编——');
+    const input = document.getElementById('user-input');
+    input.value = data.message;
+    // 不手动设 isLoading——由 sendMessage 自己接管（否则会卡它的开头 return 检查）
+    await sendMessage();
+  } catch(e) {
+    addMsg('gm','🔥💢 重写失败！(' + e.message + ')');
+  }
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('rewind-btn').disabled = false;
+}
 document.getElementById('user-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendMessage();
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+    document.getElementById('user-input').style.height = 'auto';
+  }
 });
+// textarea 自动增高（上限 160px）
+(function() {
+  const ta = document.getElementById('user-input');
+  ta.addEventListener('input', () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+  });
+})();
 
 // ── 角色面板 ──
 function renderAll() {
@@ -2163,6 +2413,7 @@ async function saveSettings() {
       status.className = 'ok';
       document.getElementById('set-key').value = '';
       document.getElementById('set-key').placeholder = '(已设置)';
+      updateBreedBtn();
     } else {
       status.textContent = '❌ 保存失败';
       status.className = 'err';
@@ -2335,17 +2586,35 @@ async function refreshLog() {
   try {
     const res = await fetch('/api/session/' + state.session_id + '/events?limit=100');
     if (res.ok) {
-      const data = await res.json();
-      const icons = {exp:'⭐', level_up:'📈', stat_change:'📊', system:'🔧', char_add:'🆕'};
-      eventHtml = (data.events || []).map(e => {
-        const icon = icons[e.type] || '📋';
-        const dayTag = e.day ? `[第${e.day}天] ` : '';
-        const devTag = (e.data && e.data.dev) ? ' 🔧' : '';
-        return `<div style="padding:4px 0;border-bottom:1px solid #2a2520;font-size:12px;">
-          <span style="color:var(--dim);">${dayTag}</span>${icon} ${e.msg}${devTag}
-        </div>`;
-      }).join('');
-    }
+          const data = await res.json();
+          const icons = {exp:'⭐', level_up:'📈', stat_change:'📊', system:'🔧', char_add:'🆕',
+            engine_ruling:'⚖️', tag_fix:'⚠️', recruit:'🤝', rename:'✏️', con_discover:'🏗️',
+            con_upgrade:'🔨', patrol_encounter:'⚔️', breach:'☠️', combat:'💥'};
+          eventHtml = (data.events || []).map(e => {
+            const icon = icons[e.type] || '📋';
+            const dayTag = e.day ? `[第${e.day}天] ` : '';
+            const devTag = (e.data && e.data.dev) ? ' 🔧' : '';
+            let detail = '';
+            // 引擎裁决：展示每一条批准/拒绝
+            if (e.type === 'engine_ruling' && e.data && Array.isArray(e.data.rulings)) {
+              detail = e.data.rulings.map(r =>
+                `<div style="padding:2px 0 2px 16px;font-size:11px;${r.includes('已批准')?'color:#7fd487':(r.includes('已拒绝')?'color:#e07a7a':'color:var(--dim)')}">${r}</div>`
+              ).join('');
+            }
+            // 标签修正：展示每一条问题
+            if (e.type === 'tag_fix' && e.data && Array.isArray(e.data.issues)) {
+              detail = e.data.issues.map(r =>
+                `<div style="padding:2px 0 2px 16px;font-size:11px;color:#e0c07a;">- ${r}</div>`
+              ).join('');
+            }
+            return `<div style="padding:4px 0;border-bottom:1px solid #2a2520;font-size:12px;">
+              <span style="color:var(--dim);">${dayTag}</span><span>${icon} ${e.msg}${devTag}</span>${detail}
+            </div>`;
+          }).join('');
+          if (!(data.events||[]).length) {
+            eventHtml = '<div style="text-align:center;padding:16px;color:var(--dim);font-size:12px;">暂无事件日志——引擎还没有裁决过任何变更。</div>';
+          }
+        }
   } catch(e) {}
 
   // 2. 从聊天中提取 DMG 块和命中判定
@@ -2490,7 +2759,7 @@ async function doLoad(filename) {
       state.session_id = data.session_id;
       state.characters = data.characters || [];
       state.active_char_id = state.characters[0]?.id || '';
-      localStorage.setItem('derbiren_sid', state.session_id);
+      localStorage.setItem('monster_sid', state.session_id);
       document.getElementById('sid-display').textContent = state.session_id;
       closeLoadModal();
       // 刷新全部
@@ -2865,92 +3134,392 @@ function filterEquipment(type, btn) {
   renderEquipment();
 }
 
-// ── 探索系统 ──
+// ── 探索系统（分区版）──
+const _ZONE_DIFF = {'safe':'🟢','danger':'🟡','high':'🔴'};
+const _ZONE_DIFF_NAME = {'safe':'安全','danger':'危险','high':'高危'};
+let _exploreZones = [];
 
-function showExploreModal() {
-  if (!state.session_id) { alert('请先开始冒险'); return; }
-  const chars = state.characters || [];
-  const explored = (state._exploredToday) ? state._exploredToday.split(',') : [];
-  const container = document.getElementById('explore-chars');
-  if (chars.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">没有可派遣的魔物</div>';
-  } else {
-    container.innerHTML = chars.map(c => {
-      const done = explored.includes(c.id);
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);${done?'opacity:.5':''}">
-        <span style="font-size:18px;">🐾</span>
-        <span style="font-weight:bold;color:var(--gold);">${c.name}</span>
-        <span style="font-size:12px;color:var(--dim);">Lv.${c.level} ${c.species}</span>
-        ${done
-          ? '<span style="margin-left:auto;font-size:12px;color:var(--accent);">今日已探索</span>'
-          : `<button onclick="exploreMonster('${c.id}')" style="margin-left:auto;padding:6px 16px;background:var(--good);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit;">🔍 探索</button>`
-        }
-      </div>`;
-    }).join('');
+async function loadExploreZones() {
+  if (!state.session_id) return [];
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/zones');
+    if (res.ok) { const d = await res.json(); _exploreZones = d.zones || []; }
+  } catch(e) {}
+  return _exploreZones;
+}
+
+async function showExploreModal() {
+  // 右侧折叠栏内展开探索区域（替代全屏弹窗）
+  const container = document.getElementById('dock-explore-zones');
+  openDockSection('explore');
+  // 没建档 → 在栏内显示引导
+  if (!state.session_id) {
+    container.innerHTML = '<div class="dock-hint" style="text-align:center;padding:18px 8px;line-height:1.8;">'
+      + '还未开始冒险，探索地下城需要先有存档。<br>'
+      + '<button onclick="newAdventure()" style="margin-top:10px;padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">🔥 立即开始新冒险</button>'
+      + '</div>';
+    return;
   }
-  document.getElementById('explore-result').style.display = 'none';
-  document.getElementById('explore-modal').classList.add('show');
+  container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--dim);">加载探索区域...</div>';
+  const zones = await loadExploreZones();
+  if (!zones.length) {
+    container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--accent);">⚠️ 探索区域加载失败</div>';
+    return;
+  }
+  // 按难度分组渲染（用 dock 样式）
+  const diffOrder = ['safe','danger','high'];
+  const grouped = {};
+  zones.forEach(z => { (grouped[z.difficulty] = grouped[z.difficulty] || []).push(z); });
+  let html = '';
+  diffOrder.forEach(df => {
+    const list = grouped[df];
+    if (!list || !list.length) return;
+    html += `<div style="font-size:12px;color:var(--dim);margin:6px 0 3px;">${_ZONE_DIFF[df]}【${_ZONE_DIFF_NAME[df]}】（Lv${list[0].lvl_range[0]}-${list[0].lvl_range[1]}）</div>`;
+    list.forEach(z => {
+      const theme = z.theme || '';
+      const lv = z.lvl_range ? `Lv.${z.lvl_range[0]}-${z.lvl_range[1]}` : '';
+      html += `<div class="dock-zone-btn" onclick="exploreZone('${z.name}')">
+        <span style="font-size:16px;">${_ZONE_DIFF[z.difficulty]}</span>
+        <span class="zn">${z.name}</span>
+        <span class="zt">${theme} · ${lv} · ${z.risk}</span>
+      </div>`;
+    });
+  });
+  container.innerHTML = html;
+  document.getElementById('dock-explore-result').style.display = 'none';
 }
 
 function closeExploreModal() {
-  document.getElementById('explore-modal').classList.remove('show');
+  const sec = document.getElementById('dock-explore-sec');
+  if (sec) sec.classList.remove('active');
+  // 兼容旧全屏 modal（隐藏备用）
+  const old = document.getElementById('explore-modal');
+  if (old) old.style.display = 'none';
 }
 
-async function exploreMonster(charId) {
-  const resultDiv = document.getElementById('explore-result');
-  resultDiv.style.display = 'block';
-  resultDiv.style.background = '#1a1c18';
-  resultDiv.style.color = 'var(--dim)';
-  resultDiv.innerHTML = '🔍 探索中...';
+// ── 生育（配种）──
+let _breedParent = { father: '', mother: '' };
+function updateBreedBtn() {
+  const btn = document.getElementById('breed-btn');
+  if (!btn) return;
+  const nsfwOn = !!(document.getElementById('set-nsfw') && document.getElementById('set-nsfw').checked);
+  const chars = state.characters || [];
+  // 是否有未怀孕的魔物（魔王 + 至少1只魔物即可配；2 只魔物也可）
+  const breedableCount = chars.filter(c => c && !c.pregnant).length;
+  btn.style.display = (nsfwOn && breedableCount >= 1) ? '' : 'none';
+}
+async function showBreedModal() {
+  // 右侧折叠栏内展开配种（替代全屏弹窗）
+  openDockSection('breed');
+  // 没建档 → 在栏内显示引导
+  if (!state.session_id) {
+    document.getElementById('dock-breed-father').innerHTML = '';
+    document.getElementById('dock-breed-mother').innerHTML = '';
+    document.getElementById('dock-breed-result').innerHTML =
+      '<div class="dock-hint" style="text-align:center;padding:16px 8px;line-height:1.8;">'
+      + '还未开始冒险，配种需要先有存档。<br>'
+      + '<button onclick="newAdventure()" style="margin-top:10px;padding:8px 18px;background:#e07ab0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;">🔥 立即开始新冒险</button>'
+      + '</div>';
+    document.getElementById('dock-breed-result').style.display = 'block';
+    return;
+  }
+  // 清理结果提示
+  document.getElementById('dock-breed-result').style.display = 'none';
+  // 兜底 player_name（新开场还没从 session 拿到的场景）
+  if (!state.player_name) state.player_name = '小魔王';
+  _breedParent = { father: '', mother: '' };
+  renderBreedPools();
+}
+
+function renderBreedPools() {
+  const chars = (state.characters || []).filter(c => c && !c.pregnant);
+  const pname = state.player_name || '小魔王';
+  const fp = document.getElementById('dock-breed-father');
+  const mp = document.getElementById('dock-breed-mother');
+  const mk = (c) => {
+    const sel = c.name === _breedParent.father || c.name === _breedParent.mother;
+    const role = (c.name === _breedParent.father) ? '父' : (c.name === _breedParent.mother) ? '母' : '';
+    return `<button onclick="pickBreedParent('${c.id.replace(/'/g,'')}', '${c.name.replace(/'/g,'')}')" style="padding:8px 12px;border:${sel?'2px solid #e07ab0':'1px solid var(--border)'};border-radius:6px;background:var(--input-bg);color:${sel?'#e07ab0':'var(--text)'};cursor:pointer;font-size:13px;font-family:inherit;">${c.name} Lv.${c.level}<span style="font-size:10px;color:var(--dim);margin-left:6px;">${c.species}${role?' · '+role:''}</span></button>`;
+  };
+  // 魔王（性别可改，父/母都行）
+  const mkPlayer = (roleHint) => {
+    const name = pname;
+    const sel = name === _breedParent.father || name === _breedParent.mother;
+    const role = (name === _breedParent.father) ? '父' : (name === _breedParent.mother) ? '母' : '';
+    return `<button onclick="pickBreedParent('__player__', '${name.replace(/'/g,'')}')" style="padding:8px 12px;border:${sel?'2px solid #e07ab0':'1px solid var(--border)'};border-radius:6px;background:var(--input-bg);color:${sel?'#e07ab0':'var(--text)'};cursor:pointer;font-size:13px;font-family:inherit;">😈 ${name}<span style="font-size:10px;color:var(--dim);margin-left:6px;">魔王${role?' · '+role:' · 性别可改'}</span></button>`;
+  };
+  fp.innerHTML = mkPlayer('父') + chars.map(mk).join('');
+  mp.innerHTML = mkPlayer('母') + chars.map(mk).join('');
+}
+function pickBreedParent(cid, cname) {
+  // 点同一只两次→交替父/母；点已选的同角色→取消
+  if (_breedParent.father === cname) { _breedParent.father = ''; }
+  else if (_breedParent.mother === cname) { _breedParent.mother = ''; }
+  else if (!_breedParent.father) { _breedParent.father = cname; }
+  else if (!_breedParent.mother && _breedParent.mother !== cname) { _breedParent.mother = cname; }
+  else { _breedParent.father = ''; _breedParent.mother = ''; }
+  renderBreedPools();
+  const ok = _breedParent.father && _breedParent.mother && _breedParent.father !== _breedParent.mother;
+  document.getElementById('dock-breed-confirm-btn').disabled = !ok;
+}
+async function doBreed() {
+  const f = _breedParent.father, m = _breedParent.mother;
+  if (!f || !m || f === m) return;
+  const input = document.getElementById('user-input');
+  input.value = `/day 配种 父=${f} 母=${m} 请详细描写这次配种交合的全过程，每一步都写透，不许一跳而过`;
+  closeBreedModal();
+  await sendMessage();
+}
+function closeBreedModal() {
+  const sec = document.getElementById('dock-breed-sec');
+  if (sec) sec.classList.remove('active');
+  const old = document.getElementById('breed-modal');
+  if (old) old.style.display = 'none';
+}
+
+// ── 淫趴模式（多对多群交）──
+let _breedMode = 'pair';          // 'pair' 配种单对 | 'orgy' 淫趴多选
+let _orgySel = [];                // 选中的参趴者 name 数组（可含魔王）
+
+function setBreedMode(mode) {
+  _breedMode = mode;
+  _orgySel = [];
+  const pair = document.getElementById('breed-pair-area');
+  const orgy = document.getElementById('breed-orgy-area');
+  const bpBtn = document.getElementById('breed-mode-pair');
+  const ogBtn = document.getElementById('breed-mode-orgy');
+  const cBtn = document.getElementById('dock-breed-confirm-btn');
+  const oBtn = document.getElementById('dock-orgy-confirm-btn');
+  const isOrgy = mode === 'orgy';
+  if (pair) pair.style.display = isOrgy ? 'none' : '';
+  if (orgy) orgy.style.display = isOrgy ? '' : 'none';
+  if (bpBtn) bpBtn.style.border = isOrgy ? '1px solid var(--border)' : '2px solid #e07ab0';
+  if (bpBtn) bpBtn.style.color = isOrgy ? 'var(--text)' : '#e07ab0';
+  if (ogBtn) ogBtn.style.border = isOrgy ? '2px solid #b056e0' : '1px solid var(--border)';
+  if (ogBtn) ogBtn.style.color = isOrgy ? '#b056e0' : 'var(--text)';
+  if (cBtn) cBtn.style.display = isOrgy ? 'none' : '';
+  if (oBtn) oBtn.style.display = isOrgy ? '' : 'none';
+  if (isOrgy) renderOrgyPool();
+  else renderBreedPools();
+}
+
+function renderOrgyPool() {
+  const chars = (state.characters || []).filter(c => c && !c.pregnant);
+  const pname = state.player_name || '小魔王';
+  const pool = document.getElementById('dock-orgy-pool');
+  if (!pool) return;
+  const mkBtn = (name, species, extraHint, onclick) => {
+    const sel = _orgySel.includes(name) || _orgySel.includes(species==='__player__'?pname:name);
+    const selected = _orgySel.includes(name) || (species==='__player__' && _orgySel.includes(pname));
+    return `<button onclick="${onclick}" style="padding:8px 12px;border:${selected?'2px solid #b056e0':'1px solid var(--border)'};border-radius:6px;background:var(--input-bg);color:${selected?'#b056e0':'var(--text)'};cursor:pointer;font-size:13px;font-family:inherit;margin:2px;">${name}<span style="font-size:10px;color:var(--dim);margin-left:6px;">${species==='__player__'?'😈魔王':' '+extraHint}</span></button>`;
+  };
+  let html = '';
+  // 魔王（性自由：可攻可受）
+  html += mkBtn(pname, '__player__', '性别不限', `toggleOrgy('__player__')`);
+  // 未怀孕魔物
+  for (const c of chars) {
+    html += mkBtn(c.name, c.species, c.species + ' Lv.' + c.level, `toggleOrgy('${c.name.replace(/'/g,'')}')`);
+  }
+  pool.innerHTML = html;
+  updateOrgyBtn();
+}
+
+function toggleOrgy(name) {
+  // __player__ 用真实玩家名
+  const key = name === '__player__' ? (state.player_name || '小魔王') : name;
+  const i = _orgySel.indexOf(key);
+  if (i >= 0) _orgySel.splice(i, 1);
+  else _orgySel.push(key);
+  renderOrgyPool();
+}
+
+function updateOrgyBtn() {
+  const btn = document.getElementById('dock-orgy-confirm-btn');
+  if (btn) btn.disabled = _orgySel.length < 2;
+}
+
+async function doOrgy() {
+  const sel = _orgySel;
+  if (!sel || sel.length < 2) return;
+  const input = document.getElementById('user-input');
+  input.value = '/day 淫趴 参与者=' + sel.join(',') + ' 请详细描写这场淫趴群交的全过程，参与者之间每一对、每个位置都写透，不许一跳而过';
+  closeBreedModal();
+  _orgySel = [];
+  await sendMessage();
+}
+
+
+// 点击区 → 发送「/day 探索 <区名>」走正常对话链（后端四档roll）
+async function exploreZone(zoneName) {
+  closeExploreModal();
+  const input = document.getElementById('user-input');
+  if (input) input.value = '/day 探索 ' + zoneName;
+  await sendMessage();
+}
+
+
+// ── 右侧折叠操作栏 ──
+function toggleDock() {
+  const dock = document.getElementById('right-dock');
+  const collapsed = dock.classList.toggle('collapsed');
+  const tg = dock.querySelector('.dock-toggle');
+  tg.textContent = collapsed ? '⏩ 展开' : '⏪ 收起';
+}
+function openDockSection(name) {
+  const dock = document.getElementById('right-dock');
+  dock.classList.remove('collapsed');
+  dock.querySelector('.dock-toggle').textContent = '⏪ 收起';
+  ['explore','breed'].forEach(s => {
+    const el = document.getElementById('dock-' + s + '-sec');
+    if (el) el.classList.toggle('active', s === name);
+  });
+}
+
+// ── 战利品挑选系统 ──
+let _lootData = { loot: [], capacity: 0, used: 0 };
+
+async function showLootModal() {
+  if (!state.session_id) return;
   try {
-    const res = await fetch('/api/session/' + state.session_id + '/explore', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({char_id: charId}),
-    });
+    const res = await fetch('/api/session/' + state.session_id + '/loot');
     const data = await res.json();
-    if (!res.ok) {
-      resultDiv.style.background = '#3a1818';
-      resultDiv.style.color = 'var(--accent)';
-      resultDiv.innerHTML = '❌ ' + (data.detail || '探索失败');
-      return;
-    }
-    if (data.result === 'nothing') {
-      resultDiv.style.background = '#2a2a20';
-      resultDiv.style.color = '#c9a050';
-      resultDiv.innerHTML = '😕 ' + data.msg;
-    } else if (data.result === 'equipment') {
-      resultDiv.style.background = '#1a2a1a';
-      resultDiv.style.color = 'var(--good)';
-      resultDiv.innerHTML = '🎁 ' + data.msg + '<br><span style="font-size:11px;color:var(--gold);">' + (data.item ? data.item.name : '') + '</span>';
-      _equipmentCache = null;  // 刷新装备缓存
-      setTimeout(() => renderEquipment(), 100);
-    } else if (data.result === 'monster') {
-      resultDiv.style.background = '#1a1a2a';
-      resultDiv.style.color = '#8b5cf6';
-      resultDiv.innerHTML = '🐾 ' + data.msg;
-      // 触发角色列表刷新
-      if (data.char_add) {
-        // 自动发送 CHAR_ADD 给 GM 处理
-        await fetch('/api/session/' + state.session_id + '/chat', {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({message: data.char_add}),
-        });
-        setTimeout(() => refreshState(), 500);
-      }
-    }
-    // 刷新探索记录
-    if (state._exploredToday) {
-      state._exploredToday += ',' + charId;
-    } else {
-      state._exploredToday = charId;
-    }
-    showExploreModal();  // 刷新 modal 显示
+    _lootData = data;
+    renderLootList();
+    document.getElementById('loot-modal').classList.add('show');
   } catch(e) {
-    resultDiv.style.background = '#3a1818';
-    resultDiv.style.color = 'var(--accent)';
-    resultDiv.innerHTML = '❌ 探索失败: ' + e.message;
+    addMsg('gm', '💢 战利品加载失败：' + e.message);
   }
 }
+
+function renderLootList() {
+  const container = document.getElementById('loot-list');
+  const usedEl = document.getElementById('loot-used');
+  const capEl = document.getElementById('loot-capacity');
+  capEl.textContent = '🎒 携带额度：' + _lootData.capacity + '（随魔物总等级成长）';
+  usedEl.textContent = '已选占用：' + _lootData.used + ' / ' + _lootData.capacity;
+  usedEl.style.color = _lootData.used > _lootData.capacity ? '#e14b3c' : 'var(--good)';
+
+  const RARITY_COLOR = { common:'#ccc', uncommon:'#5a9e4b', rare:'#4a9bd6', epic:'#a46ae0', legendary:'#e0a13c' };
+  const RARITY_NAME = { common:'普通', uncommon:'优秀', rare:'精良', epic:'史诗', legendary:'传说' };
+
+  if (!_lootData.loot || _lootData.loot.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--dim);">没有可挑选的战利品</div>';
+    return;
+  }
+  container.innerHTML = _lootData.loot.map((it, idx) => {
+    const col = RARITY_COLOR[it.rarity] || '#ccc';
+    const bonusTxt = Object.entries(it.bonus || {}).map(([k,v]) => {
+      const cn = {STR:'力量',END:'耐力',SPD:'速度',DEF:'防御',INT:'智力',MP:'法量',WIL:'精神'}[k]||k;
+      return cn + '+' + v;
+    }).join('  ');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);">
+      <input type="checkbox" id="loot-cb-${idx}" onchange="toggleLoot(${idx})" style="width:16px;height:16px;">
+      <div style="flex:1;">
+        <div style="font-weight:bold;color:${col};">${it.name}</div>
+        <div style="font-size:11px;color:var(--dim);">${RARITY_NAME[it.rarity]||it.rarity} · ${bonusTxt || it.slot||''}</div>
+      </div>
+      <span style="font-size:12px;font-weight:bold;color:var(--gold);white-space:nowrap;">占 ${it.weight}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleLoot(idx) {
+  const cb = document.getElementById('loot-cb-' + idx);
+  const it = _lootData.loot[idx];
+  if (!it) return;
+  _lootData.used = (_lootData.used || 0) + (cb.checked ? it.weight : -it.weight);
+  if (_lootData.used < 0) _lootData.used = 0;
+  document.getElementById('loot-used').textContent = '已选占用：' + _lootData.used + ' / ' + _lootData.capacity;
+  document.getElementById('loot-used').style.color = _lootData.used > _lootData.capacity ? '#e14b3c' : 'var(--good)';
+}
+
+async function confirmPickLoot() {
+  const ids = [];
+  _lootData.loot.forEach((it, idx) => {
+    const cb = document.getElementById('loot-cb-' + idx);
+    if (cb && cb.checked) ids.push(it.item_id);
+  });
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/loot/pick', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ item_ids: ids })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || '超额');
+    document.getElementById('loot-modal').classList.remove('show');
+    const picked = data.picked.length ? data.picked.map(p=>p.name).join('、') : '什么都没带走';
+    const dropped = data.dropped.length ? '，放弃了：' + data.dropped.join('、') : '';
+    addMsg('gm', '🎒 战利品打包完成——你带走了：' + picked + dropped);
+    refreshState();
+  } catch(e) {
+    addMsg('gm', '⚠️ ' + e.message);
+  }
+}
+
+async function discardAllLoot() {
+  try {
+    const res = await fetch('/api/session/' + state.session_id + '/loot/pick', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ item_ids: [] })
+    });
+    const data = await res.json();
+    document.getElementById('loot-modal').classList.remove('show');
+    addMsg('gm', '🚫 你选择了全部放弃。这一趟巡逻的战利品都留在了原地。');
+    refreshState();
+  } catch(e) {
+      addMsg('gm', '⚠️ ' + e.message);
+    }
+  }
+
+  // ── 输出长度选择 & 手动压缩记忆 ──
+  async function setGMLength() {
+    if (!state.session_id) { alert('请先开始冒险'); return; }
+    const sel = document.getElementById('length-select');
+    const len = sel.value;
+    try {
+      const res = await fetch('/api/session/' + state.session_id + '/length', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ length: len })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || '设置失败');
+      addMsg('gm', '✍️ 输出长度已设为「' + (sel.options[sel.selectedIndex].text) + '」（上限 ' + data.max_tokens + ' token）。');
+    } catch(e) {
+      addMsg('gm', '⚠️ 设置失败：' + e.message);
+    }
+  }
+
+  async function manualSummarize() {
+    if (!state.session_id) { alert('请先开始冒险'); return; }
+    if (!confirm('🧠 压缩记忆：让 GM 把近段剧情总结成摘要，之后回应将基于摘要而非全部历史。会释放 token、防失忆。确定吗？')) return;
+    addMsg('gm', '🧠 正在压缩记忆——GM 在整理这段剧情...');
+        try {
+          // 读所选压缩模型
+          const sel = document.getElementById('summarize-model');
+          let model = sel ? sel.value : 'auto';
+          if (model === 'custom') {
+            model = (document.getElementById('summarize-model-custom').value || '').trim() || 'auto';
+          }
+          const res = await fetch('/api/session/' + state.session_id + '/summarize', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ model: model })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || '压缩失败');
+          const tag = model === 'auto' ? '（自动模型）' : '（' + model + '）';
+          addMsg('gm', '🧠 记忆已压缩' + tag + '（' + data.messages_before + ' 条 → ' + data.messages_after + ' 条）！\n📋 当前剧情摘要：\n' + data.summary);
+        } catch(e) {
+          addMsg('gm', '⚠️ ' + e.message);
+        }
+      }
+
+      // 压缩模型下拉：选「自定义…」时显示输入框
+      document.addEventListener('change', function(ev) {
+        if (ev.target && ev.target.id === 'summarize-model') {
+          const custom = document.getElementById('summarize-model-custom');
+          if (custom) custom.style.display = ev.target.value === 'custom' ? 'inline-block' : 'none';
+        }
+      });
 
 /// 更新 tab 切换——加载装备页时刷新
 const _origTabHandler = document.querySelectorAll('.tab-btn')[0]?.onclick;
@@ -2967,3 +3536,51 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 init();
 </script>
+<!-- 左下角版本号（改代码就 bump，用户强刷后对照确认更新） -->
+<div id="app-ver" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent.trim())" title="点击复制版本号" style="position:fixed;left:10px;bottom:6px;z-index:9999;font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.5px;cursor:pointer;user-select:none;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:3px;">v2.34</div>
+
+  <!-- 右侧折叠操作栏 -->
+  <div class="right-dock" id="right-dock">
+    <div class="dock-toggle" onclick="toggleDock()" title="折叠/展开操作栏">⏩ <span class="dock-toggle-txt">收起</span></div>
+    <div class="dock-actions">
+      <button onclick="advanceDay()" title="推进天数"><span>📅</span> <span class="btn-txt">下一天</span></button>
+      <button onclick="showExploreModal()" title="派魔物探索地下城"><span>🔍</span> <span class="btn-txt">探索</span></button>
+            <button id="breed-btn" onclick="showBreedModal()" title="配种生育魔物" style="display:none;"><span>🤰</span> <span class="btn-txt">生育</span></button>
+      <button onclick="rewindLast()" title="AI 拒绝/缩水?点这个重写,清掉被污染的回复"><span>⟲</span> <span class="btn-txt">重写</span></button>
+    </div>
+    <div class="dock-body">
+      <div class="dock-section" id="dock-explore-sec">
+        <h4>🗺️ 选择探索区域</h4>
+        <div class="dock-hint">派队伍探索地下城某区域。越难奖励越好但敌人越强。</div>
+        <div id="dock-explore-zones" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div id="dock-explore-result" style="display:none;margin-top:6px;padding:8px;border-radius:5px;"></div>
+      </div>
+      <div class="dock-section" id="dock-breed-sec">
+        <h4>🤰 生育</h4>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button onclick="setBreedMode('pair')" id="breed-mode-pair" style="flex:1;padding:6px;border:2px solid #e07ab0;border-radius:5px;background:var(--input-bg);color:#e07ab0;cursor:pointer;font-size:12px;font-family:inherit;">💞 配种</button>
+          <button onclick="setBreedMode('orgy')" id="breed-mode-orgy" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:5px;background:var(--input-bg);color:var(--text);cursor:pointer;font-size:12px;font-family:inherit;">🎉 淫趴</button>
+        </div>
+        <!-- 配种模式（单对单） -->
+        <div id="breed-pair-area">
+          <div class="dock-hint">选两只未怀孕魔物繁育后代。跨物种成功率更低；猫龙 +20%；魔王 100%。</div>
+          <div style="font-size:12px;color:var(--dim);">👨 父方</div>
+          <div class="dock-pool" id="dock-breed-father"></div>
+          <div style="font-size:12px;color:var(--dim);">👩 母方（怀孕方）</div>
+          <div class="dock-pool" id="dock-breed-mother"></div>
+        </div>
+        <!-- 淫趴模式（多对多） -->
+        <div id="breed-orgy-area" style="display:none;">
+          <div class="dock-hint">🎉 群交派对——不限人数和性别，全部未怀孕魔物（可含魔王）都进来。产出经验 + 概率怀孕，人越多受孕率越低。选中框=参趴。</div>
+          <div style="font-size:12px;color:var(--dim);">😈 参趴者（点选加入/移除）</div>
+          <div class="dock-pool" id="dock-orgy-pool"></div>
+        </div>
+        <div id="dock-breed-result" style="display:none;margin-top:6px;padding:8px;border-radius:5px;"></div>
+        <button onclick="doBreed()" id="dock-breed-confirm-btn" disabled style="padding:8px 12px;background:#e07ab0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;margin-top:8px;">配种</button>
+        <button onclick="doOrgy()" id="dock-orgy-confirm-btn" disabled style="display:none;padding:8px 12px;background:#b056e0;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit;margin-top:8px;">🎉 开始淫趴</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

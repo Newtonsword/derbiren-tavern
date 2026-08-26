@@ -1,5 +1,6 @@
 # 密钥
 .env
+.env.*
 
 # Python
 venv/
@@ -18,3 +19,13 @@ Thumbs.db
 .vscode/
 .idea/
 .key_tmp
+
+# node / electron
+node_modules/
+release/
+dist/
+app/release/
+app/node_modules/
+
+# 备份
+backups/

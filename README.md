@@ -93,7 +93,6 @@ derbiren-tavern/
 ├── recruits.json          # Pool of 8 recruitable monsters
 ├── species_lore.json      # Detailed lore for 8 playable species
 ├── skill_library.json     # Skill template reference
-├── derbiren_persona.md    # GM personality definition
 ├── requirements.txt       # Python dependencies
 ├── .env.example           # Configuration template
 ├── saves/                 # JSON session files (auto-created)
@@ -113,4 +112,4 @@ This project is designed to be AI-agent-operable:
 
 ## License
 
-MIT — do whatever you want. If your friend has fun, tell Newt to let Derbiren know. (￣▽￣)🔥
+MIT — do whatever you want. If your friend has fun, tell Newt. (￣▽￣)🔥

@@ -47,7 +47,7 @@
 
 ### 1.1 这是什么
 
-**Derbiren Tavern**（小魔王地下城）是一个 AI 驱动的文字冒险 web 游戏。玩家扮演地下城领主（小魔王），培养魔物、建造防御工事、击退冒险者入侵波次。GM 由 **德比伦**（でびるん）——一只黑毛福瑞恶魔——通过 LLM 扮演。
+**Derbiren Tavern**（小魔王地下城）是一个 AI 驱动的文字冒险 web 游戏。玩家扮演地下城领主（小魔王），培养魔物、建造防御工事、击退冒险者入侵波次。GM 由 **中立叙述者**——一位负责福瑞恶魔——通过 LLM 扮演。
 
 ### 1.2 技术栈
 
@@ -77,7 +77,6 @@ derbiren-tavern/
 ├── species_lore.json        # 8 物种详细设定（16KB）
 ├── skill_library.json       # 技能模板库（30KB，含设计理由）
 ├── recruits.json            # 8 个可招募魔物（3KB）
-├── derbiren_persona.md      # GM 人格定义
 ├── README.md                # 项目简介
 ├── ARCHITECTURE.md          # 本文档
 ├── requirements.txt         # Python 依赖
@@ -1267,5 +1266,5 @@ pip install fastapi uvicorn openai httpx python-dotenv pytest
 - **测试**：`tests/test_p0_deepen.py` 15 个（persona 创建/提取/查找/prompt/记忆 + 裁决 allow/deny/unknown + server 集成点）
 - **端到端验证**：@吱吱 对话返回傲娇猫龙人格回复；GM 视角叙述贴角色人设
 
-*德比伦 & Newt 共同撰写*  
-*有任何问题——@Derbiren on QQ*
+*Newt 撰写*  
+

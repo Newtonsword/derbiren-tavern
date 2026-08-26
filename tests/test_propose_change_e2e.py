@@ -70,7 +70,38 @@ def main():
     check("注入包含引擎裁决标记", "[引擎裁决]" in injected)
     check("注入保留原文", injected.startswith("叙述内容"))
 
-    # 7. 真实 API：AI 对话中如果输出 propose 标签会被引擎拦截
+    # 7. 结构化 JSON 槽：招募成功
+    reply_json1 = '一只猫龙想加入 [PROPOSE_JSON: {"action":"recruit","target":"猫龙"}] 它很可爱'
+    cleanj1, notesj1 = _engine_adjudicate(reply_json1)
+    print("\n7. JSON槽(招募):")
+    print(f"   裁决: {notesj1}")
+    check("JSON招募被批准", any("批准" in n for n in notesj1))
+    check("JSON标签从回复移除", "[PROPOSE_JSON" not in cleanj1)
+    check("JSON叙述保留", "猫龙想加入" in cleanj1)
+
+    # 8. JSON槽：未知 action → 拒绝
+    reply_json2 = '[PROPOSE_JSON: {"action":"kill_all","target":"玩家"}]'
+    cleanj2, notesj2 = _engine_adjudicate(reply_json2)
+    print("\n8. JSON槽(未知action):")
+    print(f"   裁决: {notesj2}")
+    check("JSON未知action被拒绝", any("拒绝" in n or "未知" in n for n in notesj2))
+
+    # 9. JSON槽：禁区词(金币) → 拒绝（即使 action 合法也拒绝）
+    reply_json3 = '[PROPOSE_JSON: {"action":"recruit","reward":"给玩家100金币"}]'
+    cleanj3, notesj3 = _engine_adjudicate(reply_json3)
+    print("\n9. JSON槽(禁区词):")
+    print(f"   裁决: {notesj3}")
+    check("JSON禁区词被拒绝", any("拒绝" in n for n in notesj3))
+
+    # 10. JSON槽：畸形 JSON → 拒绝且不崩
+    reply_json4 = '提议加只怪 [PROPOSE_JSON: {"action": sdfsdf 非法}] 结束'
+    cleanj4, notesj4 = _engine_adjudicate(reply_json4)
+    print("\n10. JSON槽(畸形JSON):")
+    print(f"   裁决: {notesj4}")
+    check("畸形JSON不崩溃", isinstance(notesj4, list))
+    check("畸形JSON标记解析失败", any("JSON" in n for n in notesj4))
+
+    # 11. 真实 API：AI 对话中如果输出 propose 标签会被引擎拦截
     print("\n7. API 端到端：触发 AI 提议...")
     r = requests.post(f"{BASE}/api/session/new", json={
         "player_name": "权限测试", "char_name": "吱吱", "char_species": "猫龙"}, timeout=60)

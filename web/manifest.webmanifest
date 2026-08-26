@@ -1,0 +1,15 @@
+{
+  "name": "小魔王地下城",
+  "short_name": "小魔王地下城",
+  "description": "Monster Dungeon Tavern——经营你的地下城，培养魔物，抵御冒险者入侵",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1a1410",
+  "theme_color": "#231e1a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
