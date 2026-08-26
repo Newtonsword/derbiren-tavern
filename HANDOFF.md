@@ -300,3 +300,13 @@ python tests/test_explore_encounter.py
 - **验证**：node --check 双 JS 全过；沙盒跑 callDeepSeek 真实连上 DeepSeek（401 被正确捕获显示友好错误）→ 直连链路打通。ID 引用/函数定义/事件绑定静态度量全过。
 - **尚未做（第二阶段）**：战斗引擎/配种/怀孕/探索数值/装备/升级 —— 后端 91 个函数(server.py 4074 行 + 12 模块)需搬成 JS，暂未迁移。
 - **部署到 GitHub Pages**：把 web/ 内容推到仓库根，Settings→Pages→main 分支即可在线。（仓库现名仍 derbiren-tavern，改名待定。）
+
+
+**v2.36 GitHub 在线版部署成功：**
+- **公开地址** `https://newtonsword.github.io/derbiren-tavern/`（GitHub Pages from gh-pages 分支）。
+- **gh-pages 分支内容**：仅 5 个纯静态文件（index.html/api.js/manifest.webmanifest/icon-192.png/icon-512.png），零源码/零 node_modules/零 .env。
+- **玩家自助 key 模型**：在线版就是 web/（纯前端+直连DeepSeek），玩家用自己的 key，主人不烧额度。
+- **⚠️ 部署雷区（差点翻车）**：orphan 分支上 `git add -A && git commit` 会把整个项目+node_modules+.env 全提交进 gh-pages！正确做法：独立临时 git 仓库，只显式 add web 主干 5 文件，不要 add -A。已 force push 干净内容，远程已验证（git ls-tree origin/gh-pages = 5 文件）。
+- **.gitignore 已加固**：加了 .env.* 和 node_modules/、backups/。.env.bak.deepseek 确认从未被 git 跟踪。
+- **本地局域网版**：`web/` 目录 `python -m http.server 8090 --bind 0.0.0.0` → `http://192.168.1.17:8090/`（手机同 WiFi）。
+- **安卓 apk**：待做（需 Java+Android SDK+gradle，环境未装）。
