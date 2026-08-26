@@ -37,8 +37,8 @@
   /* DeepSeek 直连（复用 callDeepSeek 思路，从设置读 key） */
   async function callAI(msgs, cfg) {
     const set = ls(SETTINGS_KEY, {});
-    const key = set.key;
-    if (!key) return '⚠️ 还没设 API key！点右上角 ⚙️ 填你的 DeepSeek key 杂鱼～';
+    const key = set.api_key || set.key || set.apiKey;
+    if (!key) return '⚠️ 还没设 API key！点右上角 ⚙️ 填你的 DeepSeek key';
     let sys = cfg && cfg.system ? cfg.system : '你是一个文字冒险游戏的 GM，主持「小魔王地下城」的叙事。描述场景、扮演NPC、推动剧情。';
     const full = [{ role: 'system', content: sys }, ...msgs];
     const base = (set.base_url || 'https://api.deepseek.com').replace(/\/+$/, '');
@@ -97,9 +97,10 @@
       return json({ entries: [] }); // 降级：技能图鉴暂空
     }
     if (urlPath === '/api/settings' && method === 'GET') {
-      return json(ls(SETTINGS_KEY, {}));
+      const st = ls(SETTINGS_KEY, {});
+      return json(Object.assign({}, st, { has_key: !!(st.api_key || st.apiKey || st.OPENAI_API_KEY) }));
     }
-    if (urlPath === '/api/settings' && method === 'POST') {
+    if (urlPath === '/api/settings' && (method === 'POST' || method === 'PUT')) {
       const s = ls(SETTINGS_KEY, {});
       sss(SETTINGS_KEY, Object.assign({}, s, body));
       return json({ success: true });
@@ -200,7 +201,7 @@
       // 引擎结果已算好（怀孕/经验/探索），用 AI 把结果叙述成 GM 口吻
       try {
         const set = ls(SETTINGS_KEY, {});
-        if (set.key) {
+        if (set.api_key || set.key || set.apiKey) {
           const aiNar = await callAI([
             { role: 'user', content: '动作结果已由系统结算：' + result.narrative + '\n请用GM叙述口吻复述这段结果，描述场景和角色反应。80-150字。' }
           ], {});
