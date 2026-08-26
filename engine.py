@@ -444,10 +444,18 @@ def check_births(sess, chars):
 
 # ── 探索 / 巡逻 ──
 def roll_explore(zone_key=None, day=1, chars=None, active=None):
-    """探索一个区域，返回 (zone_info, event_resultdict)。复刻 consequence_manager 用法。"""
-    sel = pick_zone(zone_key) if zone_key else pick_zone()
+    """探索一个区域，返回 (zone_dict, tier_name)。zone_key 可为 id 或中文名，缺省选第一个。"""
+    zones = list(EXPLORE_ZONES)
+    sel = None
+    if zone_key:
+        sel = next((z for z in zones if z["id"] == zone_key or z["name"] == zone_key), None)
+    if sel is None:
+        sel = zones[0] if zones else None
+    if sel is None:
+        return None, "none"
     tier = get_explore_tier(day)
-    return sel, {"zone": sel, "tier": (tier.name if hasattr(tier, "name") else str(tier))}
+    tier_name = tier.name if hasattr(tier, "name") else str(tier)
+    return sel, tier_name
 
 
 # ── 战斗 ──
