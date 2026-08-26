@@ -43,10 +43,32 @@
     const full = [{ role: 'system', content: sys }, ...msgs];
     const base = (set.base_url || 'https://api.deepseek.com').replace(/\/+$/, '');
     const model = set.model || 'deepseek-chat';
-    const resp = await fetch(base + '/chat/completions', {
+    const endpoint = base + '/chat/completions';
+    const payload = { model, messages: full, stream: false, max_tokens: 4000, temperature: 0.9 };
+    // 原生环境(Capacitor WebView)走原生 HTTP 栈，绕开浏览器 CORS 拦截；
+    // 普通网页环境回退到标准 fetch。
+    try {
+      const cap = window.Capacitor;
+      if (cap && cap.getPlatform && cap.isNativePlatform && cap.isNativePlatform()) {
+        const resp = await cap.Plugins.CapacitorHttp.post({
+          url: endpoint,
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+          data: payload,
+          connectTimeout: 30000, readTimeout: 30000
+        });
+        const data = resp.data;
+        const out = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (!out) throw new Error('DeepSeek 返回空');
+        return out;
+      }
+    } catch (e) {
+      // 原生通道失败不明原因时，不要静默返回——向上抛让上层 catch 显示错误
+      throw e;
+    }
+    const resp = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: full, stream: false, max_tokens: 4000, temperature: 0.9 })
+      body: JSON.stringify(payload)
     });
     if (!resp.ok) {
       const txt = await resp.text().catch(() => '');
