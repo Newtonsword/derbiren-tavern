@@ -273,8 +273,8 @@
 
   /* 构建 AI 的 GM 历史消息（简化：只传最近几条 + 当前请求） */
   function buildMsgs(sess, msg) {
-    const msgs = [[...sess.messages || []], { role: 'user', content: msg }].filter(Boolean);
-    return msgs;
+    const history = (sess && sess.messages && Array.isArray(sess.messages) ? sess.messages : []).filter(Boolean);
+    return history.concat([{ role: 'user', content: msg }]);
   }
 
   /* ---------- 拦截 fetch ---------- */
