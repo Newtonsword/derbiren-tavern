@@ -92,12 +92,39 @@ sessions: dict = {}
 _client: OpenAI | None = None
 _review_client: OpenAI | None = None
 
+def _test_api_conn(key: str, base_url: str, model: str) -> tuple:
+    """设置 API key 时自动验证:用新配置发一个最小请求,测试连通性与鉴权。"""
+    import httpx
+    verify = os.getenv("SSL_VERIFY", "false" if platform.system() == "Windows" else "true").lower() == "true"
+    try:
+        hc = httpx.Client(
+            timeout=httpx.Timeout(20.0, connect=10.0),
+            verify=verify,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}
+        )
+        base = (base_url or "https://api.deepseek.com").rstrip("/")
+        r = hc.post(base + "/chat/completions", json={
+            "model": model or "deepseek-chat",
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 1, "temperature": 0
+        }, auth=(key, ""))
+        hc.close()
+        if r.status_code == 200:
+            return True, f"可用 (HTTP 200, model={model})"
+        body = r.text[:200]
+        return False, f"HTTP {r.status_code}: {body}"
+    except Exception as e:
+        return False, f"连接失败: {str(e)[:200]}"
+
+
 def _get_client():
     global _client
     if _client is None:
         verify = os.getenv("SSL_VERIFY", "false" if platform.system() == "Windows" else "true").lower() == "true"
         # 带浏览器 UA——opencode.ai 网关有 Cloudflare 防护，默认 SDK UA 会被 1010 拦截
-        hc = httpx.Client(verify=verify, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"})
+        hc = httpx.Client(
+            timeout=httpx.Timeout(120.0, connect=60.0),
+            verify=verify, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"})
         _client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY", ""),
             base_url=os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com"),
@@ -3877,7 +3904,13 @@ def upd_settings(s: SetReq):
     except Exception:
         pass
 
-    return {"ok": True}
+    # ── 自动验证 API key 可用性(设置时测试连通) ──
+    test_key = s.api_key or os.environ.get("OPENAI_API_KEY", "")
+    test_base = s.base_url or os.environ.get("OPENAI_BASE_URL", "https://api.deepseek.com")
+    if test_key:
+        v_result, v_msg = _test_api_conn(test_key, test_base, s.model or os.environ.get("LLM_MODEL", "deepseek-chat"))
+        return {"ok": True, "key_valid": v_result, "message": v_msg}
+    return {"ok": True, "key_valid": None, "message": "未设置API key"}
 
 # ── 技能模板库 ──
 

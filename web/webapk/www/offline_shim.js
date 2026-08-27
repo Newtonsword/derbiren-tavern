@@ -367,16 +367,28 @@
     try {
       const cap = window.Capacitor;
       if (cap && cap.getPlatform && cap.isNativePlatform && cap.isNativePlatform()) {
-        const resp = await cap.Plugins.CapacitorHttp.post({
-          url: endpoint,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + key,
-            'User-Agent': BROWSER_UA
-          },
-          data: payload,
-          connectTimeout: 30000, readTimeout: 30000
-        });
+        // 超时自动重试：opencode.ai 网关生成长剧情常超30s，一次失败不代表失败
+        let resp = null, lastErr = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            resp = await cap.Plugins.CapacitorHttp.post({
+              url: endpoint,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + key,
+                'User-Agent': BROWSER_UA
+              },
+              data: payload,
+              connectTimeout: 60000, readTimeout: 90000
+            });
+            break;
+          } catch (ee) {
+            lastErr = ee;
+            // 超时/连接中断 → 等1.5s重试一次
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        }
+        if (!resp) throw lastErr;
         const data = resp.data;
         if (!data) throw new Error('AI接口无响应（HTTP ' + (resp.status||'?') + '）');
         // 容错：data 可能是字符串 JSON 或对象
@@ -393,11 +405,22 @@
       // 原生通道失败不明原因时，不要静默返回——向上抛让上层 catch 显示错误
       throw e;
     }
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify(payload)
-    });
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 90000);
+    let resp;
+    try {
+      resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal
+      });
+    } catch (fe) {
+      clearTimeout(to);
+      if (fe && fe.name === 'AbortError') throw new Error('AI请求超时(90s)，请稍后重试');
+      throw fe;
+    }
+    clearTimeout(to);
     if (!resp.ok) {
       const txt = await resp.text().catch(() => '');
       throw new Error('DeepSeek HTTP ' + resp.status + ': ' + txt.slice(0, 200));

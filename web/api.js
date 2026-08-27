@@ -85,20 +85,31 @@ ${lenGuide}`;
 async function callDeepSeek(apiKey, messages, cfg) {
   const sys = buildSystemPrompt(cfg);
   const full = [{ role: 'system', content: sys }, ...messages];
-  const resp = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: cfg.model || 'deepseek-chat',
-      messages: full,
-      stream: false,
-      max_tokens: 4000,
-      temperature: 0.9
-    })
-  });
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 90000);
+  let resp;
+  try {
+    resp = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: cfg.model || 'deepseek-chat',
+        messages: full,
+        stream: false,
+        max_tokens: 4000,
+        temperature: 0.9
+      }),
+      signal: ctrl.signal
+    });
+  } catch (fe) {
+    clearTimeout(to);
+    if (fe && fe.name === 'AbortError') throw new Error('AI请求超时(90s)，请稍后重试');
+    throw fe;
+  }
+  clearTimeout(to);
   if (!resp.ok) {
     const txt = await resp.text().catch(() => '');
     let detail = '';
