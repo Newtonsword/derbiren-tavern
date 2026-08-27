@@ -81,6 +81,89 @@
       + '\n【写作长度】\n这一轮必须写满至少500字，把场景、动作、感官细节铺开写，不要三言两语跳过。宁可多写，不要偷懒缩水。';
   }
 
+
+  /* ---- 装备池 + 工事 + 掷骰 + 图鉴（手机版补全，读静态 json） ---- */
+  let _eqPool = null, _conPool = null, _skillLib = null;
+  async function loadJson(url) {
+    try {
+      const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) { console.warn('[offline-shim] 加载失败', url, e); return null; }
+  }
+  async function ensurePools() {
+    if (!_eqPool) _eqPool = await loadJson('equipment.json');
+    if (!_conPool) _conPool = await loadJson('constructions.json');
+    if (!_skillLib) _skillLib = await loadJson('skill_library.json');
+    return { eq: _eqPool || [], con: _conPool || [], lib: _skillLib || {} };
+  }
+  async function handleEquipment(body, urlPath) {
+    const pools = await ensurePools();
+    const eq = Array.isArray(pools.eq) ? pools.eq : (pools.eq.equipment || []);
+    const save = ls(SAVE_KEY, {});
+    let unlocked = null;
+    // 离线单存档：按已解锁过滤（电脑版逻辑），没解锁字段则全量返回
+    const u = save.unlocked_equipment;
+    if (Array.isArray(u) && u.length) unlocked = u;
+    const chars = save.characters || save.chars || [];
+    const equipped_map = {};
+    for (const c of chars) {
+      const eqm = c.equipment || {};
+      for (const k in eqm) { if (eqm[k]) (equipped_map[eqm[k]] = equipped_map[eqm[k]] || []).push(c.name); }
+    }
+    const result = [];
+    for (const e of eq) {
+      if (unlocked && unlocked.indexOf(e.id) < 0) continue;
+      const item = Object.assign({}, e);
+      item.equipped_by = equipped_map[e.id] || [];
+      result.push(item);
+    }
+    return json({ equipment: result, all_unlocked: unlocked || [] });
+  }
+  async function handleConstructions() {
+    const pools = await ensurePools();
+    return json({ constructions: Array.isArray(pools.con) ? pools.con : [] });
+  }
+  function handleRoll(body) {
+    const msg = (body.message || '').trim();
+    const m = msg.match(/^(\d+)?d(\d+)([+-]\d+)?$/i);
+    if (!m) return json({ result: '格式错误：' + msg + '，正确格式如 3d6+2 或 d20', detail: '' });
+    const count = parseInt(m[1] || '1', 10), sides = parseInt(m[2], 10), mod = parseInt(m[3] || '0', 10);
+    if (count < 1 || count > 100 || sides < 2 || sides > 1000)
+      return json({ result: '骰子参数超限（1-100 个，2-1000 面）', detail: '' });
+    const rolls = [];
+    for (let i = 0; i < count; i++) rolls.push(1 + Math.floor(Math.random() * sides));
+    const total = rolls.reduce((a, b) => a + b, 0) + mod;
+    let detail = count + 'd' + sides + (mod > 0 ? '+' + mod : mod < 0 ? String(mod) : '');
+    detail += ' = [' + rolls.join(', ') + ']';
+    if (mod) detail += ' ' + (mod > 0 ? '+' : '-') + ' ' + Math.abs(mod) + ' = ' + total;
+    return json({ result: String(total), detail: detail });
+  }
+  async function handleLibrary(save) {
+    const pools = await ensurePools();
+    const chars = (save && save.characters) ? save.characters : (save && save.chars ? save.chars : []);
+    const seen = {};
+    for (const c of chars) {
+      if (!c || c.species === '人类') continue;
+      const key = (c.name || '?') + '|' + (c.species || '?');
+      if (seen[key] && seen[key].level >= (c.level || 0)) continue;
+      seen[key] = {
+        name: c.name, species: c.species, level: c.level || 1,
+        stats: c.stats || {},
+        skills: Array.isArray(c.skills) ? c.skills.map(sk => ({
+          name: sk.name, type: sk.type || '', formula: sk.formula || '',
+          hit_formula: sk.hit_formula || '', cost: sk.cost || '', interval: sk.interval || '',
+          special: sk.special || ''
+        })) : [],
+        passives: Array.isArray(c.passives) ? c.passives.map(p => ({ name: p.name, effect: p.effect || '' })) : []
+      };
+    }
+    const encountered = Object.values(seen).sort((a, b) => (b.level||0) - (a.level||0));
+    const lib = Object.assign({}, pools.lib);
+    lib.encountered = encountered;
+    lib.encountered_count = encountered.length;
+    return lib;
+  }
+
   /* DeepSeek 直连（复用 callDeepSeek 思路，从设置读 key） */
 
   async function callAI(msgs, cfg) {
@@ -175,8 +258,9 @@
     if (urlPath === '/api/species') {
       return json({ success: true, species: ['猫龙', '史莱姆', '哥布林', '狼', '触手怪'], data: {} });
     }
-    if (urlPath === '/api/library') {
-      return json({ entries: [] }); // 降级：技能图鉴暂空
+    if (urlPath === '/api/library' && method === 'GET') {
+      const save = ls(SAVE_KEY, {});
+      return json(await handleLibrary(save));
     }
     if (urlPath === '/api/settings' && method === 'GET') {
       const st = ls(SETTINGS_KEY, {});
@@ -192,6 +276,18 @@
       const list = s ? [{ id: s.id, title: s.title, day: s.day, name: s.id }] : [];
       return json({ saves: list });
     }
+    /* ---- 通用数据端点 ---- */
+    if (urlPath === '/api/equipment' && method === 'GET') {
+      // 装备池：读静态 equipment.json + 当前存档的已解锁/已装备状态
+      return handleEquipment(body, urlPath);
+    }
+    if (urlPath === '/api/constructions' && method === 'GET') {
+      return handleConstructions();
+    }
+    if (urlPath === '/api/roll' && method === 'POST') {
+      return handleRoll(body);
+    }
+
     /* ---- 开局 ---- */
     if (urlPath === '/api/session/new' && method === 'POST') {
       const e = await eng();
@@ -232,6 +328,38 @@
     if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters$/)) && method === 'GET') {
       const sess = ls(SAVE_KEY);
       return json({ characters: sess ? (sess.characters || sess.chars || []) : [] });
+    }
+
+    // /api/session/{sid}/characters/{cid}/equip     PUT — 装备
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters\/([^/]+)\/equip$/)) && method === 'PUT') {
+      const sess = ls(SAVE_KEY) || {};
+      const cid = decodeURIComponent(m[2]);
+      const char = (sess.characters || sess.chars || []).find(c => c.id === cid);
+      if (!char) return json({ success: false, error: '角色不存在' });
+      const itemId = (body.equipment_id || '').trim();
+      const pools = await ensurePools();
+      const eq = Array.isArray(pools.eq) ? pools.eq : (pools.eq.equipment || []);
+      const item = eq.find(e => e.id === itemId);
+      if (!item) return json({ success: false, error: '装备不存在: ' + itemId });
+      char.equipment = char.equipment || { weapon: null, armor: null, accessory: null };
+      const slot = item.slot;
+      const old = char.equipment[slot] || null;
+      char.equipment[slot] = itemId;
+      // 避免同件多槽：把同 id 从其他槽清掉
+      for (const k in char.equipment) { if (k !== slot && char.equipment[k] === itemId) char.equipment[k] = null; }
+      persist(sess);
+      return json({ success: true, slot: slot, old: old, new: itemId, name: item.name });
+    }
+    // DELETE — 卸下
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters\/([^/]+)\/equip\/([^/]+)$/)) && method === 'DELETE') {
+      const sess = ls(SAVE_KEY) || {};
+      const cid = decodeURIComponent(m[2]); const slot = decodeURIComponent(m[3]);
+      const char = (sess.characters || sess.chars || []).find(c => c.id === cid);
+      if (!char) return json({ success: false, error: '角色不存在' });
+      char.equipment = char.equipment || { weapon: null, armor: null, accessory: null };
+      if (slot in char.equipment) char.equipment[slot] = null;
+      persist(sess);
+      return json({ success: true, slot: slot });
     }
     // 辅助端点降级(mock，保证 UI 不崩)
     const auxPatterns = [/\/rewind$/, /\/length$/, /\/summarize$/, /\/zones$/, /\/loot/, /\/world$/, /\/dev$/, /\/events/, /\/summarize/];

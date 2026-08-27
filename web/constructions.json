@@ -1,0 +1,113 @@
+[
+  {
+    "id": "con_wall_01",
+    "name": "石砌城墙",
+    "type": "防御工事",
+    "icon": "🧱",
+    "description": "用地下城矿石垒起的三米高墙——冒险者想上来得先爬。",
+    "effect": {
+      "melee_climb_time": "18+2.0×敌人数(刺客SPD每点-1.5秒,最低5秒)",
+      "enemy_ranged_hit": "-20%",
+      "ally_ranged_hit": "+15%",
+      "durability": 200,
+      "assassin_climb_bonus": "SPD每点减免1.5秒攀爬时间"
+    },
+    "build_days": 3,
+    "max_count": 1
+  },
+  {
+    "id": "con_trap_01",
+    "name": "尖刺陷阱",
+    "type": "地面陷阱",
+    "icon": "🕳️",
+    "description": "在城门前挖一排坑，插上削尖的骨刺——踩上去就知道疼。",
+    "effect": {
+      "damage": "20+1.0×建造时等级 刺伤",
+      "slow": "通过后SPD-2持续10秒",
+      "uses": 3
+    },
+    "build_days": 1,
+    "max_count": 3
+  },
+  {
+    "id": "con_trap_02",
+    "name": "落石机关",
+    "type": "天花板陷阱",
+    "icon": "🪨",
+    "description": "用藤蔓吊在穹顶的巨石——割断藤蔓的时机对了，一砸一片。",
+    "effect": {
+      "damage": "30+2.0×建造时等级 钝伤",
+      "aoe": "命中同区域全体敌人",
+      "hit_formula": "110（AoE难躲）",
+      "uses": 1
+    },
+    "build_days": 2,
+    "max_count": 2
+  },
+  {
+    "id": "con_trap_03",
+    "name": "绊索网",
+    "type": "地面陷阱",
+    "icon": "🕸️",
+    "description": "细到看不见的魔蛛丝绊索——冒险者绊倒的瞬间，网从地面弹起裹住全身。",
+    "effect": {
+      "immobilize": "缠绕目标10秒（STR≥8可4秒挣脱）",
+      "uses": 2
+    },
+    "build_days": 1,
+    "max_count": 2
+  },
+  {
+    "id": "con_trap_04",
+    "name": "毒雾喷口",
+    "type": "墙壁陷阱",
+    "icon": "☠️",
+    "description": "墙缝里藏着毒蘑菇孢子——触发后喷出一片毒雾，呛得冒险者睁不开眼。",
+    "effect": {
+      "blind": "区域内敌人命中-15%持续8秒",
+      "dot": "每秒3点毒伤持续8秒",
+      "uses": 2
+    },
+    "build_days": 1,
+    "max_count": 2
+  },
+  {
+    "id": "con_env_01",
+    "name": "火把阵",
+    "type": "环境工事",
+    "icon": "🔥",
+    "description": "在通道两侧插满浸油火把——黑暗不再是魔物的主场，但至少大家都看不见了。",
+    "effect": {
+      "darkness_penalty_reduce": "黑暗命中惩罚减半",
+      "attract_enemies": "火光吸引更多冒险者，敌人数+1"
+    },
+    "build_days": 1,
+    "max_count": 1
+  },
+  {
+    "id": "con_env_02",
+    "name": "通风管道",
+    "type": "环境工事",
+    "icon": "💨",
+    "description": "凿穿岩壁的通风网络——窄洞里长兵器不再束手束脚。",
+    "effect": {
+      "narrow_cave_reduce": "窄洞惩罚减半",
+      "poison_resist": "毒雾持续时间-50%"
+    },
+    "build_days": 2,
+    "max_count": 1
+  },
+  {
+    "id": "con_env_03",
+    "name": "魔力水晶",
+    "type": "环境工事",
+    "icon": "💎",
+    "description": "在地下城核心安放魔力水晶——散发的能量让魔物更加凶猛。",
+    "effect": {
+      "ally_damage": "+15%",
+      "ally_hit": "+10%命中"
+    },
+    "build_days": 3,
+    "max_count": 1
+  }
+]
