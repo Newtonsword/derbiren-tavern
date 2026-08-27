@@ -614,30 +614,48 @@
     // 普通网页环境回退到标准 fetch。
     const BROWSER_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
     try {
-      const cap = window.Capacitor;
-      if (cap && cap.getPlatform && cap.isNativePlatform && cap.isNativePlatform()) {
-        // 超时自动重试：opencode.ai 网关生成长剧情常超30s，一次失败不代表失败
-        let resp = null, lastErr = null;
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            resp = await cap.Plugins.CapacitorHttp.post({
-              url: endpoint,
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + key,
-                'User-Agent': BROWSER_UA
-              },
-              data: payload,
-              connectTimeout: 60000, readTimeout: 90000
-            });
-            break;
-          } catch (ee) {
-            lastErr = ee;
-            // 超时/连接中断 → 等1.5s重试一次
-            await new Promise(r => setTimeout(r, 1500));
-          }
-        }
-        if (!resp) throw lastErr;
+          const cap = window.Capacitor;
+          if (cap && cap.getPlatform && cap.isNativePlatform && cap.isNativePlatform()) {
+            // 超时自动重试：opencode.ai 网关生成长剧情常超30s，一次失败不代表失败
+            let resp = null, lastErr = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                resp = await cap.Plugins.CapacitorHttp.post({
+                  url: endpoint,
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + key,
+                    'User-Agent': BROWSER_UA
+                  },
+                  data: payload,
+                  connectTimeout: 60000, readTimeout: 120000
+                });
+                break;
+              } catch (ee) {
+                lastErr = ee;
+                // 超时/连接中断 → 等2s重试（最多3次，覆盖网关偶发抖动）
+                await new Promise(r => setTimeout(r, 2000));
+              }
+            }
+            // CapacitorHttp 原生栈全部失败 → 降级到 WebView 原生 fetch + 90s AbortController（双保险）
+            if (!resp) {
+              const ctrl2 = new AbortController();
+              const to2 = setTimeout(() => ctrl2.abort(), 90000);
+              try {
+                resp = await fetch(endpoint, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                  body: JSON.stringify(payload),
+                  signal: ctrl2.signal
+                });
+                resp = { data: await resp.json() };
+              } catch (fe2) {
+                clearTimeout(to2);
+                if (fe2 && fe2.name === 'AbortError') throw new Error('AI请求超时(90s)，请稍后重试');
+                throw fe2;
+              }
+              clearTimeout(to2);
+            }
         const data = resp.data;
         if (!data) throw new Error('AI接口无响应（HTTP ' + (resp.status||'?') + '）');
         // 容错：data 可能是字符串 JSON 或对象

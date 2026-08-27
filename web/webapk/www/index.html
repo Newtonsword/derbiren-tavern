@@ -870,7 +870,7 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
 
 <script>
 /* ===== 版本号（改代码就 bump）===== */
-const APP_VERSION='v2.59-offline';
+const APP_VERSION='v2.60-offline';
 window.addEventListener('DOMContentLoaded', function(){
   const el = document.getElementById('app-ver');
   if (el) el.textContent = APP_VERSION;
@@ -1747,10 +1747,18 @@ async function sendMessage() {
     // 如果当前在日志tab，自动刷新
     if (document.getElementById('tab-log').classList.contains('active')) refreshLog();
   } catch(e) {
-    typingDiv.remove();
-    addMsg('gm', '🔥💢 连接切断！检查 API 设置吧杂鱼！(' + e.message + ')');
-    scrollBottom();
-  }
+      typingDiv.remove();
+      const msg = String(e && e.message || e);
+      // 原生连接错误 → 友好中文（不再把 Software caused connection abort 这类原始英文甩给用户）
+      let hint = msg;
+      if (/abort|caused connection|Failed to fetch|NetworkError|ECONN|socket|1024|connection reset/i.test(msg)) {
+        hint = '网络连接被中断（AI 网关吞吐慢或网络抖动）。已自动重试，还不行的话：①看看是不是网络不稳 ②到 ⚙️ 设置检查 API key ③换「超长」以外的输出长度试一次。';
+      } else if (/API key|401|403|unauthor/i.test(msg)) {
+        hint = 'API key 无效或没权限——到 ⚙️ 设置检查一下。';
+      }
+      addMsg('gm', '🔥💢 ' + hint);
+      scrollBottom();
+    }
   state.isLoading = false;
   document.getElementById('send-btn').disabled = false;
 }
@@ -3658,7 +3666,7 @@ repositionDockOnMobile();
 window.addEventListener('resize', () => repositionDockOnMobile());
 </script>
 <!-- 左下角版本号（改代码就 bump，用户强刷后对照确认更新） -->
-<div id="app-ver" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent.trim())" title="点击复制版本号" style="position:fixed;left:10px;bottom:6px;z-index:9999;font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.5px;cursor:pointer;user-select:none;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:3px;">v2.59-offline</div>
+<div id="app-ver" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent.trim())" title="点击复制版本号" style="position:fixed;left:10px;bottom:6px;z-index:9999;font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.5px;cursor:pointer;user-select:none;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:3px;">v2.60-offline</div>
 
   <!-- 右侧折叠操作栏 -->
 
