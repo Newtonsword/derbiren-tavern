@@ -869,7 +869,7 @@ input:checked + .slider::before { transform: translateX(22px); background: #fff;
 
 <script>
 /* ===== 版本号（改代码就 bump）===== */
-const APP_VERSION='v2.52-offline';
+const APP_VERSION='v2.53-offline';
 window.addEventListener('DOMContentLoaded', function(){
   const el = document.getElementById('app-ver');
   if (el) el.textContent = APP_VERSION;
@@ -3657,7 +3657,7 @@ repositionDockOnMobile();
 window.addEventListener('resize', () => repositionDockOnMobile());
 </script>
 <!-- 左下角版本号（改代码就 bump，用户强刷后对照确认更新） -->
-<div id="app-ver" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent.trim())" title="点击复制版本号" style="position:fixed;left:10px;bottom:6px;z-index:9999;font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.5px;cursor:pointer;user-select:none;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:3px;">v2.52-offline</div>
+<div id="app-ver" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent.trim())" title="点击复制版本号" style="position:fixed;left:10px;bottom:6px;z-index:9999;font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.5px;cursor:pointer;user-select:none;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:3px;">v2.53-offline</div>
 
   <!-- 右侧折叠操作栏 -->
 
