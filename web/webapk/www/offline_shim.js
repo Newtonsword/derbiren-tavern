@@ -83,7 +83,7 @@
 
 
   /* ---- 装备池 + 工事 + 掷骰 + 图鉴（手机版补全，读静态 json） ---- */
-  let _eqPool = null, _conPool = null, _skillLib = null;
+  let _eqPool = null, _conPool = null, _skillLib = null, _zones = null;
   async function loadJson(url) {
     try {
       const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -94,7 +94,13 @@
     if (!_eqPool) _eqPool = await loadJson('equipment.json');
     if (!_conPool) _conPool = await loadJson('constructions.json');
     if (!_skillLib) _skillLib = await loadJson('skill_library.json');
-    return { eq: _eqPool || [], con: _conPool || [], lib: _skillLib || {} };
+    if (!_zones) _zones = await loadJson('zones.json');
+    return { eq: _eqPool || [], con: _conPool || [], lib: _skillLib || {}, zones: _zones || [] };
+  }
+  function _logEvent(save, type, msg, extra) {
+    if (!save.events) save.events = [];
+    save.events.push({ type: type, message: msg, day: save.day || 1, data: extra || {}, at: new Date().toISOString() });
+    if (save.events.length > 200) save.events = save.events.slice(-200);
   }
   async function handleEquipment(body, urlPath) {
     const pools = await ensurePools();
@@ -162,6 +168,136 @@
     lib.encountered = encountered;
     lib.encountered_count = encountered.length;
     return lib;
+  }
+
+  async function handleZones() {
+    const pools = await ensurePools();
+    return json({ zones: pools.zones });
+  }
+  function uid6() { return Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 4); }
+  function handleRewind(save) {
+    const msgs = save.messages || [];
+    let last_ui = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i] && msgs[i].role === 'user') { last_ui = i; break; } }
+    if (last_ui < 0) return json({ rewound: false, message: '', reason: '没有可重写的消息' });
+    const last_msg = msgs[last_ui].content || '';
+    msgs.length = last_ui;
+    return json({ rewound: true, message: last_msg, reason: '' });
+  }
+  function handleLength(save, body) {
+    const presets = { short: 800, medium: 1500, long: 2500, xlong: 4096 };
+    const len = body.length || 'medium';
+    const tokens = presets[len] || 1500;
+    save._length_preset = len;
+    save._max_tokens = tokens;
+    return json({ length: len, max_tokens: tokens, note: '' });
+  }
+  function handleWorld(save, body) {
+    const w = body.world_setting || save.world_setting || '';
+    save.world_setting = w;
+    return json({ world_setting: w });
+  }
+  function handleEvents(save, body) {
+    const limit = (body && body.limit) || 50;
+    const ev = save.events || [];
+    return json({ events: ev.slice(-limit) });
+  }
+  function handleDev(save, body) {
+    const action = body.action || '';
+    const chars = save.characters || [];
+    const active = chars.find(c => c.id === save.active_char_id) || chars[0];
+    if (action === 'add_exp') {
+      const target = body.char || (active && active.name) || '';
+      const amt = parseInt(body.amount, 10) || 100;
+      const c = chars.find(x => x.name === target);
+      if (c) {
+        c.exp = (c.exp || 0) + amt;
+        _logEvent(save, 'exp', '[DEV] ' + target + ' 获得 ' + amt + ' 经验', { char: target, exp: amt, dev: true });
+        let need = 100 * (c.level || 1);
+        while (c.exp >= need) { c.level = (c.level||1)+1; c.exp -= need; c.free_points=(c.free_points||0)+1; c.pending_skill_points=(c.pending_skill_points||0)+1; _logEvent(save,'level_up','[DEV] '+target+' 升到 Lv.'+c.level,{level:c.level,dev:true}); need = 100*(c.level||1); }
+      }
+    } else if (action === 'set_level') {
+      const target = body.char || (active && active.name) || '';
+      const lv = Math.max(1, Math.min(99, parseInt(body.level,10)||1));
+      const c = chars.find(x => x.name === target);
+      if (c) { c.level = lv; c.exp = 0; c.pending_skill_points = lv; _logEvent(save, 'level_up', '[DEV] ' + target + ' 设为 Lv.' + lv, { level: lv, dev: true }); }
+    } else if (action === 'set_day') {
+      save.explored_today = []; save._explored_count = 0;
+      save.day = Math.max(1, parseInt(body.day,10)||1);
+      save.days_until_attack = parseInt(body.dta,10)||5;
+      save.raid_wave = parseInt(body.wave,10)||1;
+      _logEvent(save, 'system', '[DEV] 跳转到第' + save.day + '天 第' + save.raid_wave + '波', { dev: true });
+    } else if (action === 'set_stat') {
+      const target = body.char || (active && active.name) || '';
+      const stat = body.stat || 'STR';
+      const val = parseInt(body.stat_val,10)||10;
+      const c = chars.find(x => x.name === target);
+      if (c && c.stats) c.stats[stat] = val;
+    }
+    return json({ ok: true, characters: chars, day: save.day, days_until_attack: save.days_until_attack, raid_wave: save.raid_wave });
+  }
+  function handleBuild(save, body) {
+    const conId = body.construction_id || '';
+    let con = (poolCached('_conPool') || []).find(c => c.id === conId);
+    const existing_all = save.constructions || [];
+    if (!con) con = existing_all.find(c => c.id === conId);
+    if (!con) return json({ success: false, error: '工程项目不存在: ' + conId });
+    const same_type = existing_all.filter(c => c.id === conId);
+    if (same_type.length >= (con.max_count || 99)) return json({ success: false, error: con.name + '已达建造上限(' + (con.max_count||99) + ')' });
+    const inst = {
+      instance_id: uid6(), id: conId, name: con.name, type: con.type, icon: con.icon || '',
+      effect: con.effect || {}, status: 'building', build_progress: 0,
+      build_total: con.build_days || 1, started_day: save.day || 1,
+      uses_left: (con.effect||{}).uses ?? 999,
+    };
+    (save.constructions = save.constructions || []).push(inst);
+    _logEvent(save, 'build', '开始建造 ' + con.name + '（' + con.type + '）——需' + (con.build_days||1) + '天', { construction: con.name, day: save.day||1, build_days: con.build_days||1 });
+    return json({ success: true, instance_id: inst.instance_id, name: con.name });
+  }
+  function handleDemolish(save, body, iid) {
+    const old = save.constructions || [];
+    const removed = old.find(c => c.instance_id === iid);
+    save.constructions = old.filter(c => c.instance_id !== iid);
+    if (removed) _logEvent(save, 'demolish', '拆除了 ' + removed.name, { construction: removed.name });
+    return json({ ok: true, constructions: save.constructions, removed: removed ? removed.name : null });
+  }
+  function handleSaveSess(save, body) {
+    const name = (body.name || '存档').trim().slice(0, 30);
+    const savedAt = body.saved_at || new Date().toISOString();
+    const idx = JSON.parse(localStorage.getItem('mdt_saves_index') || '[]');
+    const entry = {
+      file: 'save_' + (save.id||'offline') + '_' + name + '.json', name, saved_at: savedAt,
+      session_id: save.id, title: save.title || '未命名',
+      characters: (save.characters||[]).slice(0,3).map(c => c.name + '(Lv.' + (c.level||1) + ')').join(', '),
+      msg_count: (save.messages||[]).length,
+    };
+    // replace same name
+    const arr = idx.filter(e => e.file !== entry.file); arr.push(entry);
+    localStorage.setItem('mdt_saves_index', JSON.stringify(arr));
+    // snapshot save under key
+    localStorage.setItem('mdt_snapshot_' + entry.file, JSON.stringify(save));
+    return json({ ok: true, entry: entry });
+  }
+  function handleLoadSave(body, filename) {
+    const snap = localStorage.getItem('mdt_snapshot_' + filename);
+    if (snap) {
+      const data = JSON.parse(snap);
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+      return json({ session_id: data.id, characters: data.characters || [], day: data.day });
+    }
+    return json({ success: false, error: '本地存档不存在: ' + filename });
+  }
+  function handleSavesList() {
+    const idx = JSON.parse(localStorage.getItem('mdt_saves_index') || '[]');
+    const list = idx.map(e => ({ id: e.session_id, title: e.title || '', day: null, name: e.file, saved_at: e.saved_at, characters: e.characters, msg_count: e.msg_count }));
+    return json({ saves: list });
+  }
+  function poolCached(key) {
+    if (key === '_conPool') return _conPool || [];
+    if (key === '_eqPool') return _eqPool || [];
+    if (key === '_skillLib') return _skillLib || {};
+    if (key === '_zones') return _zones || [];
+    return [];
   }
 
   /* DeepSeek 直连（复用 callDeepSeek 思路，从设置读 key） */
@@ -272,9 +408,7 @@
       return json({ success: true });
     }
     if (urlPath === '/api/saves' && method === 'GET') {
-      const s = ls(SAVE_KEY, null);
-      const list = s ? [{ id: s.id, title: s.title, day: s.day, name: s.id }] : [];
-      return json({ saves: list });
+      return handleSavesList();
     }
     /* ---- 通用数据端点 ---- */
     if (urlPath === '/api/equipment' && method === 'GET') {
@@ -361,6 +495,80 @@
       persist(sess);
       return json({ success: true, slot: slot });
     }
+    // /api/session/{sid}/zones  GET — 探索分区
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/zones$/)) && method === 'GET') {
+      return handleZones();
+    }
+    // /api/session/{sid}/rewind  POST — 重写
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/rewind$/)) && method === 'POST') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleRewind(sess);
+      persist(sess);
+      return r;
+    }
+    // /api/session/{sid}/length  POST — 输出长度
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/length$/)) && method === 'POST') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleLength(sess, body);
+      persist(sess);
+      return r;
+    }
+    // /api/session/{sid}/world  PUT — 改世界观
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/world$/)) && method === 'PUT') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleWorld(sess, body);
+      persist(sess);
+      return r;
+    }
+    // /api/session/{sid}/events  GET — 事件日志
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/events$/)) && method === 'GET') {
+      const sess = ls(SAVE_KEY) || {};
+      return handleEvents(sess, body);
+    }
+    // /api/session/{sid}/dev  POST — 开发工具
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/dev$/)) && method === 'POST') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleDev(sess, body);
+      persist(sess);
+      return r;
+    }
+    // /api/session/{sid}/constructions  POST — 建造
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/constructions$/)) && method === 'POST') {
+      const sess = ls(SAVE_KEY) || {};
+      await ensurePools();
+      const r = handleBuild(sess, body);
+      persist(sess);
+      return r;
+    }
+    // /api/session/{sid}/constructions GET — 会话级工事列表
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/constructions$/)) && method === 'GET') {
+      const sess = ls(SAVE_KEY) || {};
+      return json({ constructions: sess.constructions || [] });
+    }
+    // /api/session/{sid}/constructions/{iid} DELETE — 拆除
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/constructions\/([^/]+)$/)) && method === 'DELETE') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleDemolish(sess, body, decodeURIComponent(m[2]));
+      persist(sess);
+      return r;
+    }
+    // /api/session/{sid}/save POST — 命名存档
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/save$/)) && method === 'POST') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleSaveSess(sess, body);
+      persist(sess);
+      return r;
+    }
+    // /api/saves GET — 存档列表(合并已存在分支)
+    // /api/saves/{filename}/load POST — 读档
+    if ((m = urlPath.match(/^\/api\/saves\/([^/]+)\/load$/)) && method === 'POST') {
+      return handleLoadSave(body, decodeURIComponent(m[1]));
+    }
+    // /api/session/{sid}/summarize POST — 离线返回占位(不真压缩)
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/summarize$/)) && method === 'POST') {
+      return json({ ok: true, summary: '离线版暂不提供语义压缩', length: (ls(SAVE_KEY,{}).messages||[]).length });
+    }
+
     // 辅助端点降级(mock，保证 UI 不崩)
     const auxPatterns = [/\/rewind$/, /\/length$/, /\/summarize$/, /\/zones$/, /\/loot/, /\/world$/, /\/dev$/, /\/events/, /\/summarize/];
     for (const p of auxPatterns) {

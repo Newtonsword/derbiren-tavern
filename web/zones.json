@@ -1,0 +1,332 @@
+[
+ {
+  "id": "moss_cave",
+  "name": "苔藓洞窟",
+  "difficulty": "safe",
+  "lvl_range": [
+   1,
+   3
+  ],
+  "theme": "温润苔藓",
+  "risk": "安全",
+  "desc": "入口垂着湿润的苔藓，洞壁渗着暖暖的地下水汽。低阶魔物在阴影里探头探脑。",
+  "enemy_pool": [
+   {
+    "name": "苔藓蝙蝠",
+    "species": "魔物",
+    "level": 1,
+    "stats": {
+     "END": 1,
+     "STR": 1,
+     "SPD": 3,
+     "DEF": 1,
+     "INT": 1,
+     "MP": 1,
+     "WIL": 1
+    },
+    "skills_raw": "噬咬:斩击:10+1.5×力量+0.5×速度:耐力8:2.5s"
+   },
+   {
+    "name": "洞穴史莱姆",
+    "species": "魔物",
+    "level": 2,
+    "stats": {
+     "END": 3,
+     "STR": 1,
+     "SPD": 1,
+     "DEF": 2,
+     "INT": 1,
+     "MP": 1,
+     "WIL": 1
+    },
+    "skills_raw": "腐蚀:刺击:9+1.0×智力:耐力6:3.0s"
+   }
+  ],
+  "collect_pool": [
+   "魔法苔藓",
+   "地脉结晶",
+   "湿滑菌菇"
+  ],
+  "recruit_pool": [
+   "史莱姆",
+   "蝙蝠"
+  ],
+  "reward_tier": "base",
+  "gm_hook": "洞窟潮闷湿滑，敌人低阶。事件方向偏「克制/温和」，收集物是可食/可炼的低阶材料。"
+ },
+ {
+  "id": "edge_forest",
+  "name": "边境林地",
+  "difficulty": "safe",
+  "lvl_range": [
+   1,
+   3
+  ],
+  "theme": "自然生机",
+  "risk": "安全",
+  "desc": "地下城上方的林地上，藤蔓与光斑交织。温和的魔物在此栖居。",
+  "enemy_pool": [
+   {
+    "name": "野兔魔",
+    "species": "魔物",
+    "level": 1,
+    "stats": {
+     "END": 1,
+     "STR": 1,
+     "SPD": 4,
+     "DEF": 1,
+     "INT": 1,
+     "MP": 1,
+     "WIL": 1
+    },
+    "skills_raw": "蹬踢:钝击:11+1.0×速度+0.5×力量:耐力8:2.0s"
+   },
+   {
+    "name": "树藤妖",
+    "species": "魔物",
+    "level": 2,
+    "stats": {
+     "END": 3,
+     "STR": 2,
+     "SPD": 1,
+     "DEF": 2,
+     "INT": 1,
+     "MP": 1,
+     "WIL": 1
+    },
+    "skills_raw": "缠绕:刺击:10+1.0×智力:耐力7:3.0s"
+   }
+  ],
+  "collect_pool": [
+   "野莓",
+   "树心木",
+   "晨露"
+  ],
+  "recruit_pool": [
+   "野狼",
+   "野猪"
+  ],
+  "reward_tier": "base",
+  "gm_hook": "林间有微风与鸟鸣。事件方向偏「自然/成长」，收集物是食物/木材类低阶资材。"
+ },
+ {
+  "id": "lava_mine",
+  "name": "熔岩矿井",
+  "difficulty": "danger",
+  "lvl_range": [
+   4,
+   6
+  ],
+  "theme": "灼热矿脉",
+  "risk": "危险",
+  "desc": "废弃矿井里热浪翻滚，岩浆在矿槽间流淌，铁壁被烧得通红。",
+  "enemy_pool": [
+   {
+    "name": "熔岩蜥",
+    "species": "魔物",
+    "level": 4,
+    "stats": {
+     "END": 5,
+     "STR": 5,
+     "SPD": 2,
+     "DEF": 4,
+     "INT": 2,
+     "MP": 2,
+     "WIL": 3
+    },
+    "skills_raw": "喷焰:刺击:17+1.0×智力:耐力12:3.0s;尾扫:钝击:16+2.0×力量:耐力10:2.5s"
+   },
+   {
+    "name": "火元素",
+    "species": "魔物",
+    "level": 5,
+    "stats": {
+     "END": 4,
+     "STR": 4,
+     "SPD": 5,
+     "DEF": 2,
+     "INT": 4,
+     "MP": 4,
+     "WIL": 3
+    },
+    "skills_raw": "爆炎:刺击:20+1.5×智力:耐力14:3.5s"
+   }
+  ],
+  "collect_pool": [
+   "熔火铁锭",
+   "红晶石",
+   "硫磺块"
+  ],
+  "recruit_pool": [
+   "火蜥",
+   "小炎魔"
+  ],
+  "reward_tier": "mid",
+  "gm_hook": "热浪灼人，铁质矿脉。事件方向偏「灼热/矿藏」，收集物是中档锻造/附魔材料。"
+ },
+ {
+  "id": "sunken_tomb",
+  "name": "沉没墓穴",
+  "difficulty": "danger",
+  "lvl_range": [
+   4,
+   6
+  ],
+  "theme": "秘辛古墓",
+  "risk": "危险",
+  "desc": "被水淹过的古墓群，石棺半沉，苔痕斑驳，弥漫着陈旧的死亡气息。",
+  "enemy_pool": [
+   {
+    "name": "骷髅守卫",
+    "species": "魔物",
+    "level": 4,
+    "stats": {
+     "END": 4,
+     "STR": 4,
+     "SPD": 3,
+     "DEF": 5,
+     "INT": 2,
+     "MP": 2,
+     "WIL": 3
+    },
+    "skills_raw": "骨刀:斩击:17+2.0×力量:耐力11:2.5s"
+   },
+   {
+    "name": "墓穴妖灵",
+    "species": "魔物",
+    "level": 5,
+    "stats": {
+     "END": 3,
+     "STR": 3,
+     "SPD": 5,
+     "DEF": 2,
+     "INT": 5,
+     "MP": 5,
+     "WIL": 4
+    },
+    "skills_raw": "夺命低语:精神:19+1.5×智力:耐力12:3.0s"
+   }
+  ],
+  "collect_pool": [
+   "古币",
+   "墓穴符文",
+   "亡者之尘"
+  ],
+  "recruit_pool": [
+   "亡灵",
+   "僵仆"
+  ],
+  "reward_tier": "mid",
+  "gm_hook": "死寂阴冷，尘封历史。事件方向偏「秘辛/历史」，收集物是可解锁传承/冢宝的中档材料。"
+ },
+ {
+  "id": "abyss_rift",
+  "name": "深渊裂谷",
+  "difficulty": "high",
+  "lvl_range": [
+   7,
+   9
+  ],
+  "theme": "虚空狂乱",
+  "risk": "高危",
+  "desc": "大地裂开一道通往深处的缝隙，虚空寒气上涌，耳边是失真的低语。",
+  "enemy_pool": [
+   {
+    "name": "虚空猎犬",
+    "species": "魔物",
+    "level": 7,
+    "stats": {
+     "END": 7,
+     "STR": 7,
+     "SPD": 7,
+     "DEF": 4,
+     "INT": 4,
+     "MP": 4,
+     "WIL": 5
+    },
+    "skills_raw": "虚空撕咬:斩击:26+2.5×力量+0.5×速度:耐力16:2.5s"
+   },
+   {
+    "name": "裂隙凝视者",
+    "species": "魔物",
+    "level": 8,
+    "stats": {
+     "END": 6,
+     "STR": 5,
+     "SPD": 5,
+     "DEF": 5,
+     "INT": 8,
+     "MP": 8,
+     "WIL": 6
+    },
+    "skills_raw": "失序凝视:精神:30+2.0×智力:耐力18:4.0s"
+   }
+  ],
+  "collect_pool": [
+   "虚空结晶",
+   "深渊之角",
+   "失序核心"
+  ],
+  "recruit_pool": [
+   "虚空幼龙",
+   "深渊魔"
+  ],
+  "reward_tier": "high",
+  "gm_hook": "虚空低语，理智受扰。事件方向偏「狂乱/强敌」，收集物是高阶稀有材料与遗物。"
+ },
+ {
+  "id": "sulfur_throne",
+  "name": "硫磺王座",
+  "difficulty": "high",
+  "lvl_range": [
+   7,
+   9
+  ],
+  "theme": "恶魔王庭",
+  "risk": "高危",
+  "desc": "地底深处的恶魔王座殿，硫磺味刺鼻，罪影低语，仿佛有群魔在此集会。",
+  "enemy_pool": [
+   {
+    "name": "硫磺魔将",
+    "species": "魔物",
+    "level": 7,
+    "stats": {
+     "END": 9,
+     "STR": 8,
+     "SPD": 4,
+     "DEF": 7,
+     "INT": 4,
+     "MP": 4,
+     "WIL": 5
+    },
+    "skills_raw": "魔焰斩:斩击:28+2.5×力量:耐力16:3.0s"
+   },
+   {
+    "name": "罪孽魅影",
+    "species": "魔物",
+    "level": 8,
+    "stats": {
+     "END": 5,
+     "STR": 5,
+     "SPD": 8,
+     "DEF": 3,
+     "INT": 7,
+     "MP": 7,
+     "WIL": 7
+    },
+    "skills_raw": "罪罚鞭挞:精神:27+1.5×智力+0.5×速度:耐力14:2.5s"
+   }
+  ],
+  "collect_pool": [
+   "硫磺圣晶",
+   "恶魔之心",
+   "罪孽之火"
+  ],
+  "recruit_pool": [
+   "小恶魔",
+   "恶魔侍从"
+  ],
+  "reward_tier": "high",
+  "gm_hook": "王庭气氛压抑，群魔环伺。事件方向偏「恶魔/高阶」，收集物是可锻造神装/召唤的高阶圣物。"
+ }
+]
