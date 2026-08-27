@@ -776,9 +776,11 @@
       return json(chatResp(result.sess, result.narrative, result.change));
     }
     // /api/session/{sid} GET
-    if ((m = urlPath.match(/^\/api\/session\/([^/]+)$/)) && method === 'GET') {
-      return json(ls(SAVE_KEY) || null);
-    }
+        if ((m = urlPath.match(/^\/api\/session\/([^/]+)$/)) && method === 'GET') {
+          var _s0 = ls(SAVE_KEY) || null;
+          if (_s0 && !_s0.session_id) _s0.session_id = _s0.id;   // 对齐电脑版字段，前端 loadOrCreateSession 依赖 session_id
+          return json(_s0);
+        }
     // /api/session/{sid}/characters  POST — 添加角色
     if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters$/)) && method === 'POST') {
       const sess = ls(SAVE_KEY) || {};
