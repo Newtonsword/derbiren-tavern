@@ -261,6 +261,54 @@
     if (removed) _logEvent(save, 'demolish', '拆除了 ' + removed.name, { construction: removed.name });
     return json({ ok: true, constructions: save.constructions, removed: removed ? removed.name : null });
   }
+  function _makeCharOffline(name, species, coeff, level) {
+    const char = {
+      id: uid8(), name: name, species: species || '人类', species_coeff: coeff || 1.3,
+      level: level || 1, exp: 0,
+      stats: { END: 3, STR: 3, SPD: 3, DEF: 3, INT: 3, MP: 3, WIL: 3 },
+      free_points: 3, pending_skill_points: 0,
+      skills: [], passives: [], equipment: { weapon: null, armor: null, accessory: null },
+    };
+    // 物种初始技能模板
+    const starters = {
+      '猫龙': { skills:[{name:'暗影吐息',type:'法术',formula:'22+2.5×智力',cost:'蓝14',interval:'4.5s',hit_formula:'85+2.0×智力',category:'主动'},{name:'利爪',type:'斩击',formula:'18+2.0×力量+1.5×速度',cost:'耐力14',interval:'3.0s',hit_formula:'75+2.0×力量+1.0×速度',category:'主动'}], passives:[] },
+      '史莱姆': { skills:[{name:'酸液腐蚀',type:'刺击',formula:'15+1.5×智力',cost:'蓝10',interval:'3.5s',hit_formula:'70+1.5×智力',category:'主动'}], passives:[] },
+      '哥布林': { skills:[{name:'短刃偷袭',type:'斩击',formula:'15+2.0×速度',cost:'耐力12',interval:'3.0s',hit_formula:'80+2.5×速度',category:'主动'}], passives:[] },
+      '狼':     { skills:[{name:'撕咬',type:'斩击',formula:'15+2.0×力量',cost:'耐力14',interval:'3.0s',hit_formula:'75+2.0×速度',category:'主动'}], passives:[] },
+      '触手怪': { skills:[{name:'缠绕触击',type:'刺击',formula:'16+1.5×力量+1.0×智力',cost:'耐力16',interval:'4.0s',hit_formula:'70+1.5×智力',category:'主动'}], passives:[] },
+    };
+    const st = starters[char.species];
+    if (st) { char.skills = st.skills.map(x => Object.assign({}, x)); char.passives = (st.passives||[]).map(x => Object.assign({}, x)); }
+    return char;
+  }
+  function uid8() { return Date.now().toString(36).slice(-3) + Math.random().toString(36).slice(2, 7); }
+  function handleAddChar(save, body) {
+    const c = _makeCharOffline(body.name, body.species, body.species_coeff, body.level);
+    (save.characters = save.characters || []).push(c);
+    _logEvent(save, 'char_add', '新增角色 ' + c.name + '（' + c.species + '）', { char: c.name });
+    return json({ character: c });
+  }
+  function handleUpdChar(save, body, cid) {
+    const chars = save.characters || [];
+    const c = chars.find(x => x.id === cid);
+    if (!c) return json({ success: false, error: '角色不存在' });
+    if (body.stats) {
+      const old = Object.assign({}, c.stats);
+      for (const k in body.stats) { if (Number.isInteger(body.stats[k]) && body.stats[k] >= 0 && body.stats[k] <= 99) c.stats[k] = body.stats[k]; }
+      _logEvent(save, 'stat_change', c.name + ' 属性调整', { char: c.name, old: old, new: Object.assign({}, c.stats) });
+    }
+    if (body.free_points !== undefined) c.free_points = body.free_points;
+    if (body.pending_skill_points !== undefined) c.pending_skill_points = body.pending_skill_points;
+    if (body.active) save.active_char_id = cid;
+    return json({ character: c });
+  }
+  function handleDelChar(save, body, cid) {
+    const olds = save.characters || [];
+    save.characters = olds.filter(x => x.id !== cid);
+    if (save.active_char_id === cid && save.characters.length) save.active_char_id = save.characters[0].id;
+    return json({ ok: true });
+  }
+
   function handleSaveSess(save, body) {
     const name = (body.name || '存档').trim().slice(0, 30);
     const savedAt = body.saved_at || new Date().toISOString();
@@ -458,12 +506,36 @@
     if ((m = urlPath.match(/^\/api\/session\/([^/]+)$/)) && method === 'GET') {
       return json(ls(SAVE_KEY) || null);
     }
+    // /api/session/{sid}/characters  POST — 添加角色
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters$/)) && method === 'POST') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleAddChar(sess, body);
+      persist(sess); return r;
+    }
     // /api/session/{sid}/characters GET
     if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters$/)) && method === 'GET') {
       const sess = ls(SAVE_KEY);
       return json({ characters: sess ? (sess.characters || sess.chars || []) : [] });
     }
 
+    // /api/session/{sid}/characters/{cid}  PUT — 更新角色
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters\/([^/]+)$/)) && method === 'PUT') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleUpdChar(sess, body, decodeURIComponent(m[2]));
+      persist(sess); return r;
+    }
+    // /api/session/{sid}/characters/{cid}  DELETE — 删除角色
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters\/([^/]+)$/)) && method === 'DELETE') {
+      const sess = ls(SAVE_KEY) || {};
+      const r = handleDelChar(sess, body, decodeURIComponent(m[2]));
+      persist(sess); return r;
+    }
+    // /api/session/{sid}/characters/{cid}  GET — 单角色
+    if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters\/([^/]+)$/)) && method === 'GET') {
+      const sess = ls(SAVE_KEY) || {};
+      const c = (sess.characters || []).find(x => x.id === decodeURIComponent(m[2]));
+      return json({ character: c });
+    }
     // /api/session/{sid}/characters/{cid}/equip     PUT — 装备
     if ((m = urlPath.match(/^\/api\/session\/([^/]+)\/characters\/([^/]+)\/equip$/)) && method === 'PUT') {
       const sess = ls(SAVE_KEY) || {};
