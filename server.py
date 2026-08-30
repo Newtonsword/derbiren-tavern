@@ -2900,7 +2900,9 @@ def set_length(sid: str, req: LengthRequest):
     s["_length_preset"] = req.length
     s["_max_tokens"] = tokens
     _save(s)
-    return {"length": req.length, "max_tokens": tokens, "note": "NSFW强制最长" if os.getenv("NSFW_ENABLED","")=="true" else ""}
+    _words_map = {"short": "300字左右", "medium": "600字左右", "long": "1000字左右", "verylong": "1600字以上"}
+    return {"length": req.length, "max_tokens": tokens, "max_words": _words_map.get(req.length, "600字左右"),
+            "note": "NSFW强制最长" if os.getenv("NSFW_ENABLED","")=="true" else ""}
 
 
 # ── 手动语义总结压缩 API ──

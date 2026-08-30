@@ -35,6 +35,20 @@
   }
 
 
+  /* 输出长度引导：把玩家选的 short/medium/long/verylong 映射成「字数」写进提示词（对齐电脑版 server.py，
+     避免手机版永远硬编码 500 字——用户吐槽过「800token是什么鬼，应该多少多少字」。
+     token 预设只控制 API 上限；这里把「本轮要写多长」以字数形式告诉 GM。 */
+  var _LEN_WORDS = { short: '300字左右', medium: '600字左右', long: '1000字左右', verylong: '1600字以上不设上限' };
+  function _buildLenGuide(preset, nsfw, save) {
+    var lp = preset || 'medium';
+    if (nsfw) {
+      // NSFW 色情场景永远往长了写（哪怕玩家选了 short），对齐电脑版
+      return 'NSFW强制拉满。这一轮你必须写满至少800字，色情场景每段1500字以上不设上限。宁可写太长收不住，不要写太短草草了事。';
+    }
+    var w = _LEN_WORDS[lp] || '600字左右';
+    return '玩家已选择「' + lp + '」输出长度。这一轮你必须写到' + w + '，把场景、动作、感官细节铺开写，不要三言两语跳过。宁可多写，不要偷懒缩水。';
+  }
+
   /* ---------- 完整 GM 系统提示词（从存档+设置自动构建，对齐在线版 api.js） ---------- */
   function buildSystemPromptFromState() {
     const set = ls(SETTINGS_KEY, {});
@@ -330,7 +344,7 @@
       + '宽阔：无限制\n'
       '\n【队伍阵容】\n' + roster + '\n'
       + '\n【世界观】\n' + world + '\n'
-      + '\n【写作长度】\n这一轮必须写满至少500字，把场景、动作、感官细节铺开写，不要三言两语跳过。宁可多写，不要偷懒缩水。';
+      + '\n【写作长度】\n' + _buildLenGuide(save._length_preset, !!set.nsfw, save);
   }
 
 
@@ -437,12 +451,12 @@
     return json({ rewound: true, message: last_msg, reason: '' });
   }
   function handleLength(save, body) {
-    const presets = { short: 800, medium: 1500, long: 2500, xlong: 4096 };
+    const tokens = { short: 800, medium: 1500, long: 2500, xlong: 4096 };
+    const words = { short: '300字左右', medium: '600字左右', long: '1000字左右', xlong: '1600字以上' };
     const len = body.length || 'medium';
-    const tokens = presets[len] || 1500;
     save._length_preset = len;
-    save._max_tokens = tokens;
-    return json({ length: len, max_tokens: tokens, note: '' });
+    save._max_tokens = tokens[len] || 1500;
+    return json({ length: len, max_tokens: save._max_tokens, max_words: words[len] || '600字左右', note: '输出长度已按字数设定' });
   }
   function handleWorld(save, body) {
     const w = body.world_setting || save.world_setting || '';
